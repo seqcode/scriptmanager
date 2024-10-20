@@ -5,6 +5,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import scriptmanager.objects.Exceptions.OptionException;
+
 /**
  * This class stores reference collections on DNA shape as constants for tools
  * in the scripts package.
@@ -14,6 +16,121 @@ import java.util.Map;
  * @see scriptmanager.scripts.Sequence_Analysis.DNAShapefromFASTA
  */
 public final class DNAShapeReference {
+
+	private static HashMap<String, List<Double>> STRUCTURE;
+
+	final public static int MGW = 0;
+	final public static int PROPT = 1;
+	final public static int HELT = 2;
+	final public static int ROLL = 3;
+	final public static int EP = 4;
+	final public static int STRETCH = 5;
+	final public static int BUCKLE = 6;
+	final public static int SHEAR = 7;
+	final public static int OPENING = 8;
+	final public static int STAGGER = 9;
+	final public static int TILT = 10;
+	final public static int SLIDE = 11;
+	final public static int RISE = 12;
+	final public static int SHIFT = 13;
+	final public static String[] HEADERS = new String[] { "MGW", "PropT", "HelT", "Roll", "EP", "Stretch", "Buckle", "Shear", 
+	"Opening", "Stagger", "Tilt", "Slide", "Rise", "Shift"};
+
+	public static ArrayList<Double> seqToShape(int shapeType, String seq) throws OptionException {
+		ArrayList<Double> shape = new ArrayList<Double>(seq.length() - 4);
+		
+		// Iterate through sequence with kmers
+		for (int z = 0; z < seq.length() - 4; z++) {
+			String key = seq.substring(z, z + 5);
+			List<Double> SCORES = STRUCTURE.get(key);
+	
+			switch (shapeType) {
+				case DNAShapeReference.MGW:
+					shape.add(SCORES.get(0));
+					break;
+				case DNAShapeReference.PROPT:
+					shape.add(SCORES.get(1));
+					break;
+				case DNAShapeReference.HELT:
+					if (z == 0) {
+						shape.add(SCORES.get(2));
+						shape.add(SCORES.get(3));
+					} else {
+						shape.set(shape.size() - 1, (shape.get(shape.size() - 1) + SCORES.get(2)) / 2);
+						shape.add(SCORES.get(3));
+					}
+					break;
+				case DNAShapeReference.ROLL:
+					if (z == 0) {
+						shape.add(SCORES.get(4));
+						shape.add(SCORES.get(5));
+					} else {
+						shape.set(shape.size() - 1, (shape.get(shape.size() - 1) + SCORES.get(4)) / 2);
+						shape.add(SCORES.get(5));
+					}
+					break;
+				case DNAShapeReference.EP:
+					shape.add(SCORES.get(6));
+					break;
+				case DNAShapeReference.STRETCH:
+					shape.add(SCORES.get(7));
+					break;
+				case DNAShapeReference.BUCKLE:
+					shape.add(SCORES.get(8));
+					break;
+				case DNAShapeReference.SHEAR:
+					shape.add(SCORES.get(9));
+					break;
+				case DNAShapeReference.OPENING:
+					shape.add(SCORES.get(10));
+					break;
+				case DNAShapeReference.STAGGER:
+					shape.add(SCORES.get(11));
+					break;
+				case DNAShapeReference.TILT:
+					if (z == 0) {
+						shape.add(SCORES.get(12));
+						shape.add(SCORES.get(13));
+					} else {
+						shape.set(shape.size() - 1, (shape.get(shape.size() - 1) + SCORES.get(12)) / 2);
+						shape.add(SCORES.get(13));
+					}
+					break;
+				case DNAShapeReference.SLIDE:
+					if (z == 0) {
+						shape.add(SCORES.get(14));
+						shape.add(SCORES.get(15));
+					} else {
+						shape.set(shape.size() - 1, (shape.get(shape.size() - 1) + SCORES.get(14)) / 2);
+						shape.add(SCORES.get(15));
+					}
+					break;
+				case DNAShapeReference.RISE:
+					if (z == 0) {
+						shape.add(SCORES.get(16));
+						shape.add(SCORES.get(17));
+					} else {
+						shape.set(shape.size() - 1, (shape.get(shape.size() - 1) + SCORES.get(16)) / 2);
+						shape.add(SCORES.get(17));
+					}
+					break;
+				case DNAShapeReference.SHIFT:
+					if (z == 0) {
+						shape.add(SCORES.get(18));
+						shape.add(SCORES.get(19));
+					} else {
+						shape.set(shape.size() - 1, (shape.get(shape.size() - 1) + SCORES.get(18)) / 2);
+						shape.add(SCORES.get(19));
+					}
+					break;
+				default:
+					throw new OptionException("Unrecognized DNA shape type: " + shapeType);
+			}
+		}
+		return shape;
+	}	
+
+
 	/**
 	 * A collection of 5-mers DNA strings with a list of constants that describe
 	 * DNAshape assigned to each based on the Rohs Lab 2013 paper (<a
@@ -42,7 +159,7 @@ public final class DNAShapeReference {
 	 */
 	@SuppressWarnings("serial")
 	public static Map<String, List<Double>> InitializeStructure() {
-		Map<String, List<Double>> STRUCTURE = new HashMap<String, List<Double>>();
+		STRUCTURE = new HashMap<String, List<Double>>();
 		/*
 		#Seq	MGW	PropT	HelT-1	HelT-2	Roll-1	Roll-2 EP Stretch Buckle Shear Opening Stagger Tilt-1 Tilt-2 Slide-1 Slide-2 Rise-1 Rise-2 Shift-1 Shift-2
 		*/
