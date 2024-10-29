@@ -150,15 +150,13 @@ public class DNAShapefromFASTACLI implements Callable<Integer> {
 		}
 
 
-		
+		OUTPUT_TYPES = new ArrayList<>();
 		if (shape.everything){
-			OUTPUT_TYPES = new ArrayList<>();
 			for (int i = 0; i < 14; i++){
 				OUTPUT_TYPES.add(i);
 			}
 		}
 		else if (shape.all){
-			OUTPUT_TYPES = new ArrayList<>();
 			for (int i = 0; i < 5; i++){
 				OUTPUT_TYPES.add(i);
 			}

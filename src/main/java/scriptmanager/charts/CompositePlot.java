@@ -4,6 +4,7 @@ import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Component;
 import java.util.ArrayList;
+import java.util.Arrays;
 
 import org.jfree.chart.ChartFactory;
 import org.jfree.chart.ChartPanel;

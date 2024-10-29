@@ -21,6 +21,7 @@ import scriptmanager.objects.CustomOutputStream;
 import scriptmanager.objects.LogItem;
 import scriptmanager.objects.Exceptions.OptionException;
 import scriptmanager.objects.Exceptions.ScriptManagerException;
+import scriptmanager.util.DNAShapeReference;
 import scriptmanager.util.ExtensionFileFilter;
 
 import scriptmanager.cli.Sequence_Analysis.DNAShapefromFASTACLI;
@@ -138,6 +139,13 @@ public class DNAShapefromFASTAOutput extends JFrame {
 				new_li.setStopTime(new Timestamp(new Date().getTime()));
 				new_li.setStatus(0);
 				old_li = new_li;
+
+				for (Integer shape: OUTPUT_TYPE){
+					tabbedPane_Scatterplot.add(DNAShapeReference.HEADERS[shape], script_obj.getCharts(shape));
+					JScrollPane scrollPane = new JScrollPane(TextAreas.get(shape), JScrollPane.VERTICAL_SCROLLBAR_ALWAYS,
+					 			JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
+					tabbedPane_Statistics.add(DNAShapeReference.HEADERS[shape], scrollPane);
+				}
 				// Convert average and statistics to output tabs panes
 
 				// if (OUTPUT_TYPE[0]) {

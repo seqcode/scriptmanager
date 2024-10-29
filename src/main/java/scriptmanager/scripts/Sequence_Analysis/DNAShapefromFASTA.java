@@ -6,16 +6,17 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.PrintStream;
-import java.lang.reflect.Field;
+import java.nio.charset.Charset;
 import java.sql.Timestamp;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.text.DecimalFormat;
 
 import scriptmanager.charts.CompositePlot;
-import scriptmanager.cli.Sequence_Analysis.DNAShapefromFASTACLI.ShapeType;
 import scriptmanager.objects.CustomOutputStream;
 import scriptmanager.objects.Exceptions.OptionException;
 import scriptmanager.objects.Exceptions.ScriptManagerException;
@@ -44,18 +45,13 @@ public class DNAShapefromFASTA {
 	private HashMap<Integer, PrintStream> OUT_FILES;
 	private HashMap<Integer, PrintStream> COMPOSITE_FILES;
 	private HashMap<Integer, ArrayList<Double>> PREDICTIONS;
-	private HashMap<Integer, ArrayList<Double>> AVG_ARRS;
-	private HashMap<Integer, ArrayList<Double>> TEXT_ARRS;
+	private HashMap<Integer, double[][]> AVG_ARRS;
 	private ArrayList<Integer> OUTPUT_TYPES;
 
-	private ArrayList<PrintStream> PS = null;
-
+	private HashMap<Integer, CustomOutputStream> PS = null;
 	static Map<String, List<Double>> STRUCTURE = null;
-
-	Component chart_M = null;
-	Component chart_P = null;
-	Component chart_H = null;
-	Component chart_R = null;
+	private HashMap<Integer, Component> CHARTS = null;
+	private DecimalFormat FORMAT = new DecimalFormat("##.00");
 
 	public final static short NO_MATRIX = 0;
 	public final static short TAB = 1;
@@ -75,7 +71,6 @@ public class DNAShapefromFASTA {
 		COMPOSITE_FILES = new HashMap<>();
 		AVG_ARRS = new HashMap<>();
 		PREDICTIONS = new HashMap<>();
-		TEXT_ARRS = new HashMap<>();
 	}
 
 	/**
@@ -108,7 +103,7 @@ public class DNAShapefromFASTA {
 		COMPOSITE_FILES = new HashMap<>();
 		AVG_ARRS = new HashMap<>();
 		PREDICTIONS = new HashMap<>();
-		TEXT_ARRS = new HashMap<>();
+		CHARTS = new HashMap<>();
 	}
 
 	/**
@@ -122,19 +117,20 @@ public class DNAShapefromFASTA {
 	 * @throws OptionException 
 	 */
 	public void run() throws ScriptManagerException, FileNotFoundException, IOException, InterruptedException, OptionException {
+		
+		// Print time to ScriptManager gui
 		String NAME = ExtensionFileFilter.stripExtension(FASTA);
 		String time = new Timestamp(new Date().getTime()).toString();
-		for (int p = 0; p < PS.length; p++) {
-			if (PS[p] != null) {
-				PS[p].println(time + "\n" + NAME);
+		if (PS != null){
+			for (Integer shape: OUTPUT_TYPES){
+				PS.get(shape).write((time + "\n" + NAME + "\n").getBytes(Charset.forName("UTF-8")));
 			}
 		}
 		openOutputFiles();
 
-		int counter = 0;
+		// Find longest sequence in file
 		String line;
 		int longestSequence = -1;
-		// Check if file is gzipped and instantiate appropriate BufferedReader
 		BufferedReader br = GZipUtilities.makeReader(FASTA);
 		while ((line = br.readLine()) != null) { 
 			if (!line.contains(">")) {
@@ -142,6 +138,16 @@ public class DNAShapefromFASTA {
 			}
 		}
 		br.close();
+		// Create coordinate domain
+		double[] domain = new double[0];
+		int numPredictions = (1 + (int)(longestSequence - 4));
+		domain = new double[numPredictions];
+		int temp = (int) (((double) (numPredictions) / 2.0) + 0.5);
+		for (int z = 0; z < numPredictions; z++) {
+			domain[z] = (temp - (numPredictions - z));
+		}
+
+		int counter = 0;
 		br = GZipUtilities.makeReader(FASTA);
 		while ((line = br.readLine()) != null) {
 			String HEADER = line;
@@ -149,7 +155,7 @@ public class DNAShapefromFASTA {
 				HEADER = HEADER.substring(1, HEADER.length());
 				String seq = br.readLine();
 				if (!seq.contains("N")) {
-					// Populate array for each FASTA line
+					// Populate array for each shape type
 					for (Integer shape: OUTPUT_TYPES){
 						PREDICTIONS.put(shape, DNAShapeReference.seqToShape(shape, seq));
 					}
@@ -162,18 +168,33 @@ public class DNAShapefromFASTA {
 								if (OUTPUT_MATRIX == DNAShapefromBED.CDT) {
 									OUT_FILES.get(shape).print("\tNAME");
 								}
-								// print domain
-								for (int z = 0; z < longestSequence; z++) {
-									OUT_FILES.get(shape).print("\t" + z);
+								// Adjust domain to fit number of predictions
+								int start;
+								if (new ArrayList<>(Arrays.asList( DNAShapeReference.HELT, DNAShapeReference.ROLL, DNAShapeReference.RISE,
+								DNAShapeReference.SHIFT, DNAShapeReference.TILT, DNAShapeReference.SLIDE)).contains(shape)){
+									start = 0;
+								} else {
+									start = 1;
+								}
+								for (int z = start; z < numPredictions; z++) {
+									OUT_FILES.get(shape).print("\t" + domain[z]);
 								}
 								OUT_FILES.get(shape).println();
 							}
 							// Initialize AVG storage object
-							ArrayList<Double> avg = new ArrayList<Double>(PREDICTIONS.get(shape).size());
+							double[][] avg = new double[2][numPredictions + 1];
 							AVG_ARRS.put(shape, avg);
 						}
-						AVG_ARRS.put(shape, printVals(HEADER, PREDICTIONS.get(shape), AVG_ARRS.get(shape), OUT_FILES.get(shape)));
-					}
+						// Adjust domain to fit number of predictions
+						if (new ArrayList<>(Arrays.asList( DNAShapeReference.HELT, DNAShapeReference.ROLL, DNAShapeReference.RISE,
+							DNAShapeReference.SHIFT, DNAShapeReference.TILT, DNAShapeReference.SLIDE)).contains(shape)){
+							temp = numPredictions + 1;
+						} else {
+							temp = numPredictions;
+						}
+						//Print values and save output as ArrayList
+						AVG_ARRS.put(shape, printVals(HEADER, PREDICTIONS.get(shape), AVG_ARRS.get(shape), OUT_FILES.get(shape), temp));
+						}
 					} // if seq contains 'N's
 					counter++;
 				} else {
@@ -181,64 +202,91 @@ public class DNAShapefromFASTA {
 				}
 			}
 			br.close();
-			for (Integer shape: OUTPUT_TYPES){
-				OUT_FILES.get(shape).close();
+			if (OUT_FILES.keySet().size() > 0){
+				for (Integer shape: OUTPUT_TYPES){
+					OUT_FILES.get(shape).close();
+				}
 			}
-			// Print average arrays
+			// Calculate averages based on number of scores at each coordinate
+			for (int shape : OUTPUT_TYPES) {
+				double[] totals = AVG_ARRS.get(shape)[0];
+				double[] counts = AVG_ARRS.get(shape)[1];
+				double[][] averages;
+				if (counts[counts.length - 2] == 0){
+					averages = new double[1][numPredictions - 1];
+				} else {
+					averages = new double[1][numPredictions];
+				}
+				for (int i = 0; i < totals.length; i++){
+					if (counts[i] != 0){
+						averages[0][i] = totals[i] / counts[i];
+					}
+				}
+				AVG_ARRS.put(shape, averages);
+			}
+
+			// Output averages to composite files
 			if (OUTPUT_COMPOSITE){
 				for (Integer shape: OUTPUT_TYPES){
-					for (int z = 0; z < AVG_ARRS.get(shape).size(); z++){
-						COMPOSITE_FILES.get(shape).print("\t" + z);
+					double[] scores = AVG_ARRS.get(shape)[0];
+					// Adjust domain to fit number of predictions
+					int start;
+					if (new ArrayList<>(Arrays.asList( DNAShapeReference.HELT, DNAShapeReference.ROLL, DNAShapeReference.RISE,
+					DNAShapeReference.SHIFT, DNAShapeReference.TILT, DNAShapeReference.SLIDE)).contains(shape)){
+						start = 0;
+					} else {
+						start = 1;
+					}
+					for (int z = start; z < numPredictions; z++) {
+						COMPOSITE_FILES.get(shape).print("\t" + domain[z]);
 					}
 					COMPOSITE_FILES.get(shape).println();
 					COMPOSITE_FILES.get(shape).print(NAME + "-" + DNAShapeReference.HEADERS[shape] + "-Composite");
-					for (int z = 0; z < AVG_ARRS.get(shape).size(); z++){
-						COMPOSITE_FILES.get(shape).print("\t" + AVG_ARRS.get(shape).get(z) / counter);
+					for (int z = 0; z < scores.length; z++){
+						COMPOSITE_FILES.get(shape).print("\t" + FORMAT.format(scores[z]));
 					}
-					COMPOSITE_FILES.get(shape);
 				}
 				for (Integer shape: OUTPUT_TYPES){
 					COMPOSITE_FILES.get(shape).close();
 				}
 			}
+			// Output averages to GUI
+			if (PS != null){
+				for (Integer shape: OUTPUT_TYPES){
+					// Convert arraylist to array
+					double[] scores = AVG_ARRS.get(shape)[0];
+					System.out.println(Arrays.toString(scores));
+					// Make create domain for composite plot
+					double[] truncatedDomain = new double[scores.length];
+					for (int z = 1; z <= scores.length; z++){
+						truncatedDomain[truncatedDomain.length - z] = domain[domain.length - z];
+					}
+					for (int z = 0; z < scores.length; z++){
+						PS.get(shape).write((truncatedDomain[z] + "\t" + FORMAT.format(scores[z]) + "\n").getBytes(Charset.forName("UTF-8")));
+					}
+					// Create composite plot
+					CHARTS.put(shape, CompositePlot.createCompositePlot(truncatedDomain, scores, NAME + " " + DNAShapeReference.HEADERS[shape]));
+				}
+			}
 		}
+
 	/**
-	 * Getter method for the swing component chart of the Minor Groove Width DNA
-	 * shape type.
-	 * 
-	 * @return the chart for Minor Groove Width
+	 * Getter for specific chart based on shape ID
+	 * @param shape shape to retrieve chart for
+	 * @return the specific chart based on shape ID
 	 */
-	public Component getChartM() {
-		return chart_M;
+	public Component getCharts(Integer shape){
+		return CHARTS.get(shape);
 	}
 
 	/**
-	 * Getter method for the swing component chart of the Propeller Twist DNA shape type.
-	 * 
-	 * @return the chart for Propeller Twist
+	 * Returns HashMap of all charts for all shapes
+	 * @return HashMap of all charts for all shapes
 	 */
-	public Component getChartP() {
-		return chart_P;
+	public HashMap<Integer, Component> getCharts(){
+		return CHARTS;
 	}
 
-	/**
-	 * Getter method for the swing component chart of the Helical Twist DNA shape
-	 * type.
-	 * 
-	 * @return the chart for Helical Twist
-	 */
-	public Component getChartH() {
-		return chart_H;
-	}
-
-	/**
-	 * Getter method for the swing component chart of the Roll DNA shape type.
-	 * 
-	 * @return the chart for Roll
-	 */
-	public Component getChartR() {
-		return chart_R;
-	}
 
 	/**
 	 * Initialize output PrintStream objects for each DNA shape as needed.
@@ -275,9 +323,10 @@ public class DNAShapefromFASTA {
 	 * @param SCORES an array of scores to print to a line
 	 * @param AVG    an array with the same length as SCORES (if not longer)
 	 * @param O      destination to print the line to
+	 * @param numPredictions Greatest number of predictions in output file
 	 * @return SCORES that have been element-wise summed with AVG
 	 */
-	private ArrayList<Double> printVals(String header, List<Double> SCORES, ArrayList<Double> AVG, PrintStream O) {
+	private double[][] printVals(String header, List<Double> SCORES, double[][] AVG, PrintStream O, int numPredictions) {
 		// print header
 		if (O != null) {
 			O.print(header);
@@ -285,15 +334,20 @@ public class DNAShapefromFASTA {
 				O.print("\t" + header);
 			}
 		}
-		for (int z = 0; z < SCORES.size(); z++) {
-			// print values
-			if (O != null) { O.print("\t" + SCORES.get(z)); }
-			// build avg and avoid index out of bounds
-			if (z < AVG.size()){
-				AVG.set(z, AVG.get(z) + SCORES.get(z));
-			}
-			else {
-				AVG.add(z, SCORES.get(z));
+		// Calculate how many cells to skip on each side if the sequence is shorter than the longest sequence
+		int buffer = Math.round((numPredictions - SCORES.size()) / 2);
+		for (int z = 0; z < numPredictions - 1; z++) {
+			// Stopping and starting point for outputs. If number of predictions is even, the median of coordinate will be -0.5.  If odd the median coordinate will be 0.
+			int stop = (SCORES.size() % 2 == 0)? numPredictions - buffer: numPredictions - buffer - 1;
+			int start = buffer;
+			int index = z - buffer;
+			// Print score if available or 'Nan'.  Save output to AVG array
+			if (z >= start && z < stop && index < SCORES.size()){
+				if (O != null) { O.print("\t" + FORMAT.format(SCORES.get(index))); }
+				AVG[0][z] += SCORES.get(index);
+				AVG[1][z] += 1;
+			} else {
+				if (O != null) { O.print("\tNan"); };
 			}
 		}
 		// print new line

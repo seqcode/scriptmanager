@@ -87,6 +87,7 @@ public class DNAShapefromFASTAWindow extends JFrame implements ActionListener, P
     private JCheckBox chckbxSlide;
     private JCheckBox chckbxRise;
     private JCheckBox chckbxShift;
+	private ArrayList<JCheckBox> chckbxArray;
 
 	private JToggleButton tglTab;
 	private JToggleButton tglCdt;
@@ -191,7 +192,7 @@ public class DNAShapefromFASTAWindow extends JFrame implements ActionListener, P
 		setTitle("DNA Shape Predictions from FASTA");
 		setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
 
-		setBounds(125, 125, 475, 500);
+		setBounds(125, 125, 730, 600);
 		contentPane = new JPanel();
 		contentPane.setBorder(new EmptyBorder(5, 5, 5, 5));
 		setContentPane(contentPane);
@@ -200,6 +201,7 @@ public class DNAShapefromFASTAWindow extends JFrame implements ActionListener, P
 
 		JScrollPane scrollPane = new JScrollPane();
 		sl_contentPane.putConstraint(SpringLayout.NORTH, scrollPane, 48, SpringLayout.NORTH, contentPane);
+		sl_contentPane.putConstraint(SpringLayout.SOUTH, scrollPane,  200, SpringLayout.NORTH, contentPane);
 		sl_contentPane.putConstraint(SpringLayout.WEST, scrollPane, 10, SpringLayout.WEST, contentPane);
 		sl_contentPane.putConstraint(SpringLayout.EAST, scrollPane, -10, SpringLayout.EAST, contentPane);
 		contentPane.add(scrollPane);
@@ -239,7 +241,7 @@ public class DNAShapefromFASTAWindow extends JFrame implements ActionListener, P
 		contentPane.add(btnRemoveFasta);
 
 		btnCalculate = new JButton("Calculate");
-		sl_contentPane.putConstraint(SpringLayout.SOUTH, scrollPane, -200, SpringLayout.NORTH, btnCalculate);
+		sl_contentPane.putConstraint(SpringLayout.SOUTH, scrollPane, -250, SpringLayout.NORTH, btnCalculate);
 		sl_contentPane.putConstraint(SpringLayout.SOUTH, btnCalculate, -5, SpringLayout.SOUTH, contentPane);
 		sl_contentPane.putConstraint(SpringLayout.WEST, btnCalculate, 165, SpringLayout.WEST, contentPane);
 		sl_contentPane.putConstraint(SpringLayout.EAST, btnCalculate, -165, SpringLayout.EAST, contentPane);
@@ -256,7 +258,7 @@ public class DNAShapefromFASTAWindow extends JFrame implements ActionListener, P
 
 		// Shape Parameters
 		JPanel pnlShapeOptions = new JPanel();
-		sl_contentPane.putConstraint(SpringLayout.NORTH, pnlShapeOptions, -230, SpringLayout.SOUTH, contentPane);
+		sl_contentPane.putConstraint(SpringLayout.NORTH, pnlShapeOptions, -275, SpringLayout.SOUTH, contentPane);
 		sl_contentPane.putConstraint(SpringLayout.WEST, pnlShapeOptions, 0, SpringLayout.WEST, contentPane);
 		sl_contentPane.putConstraint(SpringLayout.EAST, pnlShapeOptions, 0, SpringLayout.EAST, contentPane);
 		sl_contentPane.putConstraint(SpringLayout.SOUTH, pnlShapeOptions, -160, SpringLayout.SOUTH, contentPane);
@@ -268,161 +270,125 @@ public class DNAShapefromFASTAWindow extends JFrame implements ActionListener, P
 		ttlShapeOptions.setTitleFont(new Font("Lucida Grande", Font.ITALIC, 13));
 		pnlShapeOptions.setBorder(ttlShapeOptions);
 
+		chckbxArray = new ArrayList<JCheckBox>();
 		tglAll = new JToggleButton("Select All");
 		sl_ShapeOptions.putConstraint(SpringLayout.NORTH, tglAll, 0, SpringLayout.NORTH, pnlShapeOptions);
 		sl_ShapeOptions.putConstraint(SpringLayout.WEST, tglAll, 10, SpringLayout.WEST, pnlShapeOptions);
 		sl_ShapeOptions.putConstraint(SpringLayout.EAST, tglAll, 130, SpringLayout.WEST, pnlShapeOptions);
 		tglAll.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
-				chckbxMinorGrooveWidth.setSelected(tglAll.isSelected());
-				chckbxRoll.setSelected(tglAll.isSelected());
-				chckbxHelicalTwist.setSelected(tglAll.isSelected());
-				chckbxPropellerTwist.setSelected(tglAll.isSelected());
+				for (JCheckBox chckbx: chckbxArray){
+					chckbx.setEnabled(false);
+				}
+				boolean isSelected = tglAll.isSelected();
+				for (JCheckBox chckbx: chckbxArray){
+					chckbx.setSelected(isSelected);
+				}
+				for (JCheckBox chckbx: chckbxArray){
+					chckbx.setEnabled(true);
+				}	
 				tglAll.setText(tglAll.isSelected() ? "Deselect All" : "Select All");
 			}
 		});
 		pnlShapeOptions.add(tglAll);
 
-        chckbxMinorGrooveWidth = new JCheckBox("Minor Groove Width");
-        sl_ShapeOptions.putConstraint(SpringLayout.NORTH, chckbxMinorGrooveWidth, 0, SpringLayout.NORTH, tglAll);
-        sl_ShapeOptions.putConstraint(SpringLayout.WEST, chckbxMinorGrooveWidth, 10, SpringLayout.WEST, tglAll);
-        chckbxMinorGrooveWidth.addItemListener(new ItemListener() {
-            public void itemStateChanged(ItemEvent e) {
-                updateToggleAll();
-            }
-        });
-        pnlShapeOptions.add(chckbxMinorGrooveWidth);
-        
-        chckbxRoll = new JCheckBox("Roll");
-        sl_ShapeOptions.putConstraint(SpringLayout.NORTH, chckbxRoll, 0, SpringLayout.NORTH, chckbxMinorGrooveWidth);
-        sl_ShapeOptions.putConstraint(SpringLayout.WEST, chckbxRoll, 10, SpringLayout.EAST, chckbxMinorGrooveWidth);
-        chckbxRoll.addItemListener(new ItemListener() {
-            public void itemStateChanged(ItemEvent e) {
-                updateToggleAll();
-            }
-        });
-        pnlShapeOptions.add(chckbxRoll);
-        
-        chckbxHelicalTwist = new JCheckBox("Helical Twist");
-        sl_ShapeOptions.putConstraint(SpringLayout.NORTH, chckbxHelicalTwist, 0, SpringLayout.NORTH, chckbxRoll);
-        sl_ShapeOptions.putConstraint(SpringLayout.WEST, chckbxHelicalTwist, 10, SpringLayout.EAST, chckbxRoll);
-        chckbxHelicalTwist.addItemListener(new ItemListener() {
-            public void itemStateChanged(ItemEvent e) {
-                updateToggleAll();
-            }
-        });
-        pnlShapeOptions.add(chckbxHelicalTwist);
-        
-        chckbxPropellerTwist = new JCheckBox("Propeller Twist");
-        sl_ShapeOptions.putConstraint(SpringLayout.NORTH, chckbxPropellerTwist, 0, SpringLayout.NORTH, chckbxHelicalTwist);
-        sl_ShapeOptions.putConstraint(SpringLayout.WEST, chckbxPropellerTwist, 10, SpringLayout.EAST, chckbxHelicalTwist);
-        chckbxPropellerTwist.addItemListener(new ItemListener() {
-            public void itemStateChanged(ItemEvent e) {
-                updateToggleAll();
-            }
-        });
-        pnlShapeOptions.add(chckbxPropellerTwist);
-        
-        chckbxEP = new JCheckBox("EP");
-        sl_ShapeOptions.putConstraint(SpringLayout.NORTH, chckbxEP, 0, SpringLayout.NORTH, chckbxPropellerTwist);
-        sl_ShapeOptions.putConstraint(SpringLayout.WEST, chckbxEP, 10, SpringLayout.EAST, chckbxPropellerTwist);
-        chckbxEP.addItemListener(new ItemListener() {
-            public void itemStateChanged(ItemEvent e) {
-                updateToggleAll();
-            }
-        });
-        pnlShapeOptions.add(chckbxEP);
-        
-        chckbxStretch = new JCheckBox("Stretch");
-        sl_ShapeOptions.putConstraint(SpringLayout.NORTH, chckbxStretch, 0, SpringLayout.NORTH, chckbxEP);
-        sl_ShapeOptions.putConstraint(SpringLayout.WEST, chckbxStretch, 10, SpringLayout.EAST, chckbxEP);
-        chckbxStretch.addItemListener(new ItemListener() {
-            public void itemStateChanged(ItemEvent e) {
-                updateToggleAll();
-            }
-        });
-        pnlShapeOptions.add(chckbxStretch);
-        
-        chckbxBuckle = new JCheckBox("Buckle");
-        sl_ShapeOptions.putConstraint(SpringLayout.NORTH, chckbxBuckle, 0, SpringLayout.NORTH, chckbxStretch);
-        sl_ShapeOptions.putConstraint(SpringLayout.WEST, chckbxBuckle, 10, SpringLayout.EAST, chckbxStretch);
-        chckbxBuckle.addItemListener(new ItemListener() {
-            public void itemStateChanged(ItemEvent e) {
-                updateToggleAll();
-            }
-        });
-        pnlShapeOptions.add(chckbxBuckle);
-        
-        chckbxShear = new JCheckBox("Shear");
-        sl_ShapeOptions.putConstraint(SpringLayout.NORTH, chckbxShear, 0, SpringLayout.NORTH, chckbxBuckle);
-        sl_ShapeOptions.putConstraint(SpringLayout.WEST, chckbxShear, 10, SpringLayout.EAST, chckbxBuckle);
-        chckbxShear.addItemListener(new ItemListener() {
-            public void itemStateChanged(ItemEvent e) {
-                updateToggleAll();
-            }
-        });
-        pnlShapeOptions.add(chckbxShear);
-        
-        chckbxOpening = new JCheckBox("Opening");
-        sl_ShapeOptions.putConstraint(SpringLayout.NORTH, chckbxOpening, 0, SpringLayout.NORTH, chckbxShear);
-        sl_ShapeOptions.putConstraint(SpringLayout.WEST, chckbxOpening, 10, SpringLayout.EAST, chckbxShear);
-        chckbxOpening.addItemListener(new ItemListener() {
-            public void itemStateChanged(ItemEvent e) {
-                updateToggleAll();
-            }
-        });
-        pnlShapeOptions.add(chckbxOpening);
-        
-        chckbxStagger = new JCheckBox("Stagger");
-        sl_ShapeOptions.putConstraint(SpringLayout.NORTH, chckbxStagger, 0, SpringLayout.NORTH, chckbxOpening);
-        sl_ShapeOptions.putConstraint(SpringLayout.WEST, chckbxStagger, 10, SpringLayout.EAST, chckbxOpening);
-        chckbxStagger.addItemListener(new ItemListener() {
-            public void itemStateChanged(ItemEvent e) {
-                updateToggleAll();
-            }
-        });
-        pnlShapeOptions.add(chckbxStagger);
-        
-        chckbxTilt = new JCheckBox("Tilt");
-        sl_ShapeOptions.putConstraint(SpringLayout.NORTH, chckbxTilt, 0, SpringLayout.NORTH, chckbxStagger);
-        sl_ShapeOptions.putConstraint(SpringLayout.WEST, chckbxTilt, 10, SpringLayout.EAST, chckbxStagger);
-        chckbxTilt.addItemListener(new ItemListener() {
-            public void itemStateChanged(ItemEvent e) {
-                updateToggleAll();
-            }
-        });
-        pnlShapeOptions.add(chckbxTilt);
-        
-        chckbxSlide = new JCheckBox("Slide");
-        sl_ShapeOptions.putConstraint(SpringLayout.NORTH, chckbxSlide, 0, SpringLayout.NORTH, chckbxTilt);
-        sl_ShapeOptions.putConstraint(SpringLayout.WEST, chckbxSlide, 10, SpringLayout.EAST, chckbxTilt);
-        chckbxSlide.addItemListener(new ItemListener() {
-            public void itemStateChanged(ItemEvent e) {
-                updateToggleAll();
-            }
-        });
-        pnlShapeOptions.add(chckbxSlide);
-        
-        chckbxRise = new JCheckBox("Rise");
-        sl_ShapeOptions.putConstraint(SpringLayout.NORTH, chckbxRise, 0, SpringLayout.NORTH, chckbxSlide);
-        sl_ShapeOptions.putConstraint(SpringLayout.WEST, chckbxRise, 10, SpringLayout.EAST, chckbxSlide);
-        chckbxRise.addItemListener(new ItemListener() {
-            public void itemStateChanged(ItemEvent e) {
-                updateToggleAll();
-            }
-        });
-        pnlShapeOptions.add(chckbxRise);
-        
-        chckbxShift = new JCheckBox("Shift");
-        sl_ShapeOptions.putConstraint(SpringLayout.NORTH, chckbxShift, 0, SpringLayout.NORTH, chckbxRise);
-        sl_ShapeOptions.putConstraint(SpringLayout.WEST, chckbxShift, 10, SpringLayout.EAST, chckbxRise);
-        chckbxShift.addItemListener(new ItemListener() {
-            public void itemStateChanged(ItemEvent e) {
-                updateToggleAll();
-            }
-        });
-        pnlShapeOptions.add(chckbxShift);
-        
+		chckbxMinorGrooveWidth = new JCheckBox("Minor Groove Width");
+		sl_ShapeOptions.putConstraint(SpringLayout.NORTH, chckbxMinorGrooveWidth, 0, SpringLayout.NORTH, tglAll);
+		sl_ShapeOptions.putConstraint(SpringLayout.WEST, chckbxMinorGrooveWidth, 30, SpringLayout.EAST, tglAll);
+		chckbxMinorGrooveWidth.addItemListener(e -> updateToggleAll());
+		pnlShapeOptions.add(chckbxMinorGrooveWidth);
+		chckbxArray.add(chckbxMinorGrooveWidth);
+
+		chckbxRoll = new JCheckBox("Roll");
+		sl_ShapeOptions.putConstraint(SpringLayout.NORTH, chckbxRoll, 0, SpringLayout.NORTH, chckbxMinorGrooveWidth);
+		sl_ShapeOptions.putConstraint(SpringLayout.WEST, chckbxRoll, 10, SpringLayout.EAST, chckbxMinorGrooveWidth);
+		chckbxRoll.addItemListener(e -> updateToggleAll());
+		pnlShapeOptions.add(chckbxRoll);
+		chckbxArray.add(chckbxRoll);
+
+		chckbxHelicalTwist = new JCheckBox("Helical Twist");
+		sl_ShapeOptions.putConstraint(SpringLayout.NORTH, chckbxHelicalTwist, 0, SpringLayout.NORTH, chckbxRoll);
+		sl_ShapeOptions.putConstraint(SpringLayout.WEST, chckbxHelicalTwist, 15, SpringLayout.EAST, chckbxRoll);
+		chckbxHelicalTwist.addItemListener(e -> updateToggleAll());
+		pnlShapeOptions.add(chckbxHelicalTwist);
+		chckbxArray.add(chckbxHelicalTwist);
+
+		chckbxPropellerTwist = new JCheckBox("Propeller Twist");
+		sl_ShapeOptions.putConstraint(SpringLayout.NORTH, chckbxPropellerTwist, 0, SpringLayout.NORTH, chckbxMinorGrooveWidth);
+		sl_ShapeOptions.putConstraint(SpringLayout.WEST, chckbxPropellerTwist, 10, SpringLayout.EAST, chckbxHelicalTwist);
+		chckbxPropellerTwist.addItemListener(e -> updateToggleAll());
+		pnlShapeOptions.add(chckbxPropellerTwist);
+		chckbxArray.add(chckbxPropellerTwist);
+
+		chckbxEP = new JCheckBox("EP");
+		sl_ShapeOptions.putConstraint(SpringLayout.NORTH, chckbxEP, 0, SpringLayout.NORTH, chckbxMinorGrooveWidth);
+		sl_ShapeOptions.putConstraint(SpringLayout.WEST, chckbxEP, 10, SpringLayout.EAST, chckbxPropellerTwist);
+		chckbxEP.addItemListener(e -> updateToggleAll());
+		pnlShapeOptions.add(chckbxEP);
+		chckbxArray.add(chckbxEP);
+
+		chckbxStretch = new JCheckBox("Stretch");
+		sl_ShapeOptions.putConstraint(SpringLayout.NORTH, chckbxStretch, 10, SpringLayout.SOUTH, chckbxMinorGrooveWidth);
+		sl_ShapeOptions.putConstraint(SpringLayout.WEST, chckbxStretch, 0, SpringLayout.WEST, chckbxMinorGrooveWidth);
+		chckbxStretch.addItemListener(e -> updateToggleAll());
+		pnlShapeOptions.add(chckbxStretch);
+		chckbxArray.add(chckbxStretch);
+
+		chckbxBuckle = new JCheckBox("Buckle");
+		sl_ShapeOptions.putConstraint(SpringLayout.NORTH, chckbxBuckle, 0, SpringLayout.NORTH, chckbxStretch);
+		sl_ShapeOptions.putConstraint(SpringLayout.WEST, chckbxBuckle, 0, SpringLayout.WEST, chckbxRoll);
+		chckbxBuckle.addItemListener(e -> updateToggleAll());
+		pnlShapeOptions.add(chckbxBuckle);
+		chckbxArray.add(chckbxBuckle);
+
+		chckbxShear = new JCheckBox("Shear");
+		sl_ShapeOptions.putConstraint(SpringLayout.NORTH, chckbxShear, 0, SpringLayout.NORTH, chckbxBuckle);
+		sl_ShapeOptions.putConstraint(SpringLayout.WEST, chckbxShear, 0, SpringLayout.WEST, chckbxHelicalTwist);
+		chckbxShear.addItemListener(e -> updateToggleAll());
+		pnlShapeOptions.add(chckbxShear);
+		chckbxArray.add(chckbxShear);
+
+		chckbxOpening = new JCheckBox("Opening");
+		sl_ShapeOptions.putConstraint(SpringLayout.NORTH, chckbxOpening, 0, SpringLayout.NORTH, chckbxShear);
+		sl_ShapeOptions.putConstraint(SpringLayout.WEST, chckbxOpening, 0, SpringLayout.WEST, chckbxPropellerTwist);
+		chckbxOpening.addItemListener(e -> updateToggleAll());
+		pnlShapeOptions.add(chckbxOpening);
+		chckbxArray.add(chckbxOpening);
+
+		chckbxStagger = new JCheckBox("Stagger");
+		sl_ShapeOptions.putConstraint(SpringLayout.NORTH, chckbxStagger, 0, SpringLayout.NORTH, chckbxOpening);
+		sl_ShapeOptions.putConstraint(SpringLayout.WEST, chckbxStagger, 0, SpringLayout.WEST, chckbxEP);
+		chckbxStagger.addItemListener(e -> updateToggleAll());
+		pnlShapeOptions.add(chckbxStagger);
+		chckbxArray.add(chckbxStagger);
+
+		chckbxTilt = new JCheckBox("Tilt");
+		sl_ShapeOptions.putConstraint(SpringLayout.NORTH, chckbxTilt, 10, SpringLayout.SOUTH, chckbxStretch);
+		sl_ShapeOptions.putConstraint(SpringLayout.WEST, chckbxTilt, 0, SpringLayout.WEST, chckbxMinorGrooveWidth);
+		chckbxTilt.addItemListener(e -> updateToggleAll());
+		pnlShapeOptions.add(chckbxTilt);
+		chckbxArray.add(chckbxTilt);
+
+		chckbxSlide = new JCheckBox("Slide");
+		sl_ShapeOptions.putConstraint(SpringLayout.NORTH, chckbxSlide, 0, SpringLayout.NORTH, chckbxTilt);
+		sl_ShapeOptions.putConstraint(SpringLayout.WEST, chckbxSlide, 0, SpringLayout.WEST, chckbxRoll);
+		chckbxSlide.addItemListener(e -> updateToggleAll());
+		pnlShapeOptions.add(chckbxSlide);
+		chckbxArray.add(chckbxSlide);
+
+		chckbxRise = new JCheckBox("Rise");
+		sl_ShapeOptions.putConstraint(SpringLayout.NORTH, chckbxRise, 0, SpringLayout.NORTH, chckbxSlide);
+		sl_ShapeOptions.putConstraint(SpringLayout.WEST, chckbxRise, 0, SpringLayout.WEST, chckbxShear);
+		chckbxRise.addItemListener(e -> updateToggleAll());
+		pnlShapeOptions.add(chckbxRise);
+		chckbxArray.add(chckbxRise);
+
+		chckbxShift = new JCheckBox("Shift");
+		sl_ShapeOptions.putConstraint(SpringLayout.NORTH, chckbxShift, 0, SpringLayout.NORTH, chckbxRise);
+		sl_ShapeOptions.putConstraint(SpringLayout.WEST, chckbxShift, 0, SpringLayout.WEST, chckbxOpening);
+		chckbxShift.addItemListener(e -> updateToggleAll());
+		pnlShapeOptions.add(chckbxShift);
+		chckbxArray.add(chckbxShift);
 
 
 		// Output Parameters
@@ -551,7 +517,19 @@ public class DNAShapefromFASTAWindow extends JFrame implements ActionListener, P
 	}
 
     public void updateToggleAll(){
-        
+		boolean allSelected = true;
+		for (JCheckBox chckbx: chckbxArray){
+			if (!chckbx.isSelected()){
+				allSelected = false;
+			}
+		}
+        if (allSelected) {
+			tglAll.setSelected(true);
+			tglAll.setText("Deselect All");
+		} else {
+			tglAll.setSelected(false);
+			tglAll.setText("Select All");
+		}
     }
 
 	/**
