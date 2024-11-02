@@ -66,9 +66,9 @@ public class AggregateDataCLI implements Callable<Integer> {
 	@Option(names = {"-m", "--merge"}, description = "merge to one file")
 	private boolean merge = false;
 	@Option(names = {"-r", "--start-row"}, description = "")
-	private int startROW = 1;
+	private int startROW = 2;
 	@Option(names = {"-l", "--start-col"}, description = "")
-	private int startCOL = 2;
+	private int startCOL = 3;
 	
 	private int aggType = 0;
 	private ArrayList<File> matFiles = new ArrayList<File>();
