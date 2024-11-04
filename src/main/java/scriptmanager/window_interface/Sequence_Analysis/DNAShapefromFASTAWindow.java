@@ -37,12 +37,11 @@ import javax.swing.border.TitledBorder;
 
 import scriptmanager.objects.Exceptions.OptionException;
 import scriptmanager.objects.Exceptions.ScriptManagerException;
+import scriptmanager.scripts.Sequence_Analysis.DNAShapefromBED;
 import scriptmanager.objects.ToolDescriptions;
 import scriptmanager.util.DNAShapeReference;
 import scriptmanager.util.ExtensionFileFilter;
 import scriptmanager.util.FileSelection;
-
-import scriptmanager.scripts.Sequence_Analysis.DNAShapefromBED;
 
 /**
  * GUI for collecting inputs to be processed by
@@ -132,7 +131,6 @@ public class DNAShapefromFASTAWindow extends JFrame implements ActionListener, P
                     if (chckbxSlide.isSelected()) { OUTPUT_TYPES.add(DNAShapeReference.SLIDE); }
                     if (chckbxRise.isSelected()) { OUTPUT_TYPES.add(DNAShapeReference.RISE); }
                     if (chckbxShift.isSelected()) { OUTPUT_TYPES.add(DNAShapeReference.SHIFT); }
-
 
 					short outputMatrix = 0;
 					if (chckbxOutputMatrixData.isSelected()) {
@@ -389,7 +387,6 @@ public class DNAShapefromFASTAWindow extends JFrame implements ActionListener, P
 		chckbxShift.addItemListener(e -> updateToggleAll());
 		pnlShapeOptions.add(chckbxShift);
 		chckbxArray.add(chckbxShift);
-
 
 		// Output Parameters
 		JPanel pnlOutputOptions = new JPanel();

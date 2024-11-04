@@ -23,7 +23,7 @@ import org.jfree.data.xy.XYSeriesCollection;
  * legends.
  * 
  * @author William KM Lai
- * @see scriptmanager.scripts.Sequence_Analysis.DNAShapefromBED
+ * @see scriptmanager.scripts.Sequence_Analysis.DNAShapefromBEDold
  * @see scriptmanager.scripts.Sequence_Analysis.DNAShapefromFASTA
  * @see scriptmanager.window_interface.Read_Analysis.TagPileupOutput
  */

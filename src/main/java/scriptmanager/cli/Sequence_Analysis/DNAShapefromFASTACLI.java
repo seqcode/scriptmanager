@@ -18,7 +18,7 @@ import scriptmanager.objects.ToolDescriptions;
 import scriptmanager.objects.Exceptions.OptionException;
 import scriptmanager.util.DNAShapeReference;
 import scriptmanager.util.ExtensionFileFilter;
-import scriptmanager.scripts.Sequence_Analysis.DNAShapefromBED;
+import scriptmanager.scripts.Sequence_Analysis.DNAShapefromBEDold;
 import scriptmanager.scripts.Sequence_Analysis.DNAShapefromFASTA;
 
 /**
@@ -89,11 +89,11 @@ public class DNAShapefromFASTACLI implements Callable<Integer> {
 		public boolean shift = false;
 		@Option(names = { "-a", "--2013" }, description = "output groove, roll, propeller twist, and helical twist (equivalent to -grpl).")
 		public boolean all = false;
-		@Option(names = { "--2021" }, description = "output all 13 metrics")
+		@Option(names = { "--2021" }, description = "output all 14 shapes")
 		public boolean everything = false;
 	}
 
-	private short outputMatrix = DNAShapefromBED.NO_MATRIX;
+	private short outputMatrix = DNAShapefromBEDold.NO_MATRIX;
 
 	/**
 	 * Runs when this subcommand is called, running script in respective script package with user defined arguments
@@ -181,9 +181,9 @@ public class DNAShapefromFASTACLI implements Callable<Integer> {
 		if (matrix && cdt) {
 			r += "(!)Please select either the matrix or the cdt flag.\n";
 		} else if (matrix) {
-			outputMatrix = DNAShapefromBED.TAB;
+			outputMatrix = DNAShapefromBEDold.TAB;
 		} else if (cdt) {
-			outputMatrix = DNAShapefromBED.CDT;
+			outputMatrix = DNAShapefromBEDold.CDT;
 		}
 
 		return (r);
@@ -209,12 +209,12 @@ public class DNAShapefromFASTACLI implements Callable<Integer> {
 
 		command += outputComposite ? "--composite" : "";
 		switch (outputMatrix) {
-			case DNAShapefromBED.NO_MATRIX:
+			case DNAShapefromBEDold.NO_MATRIX:
 				break;
-			case DNAShapefromBED.TAB:
+			case DNAShapefromBEDold.TAB:
 				command += " --matrix";
 				break;
-			case DNAShapefromBED.CDT:
+			case DNAShapefromBEDold.CDT:
 				command += " --cdt";
 				break;
 			default:

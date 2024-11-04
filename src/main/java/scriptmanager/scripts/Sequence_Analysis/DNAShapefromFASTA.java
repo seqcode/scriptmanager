@@ -117,7 +117,6 @@ public class DNAShapefromFASTA {
 	 * @throws OptionException 
 	 */
 	public void run() throws ScriptManagerException, FileNotFoundException, IOException, InterruptedException, OptionException {
-		
 		// Print time to ScriptManager gui
 		String NAME = ExtensionFileFilter.stripExtension(FASTA);
 		String time = new Timestamp(new Date().getTime()).toString();
@@ -127,7 +126,6 @@ public class DNAShapefromFASTA {
 			}
 		}
 		openOutputFiles();
-
 		// Find longest sequence in file
 		String line;
 		int longestSequence = -1;
@@ -224,7 +222,6 @@ public class DNAShapefromFASTA {
 				}
 				AVG_ARRS.put(shape, averages);
 			}
-
 			// Output averages to composite files
 			if (OUTPUT_COMPOSITE){
 				for (Integer shape: OUTPUT_TYPES){
@@ -286,7 +283,6 @@ public class DNAShapefromFASTA {
 	public HashMap<Integer, Component> getCharts(){
 		return CHARTS;
 	}
-
 
 	/**
 	 * Initialize output PrintStream objects for each DNA shape as needed.

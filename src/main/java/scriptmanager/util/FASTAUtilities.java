@@ -8,7 +8,7 @@ import java.util.regex.Pattern;
  * 
  * @author William KM Lai
  * @see scriptmanager.scripts.BAM_Manipulation.FilterforPIPseq
- * @see scriptmanager.scripts.Sequence_Analysis.DNAShapefromBED
+ * @see scriptmanager.scripts.Sequence_Analysis.DNAShapefromBEDold
  * @see scriptmanager.scripts.Sequence_Analysis.FASTAExtract
  */
 public class FASTAUtilities {

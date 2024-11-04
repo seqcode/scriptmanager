@@ -5,6 +5,7 @@ import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
 import picocli.CommandLine.Parameters;
 
+import java.util.ArrayList;
 import java.util.concurrent.Callable;
 
 import java.io.File;
@@ -14,8 +15,10 @@ import java.io.PrintStream;
 
 import scriptmanager.objects.ToolDescriptions;
 import scriptmanager.objects.Exceptions.OptionException;
+import scriptmanager.util.DNAShapeReference;
 import scriptmanager.util.ExtensionFileFilter;
 import scriptmanager.scripts.Sequence_Analysis.DNAShapefromBED;
+import scriptmanager.scripts.Sequence_Analysis.DNAShapefromBEDold;
 
 /**
  * Command line interface for
@@ -56,21 +59,43 @@ public class DNAShapefromBEDCLI implements Callable<Integer> {
 
 	@ArgGroup(validate = false, heading = "Shape Options%n")
 	ShapeType shape = new ShapeType();
+	ArrayList<Integer> OUTPUT_TYPES;
 
-	static class ShapeType {
+	public static class ShapeType {
 		@Option(names = { "-g", "--groove" }, description = "output minor groove width")
-		private boolean groove = false;
+		public boolean groove = false;
 		@Option(names = { "-r", "--roll" }, description = "output roll")
-		private boolean roll = false;
+		public boolean roll = false;
 		@Option(names = { "-p", "--propeller" }, description = "output propeller twist")
-		private boolean propeller = false;
+		public boolean propeller = false;
 		@Option(names = { "-l", "--helical" }, description = "output helical twist")
-		private boolean helical = false;
-		@Option(names = { "-a", "--all" }, description = "output groove, roll, propeller twist, and helical twist (equivalent to -grpl).")
-		private boolean all = false;
+		public boolean helical = false;
+		@Option(names = { "--electrostatic-potential" }, description = "output electrostatic potential")
+		public boolean ep = false;
+		@Option(names = { "--stretch" }, description = "output stretch")
+		public boolean stretch = false;
+		@Option(names = { "--buckle" }, description = "output buckle")
+		public boolean buckle = false;
+		@Option(names = { "--shear" }, description = "output shear")
+		public boolean shear = false;
+		@Option(names = { "--opening" }, description = "output opening")
+		public boolean opening = false;
+		@Option(names = { "--stagger" }, description = "output stagger")
+		public boolean stagger = false;
+		@Option(names = { "--tilt" }, description = "output tilt")
+		public boolean tilt = false;
+		@Option(names = { "--slide" }, description = "output slide")
+		public boolean slide = false;
+		@Option(names = { "--rise" }, description = "output rise")
+		public boolean rise = false;
+		@Option(names = { "--shift" }, description = "output shift")
+		public boolean shift = false;
+		@Option(names = { "-a", "--2013" }, description = "output groove, roll, propeller twist, and helical twist (equivalent to -grpl).")
+		public boolean all = false;
+		@Option(names = { "--2021" }, description = "output all 14 shapes")
+		public boolean everything = false;
 	}
 
-	private boolean[] OUTPUT_TYPE = new boolean[] { false, false, false, false };
 	private short outputMatrix = DNAShapefromBED.NO_MATRIX;
 
 	/**
@@ -88,29 +113,9 @@ public class DNAShapefromBEDCLI implements Callable<Integer> {
 		}
 
 		// Generate Composite Plot
-		DNAShapefromBED script_obj = new DNAShapefromBED(genomeFASTA, bedFile, outputBasename, OUTPUT_TYPE,
+		DNAShapefromBED script_obj = new DNAShapefromBED(genomeFASTA, bedFile, outputBasename, OUTPUT_TYPES,
 				forceStrand, composite, outputMatrix, gzOutput);
 		script_obj.run();
-		// Print Composite Scores
-		if (composite) {
-			String[] headers = new String[] { "AVG_MGW", "AVG_PropT", "AVG_HelT", "AVG_Roll" };
-			for (int t = 0; t < OUTPUT_TYPE.length; t++) {
-				if (OUTPUT_TYPE[t]) {
-					PrintStream COMPOSITE = new PrintStream(new File(outputBasename + "_" + headers[t] + ".out"));
-					double[] AVG = script_obj.getAvg(t);
-					// position vals
-					for (int z = 0; z < AVG.length; z++) {
-						COMPOSITE.print("\t" + z);
-					}
-					COMPOSITE.print("\n" + ExtensionFileFilter.stripExtension(bedFile) + "_" + headers[t]);
-					// score vals
-					for (int z = 0; z < AVG.length; z++) {
-						COMPOSITE.print("\t" + AVG[z]);
-					}
-					COMPOSITE.println();
-				}
-			}
-		}
 		System.err.println("Shapes Calculated.");
 		return (0);
 	}
@@ -150,36 +155,47 @@ public class DNAShapefromBEDCLI implements Callable<Integer> {
 			}
 		}
 
-		// Check & set output_type
-		if (!(shape.groove || shape.propeller || shape.helical || shape.roll || shape.all)) {
-			r += "(!)Please select at least one of the shape flags.\n";
-		} else if ((shape.groove || shape.propeller || shape.helical || shape.roll) && shape.all) {
-			r += "(!)Please avoid mixing the \"-a\" flag with the other shape flags.\n";
-		}
+		// // Check & set output_type
+		// if (!(shape.groove || shape.propeller || shape.helical || shape.roll || shape.all)) {
+		// 	r += "(!)Please select at least one of the shape flags.\n";
+		// } else if ((shape.groove || shape.propeller || shape.helical || shape.roll) && shape.all) {
+		// 	r += "(!)Please avoid mixing the \"-a\" flag with the other shape flags.\n";
+		// }
 
-		if (shape.groove) {
-			OUTPUT_TYPE[0] = true;
+		OUTPUT_TYPES = new ArrayList<>();
+		if (shape.everything){
+			for (int i = 0; i < 14; i++){
+				OUTPUT_TYPES.add(i);
+			}
 		}
-		if (shape.propeller) {
-			OUTPUT_TYPE[1] = true;
+		else if (shape.all){
+			for (int i = 0; i < 5; i++){
+				OUTPUT_TYPES.add(i);
+			}
 		}
-		if (shape.helical) {
-			OUTPUT_TYPE[2] = true;
-		}
-		if (shape.roll) {
-			OUTPUT_TYPE[3] = true;
-		}
-
-		if (shape.all) {
-			OUTPUT_TYPE = new boolean[] { true, true, true, true };
+		else {
+			if (shape.groove) { OUTPUT_TYPES.add(DNAShapeReference.MGW); }
+			if (shape.propeller) { OUTPUT_TYPES.add(DNAShapeReference.PROPT); }
+			if (shape.helical) { OUTPUT_TYPES.add(DNAShapeReference.HELT); }
+			if (shape.roll) { OUTPUT_TYPES.add(DNAShapeReference.ROLL); }
+			if (shape.ep) { OUTPUT_TYPES.add(DNAShapeReference.EP); }
+			if (shape.stretch) { OUTPUT_TYPES.add(DNAShapeReference.STRETCH); }
+			if (shape.buckle) { OUTPUT_TYPES.add(DNAShapeReference.BUCKLE); }
+			if (shape.shear) { OUTPUT_TYPES.add(DNAShapeReference.SHEAR); }
+			if (shape.opening) { OUTPUT_TYPES.add(DNAShapeReference.OPENING); }
+			if (shape.stagger) { OUTPUT_TYPES.add(DNAShapeReference.STAGGER); }
+			if (shape.tilt) { OUTPUT_TYPES.add(DNAShapeReference.TILT); }
+			if (shape.slide) { OUTPUT_TYPES.add(DNAShapeReference.SLIDE); }
+			if (shape.rise) { OUTPUT_TYPES.add(DNAShapeReference.RISE); }
+			if (shape.shift) { OUTPUT_TYPES.add(DNAShapeReference.SHIFT); }
 		}
 
 		if (matrix && cdt) {
 			r += "(!)Please select either the matrix or the cdt flag.\n";
 		} else if (matrix) {
-			outputMatrix = DNAShapefromBED.TAB;
+			outputMatrix = DNAShapefromBEDold.TAB;
 		} else if (cdt) {
-			outputMatrix = DNAShapefromBED.CDT;
+			outputMatrix = DNAShapefromBEDold.CDT;
 		}
 
 		return (r);
@@ -203,30 +219,30 @@ public class DNAShapefromBEDCLI implements Callable<Integer> {
 	 * @param gzOutput        whether or not to gzip output
 	 * @return command line to execute with formatted inputs
 	 */
-	public static String getCLIcommand(File gen, File input, File out, boolean[] type, boolean str, boolean outputComposite, short outputMatrix, boolean gzOutput) throws OptionException {
+	public static String getCLIcommand(File gen, File b, File out, ArrayList<Integer> type, boolean str, boolean outputComposite, short outputMatrix, boolean gzOutput) throws OptionException {
 		String command = "java -jar $SCRIPTMANAGER sequence-analysis dna-shape-bed";
 		command += " -o " + out.getAbsolutePath();
-		command += gzOutput ? " -z " : "";
-		command += type[0] ? " --groove" : "";
-		command += type[1] ? " --propeller" : "";
-		command += type[2] ? " --helical" : "";
-		command += type[3] ? " --roll" : "";
-		command += str ? "" : "--no-force";
-		command += outputComposite ? "--composite" : "";
-		switch (outputMatrix) {
-			case DNAShapefromBED.NO_MATRIX:
-				break;
-			case DNAShapefromBED.TAB:
-				command += " --matrix";
-				break;
-			case DNAShapefromBED.CDT:
-				command += " --cdt";
-				break;
-			default:
-				throw new OptionException("outputMatrix type value " + outputMatrix + " not supported");
-		}
-		command += " " + gen.getAbsolutePath();
-		command += " " + input.getAbsolutePath();
+		// command += gzOutput ? " -z " : "";
+		// command += type[0] ? " --groove" : "";
+		// command += type[1] ? " --propeller" : "";
+		// command += type[2] ? " --helical" : "";
+		// command += type[3] ? " --roll" : "";
+		// command += str ? "" : "--no-force";
+		// command += outputComposite ? "--composite" : "";
+		// switch (outputMatrix) {
+		// 	case DNAShapefromBEDold.NO_MATRIX:
+		// 		break;
+		// 	case DNAShapefromBEDold.TAB:
+		// 		command += " --matrix";
+		// 		break;
+		// 	case DNAShapefromBEDold.CDT:
+		// 		command += " --cdt";
+		// 		break;
+		// 	default:
+		// 		throw new OptionException("outputMatrix type value " + outputMatrix + " not supported");
+		// }
+		// command += " " + gen.getAbsolutePath();
+		// command += " " + input.getAbsolutePath();
 		return (command);
 	}
 }

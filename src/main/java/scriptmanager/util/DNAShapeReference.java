@@ -12,7 +12,7 @@ import scriptmanager.objects.Exceptions.OptionException;
  * in the scripts package.
  * 
  * @author William KM Lai
- * @see scriptmanager.scripts.Sequence_Analysis.DNAShapefromBED
+ * @see scriptmanager.scripts.Sequence_Analysis.DNAShapefromBEDold
  * @see scriptmanager.scripts.Sequence_Analysis.DNAShapefromFASTA
  */
 public final class DNAShapeReference {
