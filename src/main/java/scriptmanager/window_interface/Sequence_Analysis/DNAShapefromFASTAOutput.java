@@ -4,7 +4,6 @@ import java.awt.BorderLayout;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.io.PrintStream;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.Date;
@@ -104,81 +103,48 @@ public class DNAShapefromFASTAOutput extends JFrame {
 	 * @throws InterruptedException Thrown when more than one script is run at the same time
 	 */
 	public void run() throws ScriptManagerException, OptionException, FileNotFoundException, IOException, InterruptedException {
-			LogItem old_li = null;
-			// Move through each BED File
-			for (int x = 0; x < FASTA.size(); x++) {
-				File XFASTA = FASTA.get(x);
-				// Initialize TextAreas and PrintStream wrappers
-                HashMap<Integer, JTextArea> TextAreas = new HashMap<>();
-				JTextArea STATS_MGW = null;
-				JTextArea STATS_PropT = null;
-				JTextArea STATS_HelT = null;
-				JTextArea STATS_Roll = null;
-				HashMap<Integer, CustomOutputStream> PS = new HashMap<>();
+		LogItem old_li = null;
+		// Move through each BED File
+		for (int x = 0; x < FASTA.size(); x++) {
+			File XFASTA = FASTA.get(x);
+			// Initialize TextAreas and PrintStream wrappers
+			HashMap<Integer, JTextArea> TextAreas = new HashMap<>();
+			HashMap<Integer, CustomOutputStream> PS = new HashMap<>();
 
-                for (Integer shape: OUTPUT_TYPE){
-                    TextAreas.put(shape, new JTextArea());
-                    TextAreas.get(shape).setEditable(false);
-                    PS.put(shape, new CustomOutputStream(TextAreas.get(shape)));
-                }
+			for (Integer shape: OUTPUT_TYPE){
+				TextAreas.put(shape, new JTextArea());
+				TextAreas.get(shape).setEditable(false);
+				PS.put(shape, new CustomOutputStream(TextAreas.get(shape)));
+			}
 
-				// Construct output filename
-				String NAME = ExtensionFileFilter.stripExtension(XFASTA);
-				File OUT_BASENAME = new File(NAME);
-				if (OUT_DIR != null) {
-					OUT_BASENAME = new File(OUT_DIR.getCanonicalPath() + File.separator + NAME);
-				}
-				// Initialize LogItem
-				String command = DNAShapefromFASTACLI.getCLIcommand(XFASTA, OUT_BASENAME, OUTPUT_TYPE, OUTPUT_COMPOSITE, OUTPUT_MATRIX, OUTPUT_GZIP);
-				LogItem new_li = new LogItem(command);
-				firePropertyChange("log", old_li, new_li);
-				// Execute script
-				DNAShapefromFASTA script_obj = new DNAShapefromFASTA(XFASTA, OUT_BASENAME, OUTPUT_TYPE, OUTPUT_COMPOSITE, OUTPUT_MATRIX, OUTPUT_GZIP, PS);
-				script_obj.run();
-				// Update log item
-				new_li.setStopTime(new Timestamp(new Date().getTime()));
-				new_li.setStatus(0);
-				old_li = new_li;
-
+			// Construct output filename
+			String NAME = ExtensionFileFilter.stripExtension(XFASTA);
+			File OUT_BASENAME = new File(NAME);
+			if (OUT_DIR != null) {
+				OUT_BASENAME = new File(OUT_DIR.getCanonicalPath() + File.separator + NAME);
+			}
+			// Initialize LogItem
+			String command = DNAShapefromFASTACLI.getCLIcommand(XFASTA, OUT_BASENAME, OUTPUT_TYPE, OUTPUT_COMPOSITE, OUTPUT_MATRIX, OUTPUT_GZIP);
+			LogItem new_li = new LogItem(command);
+			firePropertyChange("log", old_li, new_li);
+			// Execute script
+			DNAShapefromFASTA script_obj = new DNAShapefromFASTA(XFASTA, OUT_BASENAME, OUTPUT_TYPE, OUTPUT_COMPOSITE, OUTPUT_MATRIX, OUTPUT_GZIP, PS);
+			script_obj.run();
+			// Update log item
+			new_li.setStopTime(new Timestamp(new Date().getTime()));
+			new_li.setStatus(0);
+			old_li = new_li;
+				// Convert average and statistics to output tabs panes
 				for (Integer shape: OUTPUT_TYPE){
 					tabbedPane_Scatterplot.add(DNAShapeReference.HEADERS[shape], script_obj.getCharts(shape));
 					JScrollPane scrollPane = new JScrollPane(TextAreas.get(shape), JScrollPane.VERTICAL_SCROLLBAR_ALWAYS,
-					 			JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
+								JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
 					tabbedPane_Statistics.add(DNAShapeReference.HEADERS[shape], scrollPane);
 				}
-				// Convert average and statistics to output tabs panes
-
-				// if (OUTPUT_TYPE[0]) {
-				// 	tabbedPane_Scatterplot.add("MGW", script_obj.getChartM());
-				// 	STATS_MGW.setCaretPosition(0);
-				// 	JScrollPane MGWpane = new JScrollPane(STATS_MGW, JScrollPane.VERTICAL_SCROLLBAR_ALWAYS,
-				// 			JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
-				// 	tabbedPane_Statistics.add("MGW", MGWpane);
-				// }
-				// if (OUTPUT_TYPE[1]) {
-				// 	tabbedPane_Scatterplot.add("Propeller Twist", script_obj.getChartP());
-				// 	STATS_PropT.setCaretPosition(0);
-				// 	JScrollPane PropTpane = new JScrollPane(STATS_PropT, JScrollPane.VERTICAL_SCROLLBAR_ALWAYS,
-				// 			JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
-				// 	tabbedPane_Statistics.add("PropT", PropTpane);
-				// }
-				// if (OUTPUT_TYPE[2]) {
-				// 	tabbedPane_Scatterplot.add("Helical Twist", script_obj.getChartH());
-				// 	STATS_HelT.setCaretPosition(0);
-				// 	JScrollPane HelTpane = new JScrollPane(STATS_HelT, JScrollPane.VERTICAL_SCROLLBAR_ALWAYS,
-				// 			JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
-				// 	tabbedPane_Statistics.add("HelT", HelTpane);
-				// }
-				// if (OUTPUT_TYPE[3]) {
-				// 	tabbedPane_Scatterplot.add("Roll", script_obj.getChartR());
-				// 	STATS_Roll.setCaretPosition(0);
-				// 	JScrollPane Rollpane = new JScrollPane(STATS_Roll, JScrollPane.VERTICAL_SCROLLBAR_ALWAYS,
-				// 			JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
-				// 	tabbedPane_Statistics.add("Roll", Rollpane);
-				// }
-				// Update progress
-				firePropertyChange("progress", x, x + 1);
+			// Update progress
+			firePropertyChange("progress", x, x + 1);
+			}
+			firePropertyChange("log", old_li, null);
 		}
-		firePropertyChange("log", old_li, null);
+		
 	}
-}

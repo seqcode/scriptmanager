@@ -41,14 +41,14 @@ import scriptmanager.objects.ToolDescriptions;
 import scriptmanager.util.DNAShapeReference;
 import scriptmanager.util.FileSelection;
 
-import scriptmanager.scripts.Sequence_Analysis.DNAShapefromBEDold;
+import scriptmanager.scripts.Sequence_Analysis.DNAShapefromBED;
 
 /**
  * GUI for collecting inputs to be processed by
- * {@link scriptmanager.scripts.Sequence_Analysis.DNAShapefromBEDold}
+ * {@link scriptmanager.scripts.Sequence_Analysis.DNAShapefromBED}
  * 
  * @author William KM Lai
- * @see scriptmanager.scripts.Sequence_Analysis.DNAShapefromBEDold
+ * @see scriptmanager.scripts.Sequence_Analysis.DNAShapefromBED
  * @see scriptmanager.window_interface.Sequence_Analysis.DNAShapefromBEDOutput
  */
 @SuppressWarnings("serial")
@@ -140,9 +140,9 @@ public class DNAShapefromBEDWindow extends JFrame implements ActionListener, Pro
 					short outputMatrix = 0;
 					if (chckbxOutputMatrixData.isSelected()) {
 						if (tglTab.isSelected()) {
-							outputMatrix = DNAShapefromBEDold.TAB;
+							outputMatrix = DNAShapefromBED.TAB;
 						} else if (tglCdt.isSelected()) {
-							outputMatrix = DNAShapefromBEDold.CDT;
+							outputMatrix = DNAShapefromBED.CDT;
 						}
 					}
 					// Execute script
@@ -191,7 +191,7 @@ public class DNAShapefromBEDWindow extends JFrame implements ActionListener, Pro
 		setTitle("DNA Shape Predictions from BED");
 		setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
 
-		setBounds(125, 125, 475, 700);
+		setBounds(125, 125, 475, 680);
 		contentPane = new JPanel();
 		contentPane.setBorder(new EmptyBorder(5, 5, 5, 5));
 		setContentPane(contentPane);
@@ -239,7 +239,7 @@ public class DNAShapefromBEDWindow extends JFrame implements ActionListener, Pro
 		contentPane.add(btnRemoveBed);
 
 		btnCalculate = new JButton("Calculate");
-		sl_contentPane.putConstraint(SpringLayout.SOUTH, scrollPane, -325, SpringLayout.NORTH, btnCalculate);
+		sl_contentPane.putConstraint(SpringLayout.SOUTH, scrollPane, -315, SpringLayout.NORTH, btnCalculate);
 		sl_contentPane.putConstraint(SpringLayout.SOUTH, btnCalculate, -5, SpringLayout.SOUTH, contentPane);
 		sl_contentPane.putConstraint(SpringLayout.WEST, btnCalculate, 165, SpringLayout.WEST, contentPane);
 		sl_contentPane.putConstraint(SpringLayout.EAST, btnCalculate, -165, SpringLayout.EAST, contentPane);
@@ -283,7 +283,7 @@ public class DNAShapefromBEDWindow extends JFrame implements ActionListener, Pro
 
 		// Shape Parameters
 		JPanel pnlShapeOptions = new JPanel();
-		sl_contentPane.putConstraint(SpringLayout.NORTH, pnlShapeOptions, -355, SpringLayout.SOUTH, contentPane);
+		sl_contentPane.putConstraint(SpringLayout.NORTH, pnlShapeOptions, -340, SpringLayout.SOUTH, contentPane);
 		sl_contentPane.putConstraint(SpringLayout.WEST, pnlShapeOptions, 0, SpringLayout.WEST, contentPane);
 		sl_contentPane.putConstraint(SpringLayout.EAST, pnlShapeOptions, 0, SpringLayout.EAST, contentPane);
 		sl_contentPane.putConstraint(SpringLayout.SOUTH, pnlShapeOptions, -160, SpringLayout.SOUTH, contentPane);

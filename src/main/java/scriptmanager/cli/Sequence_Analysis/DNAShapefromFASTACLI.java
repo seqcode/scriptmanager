@@ -9,16 +9,13 @@ import java.util.ArrayList;
 import java.util.concurrent.Callable;
 
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.io.PrintStream;
-import java.lang.reflect.Field;
 
 import scriptmanager.objects.ToolDescriptions;
 import scriptmanager.objects.Exceptions.OptionException;
 import scriptmanager.util.DNAShapeReference;
 import scriptmanager.util.ExtensionFileFilter;
-import scriptmanager.scripts.Sequence_Analysis.DNAShapefromBEDold;
+import scriptmanager.scripts.Sequence_Analysis.DNAShapefromBED;
 import scriptmanager.scripts.Sequence_Analysis.DNAShapefromFASTA;
 
 /**
@@ -93,7 +90,7 @@ public class DNAShapefromFASTACLI implements Callable<Integer> {
 		public boolean everything = false;
 	}
 
-	private short outputMatrix = DNAShapefromBEDold.NO_MATRIX;
+	private short outputMatrix = DNAShapefromBED.NO_MATRIX;
 
 	/**
 	 * Runs when this subcommand is called, running script in respective script package with user defined arguments
@@ -143,7 +140,7 @@ public class DNAShapefromFASTACLI implements Callable<Integer> {
 			// no extension check
 			// check directory
 			if (outParent == null) {
-// 				System.err.println("default to current directory");
+				System.err.println("default to current directory");
 			} else if (!new File(outParent).exists()) {
 				r += "(!)Check output directory exists: " + outParent + "\n";
 			}
@@ -181,9 +178,9 @@ public class DNAShapefromFASTACLI implements Callable<Integer> {
 		if (matrix && cdt) {
 			r += "(!)Please select either the matrix or the cdt flag.\n";
 		} else if (matrix) {
-			outputMatrix = DNAShapefromBEDold.TAB;
+			outputMatrix = DNAShapefromBED.TAB;
 		} else if (cdt) {
-			outputMatrix = DNAShapefromBEDold.CDT;
+			outputMatrix = DNAShapefromBED.CDT;
 		}
 
 		return (r);
@@ -191,12 +188,11 @@ public class DNAShapefromFASTACLI implements Callable<Integer> {
 
 	/**
 	 * Reconstruct CLI command
-	 * 
 	 * @param input           the FASTA-formatted file with a fixed sequence length
 	 * @param out             the output file name base (to add
 	 *                        _&lt;shapetype&gt;.cdt suffix to)
-	 * @param type            a four-element boolean list for specifying shape type
-	 *                        to output (no enforcement on size)
+	 * @param type            An ArrayList specifying the shape type of the output with integers
+	 * @param str             force strandedness (true=forced, false=not forced)
 	 * @param outputComposite whether to output a composite average output
 	 * @param outputMatrix    value encoding not to write output matrix data, write
 	 *                        matrix in CDT format, and write matrix in tab format
@@ -206,15 +202,33 @@ public class DNAShapefromFASTACLI implements Callable<Integer> {
 	public static String getCLIcommand(File input, File out, ArrayList<Integer> type, boolean outputComposite, short outputMatrix, boolean gzOutput) throws OptionException {
 		String command = "java -jar $SCRIPTMANAGER sequence-analysis dna-shape-fasta";
 		command += " -o " + out.getAbsolutePath();
-
+		command += gzOutput ? " -z " : "";
+		if (type.size() == 14){
+			command += type.size() == 14? "-a" : "";
+		} else {
+			command += type.contains(0)? "--groove" : "";
+			command += type.contains(1)? "--propeller" : "";
+			command += type.contains(2)? "--helical" : "";
+			command += type.contains(3)? "--roll" : "";
+			command += type.contains(4)? "--electrostatic-potential" : "";
+			command += type.contains(5)? "--stretch" : "";
+			command += type.contains(6)? "--buckle" : "";
+			command += type.contains(7)? "--shear" : "";
+			command += type.contains(8)? "--opening" : "";
+			command += type.contains(9)? "--stagger" : "";
+			command += type.contains(10)? "--tilt" : "";
+			command += type.contains(11)? "--slide" : "";
+			command += type.contains(12)? "--rise" : "";
+			command += type.contains(13)? "--shift" : "";
+		}
 		command += outputComposite ? "--composite" : "";
 		switch (outputMatrix) {
-			case DNAShapefromBEDold.NO_MATRIX:
+			case DNAShapefromBED.NO_MATRIX:
 				break;
-			case DNAShapefromBEDold.TAB:
+			case DNAShapefromBED.TAB:
 				command += " --matrix";
 				break;
-			case DNAShapefromBEDold.CDT:
+			case DNAShapefromBED.CDT:
 				command += " --cdt";
 				break;
 			default:

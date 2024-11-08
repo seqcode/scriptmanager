@@ -9,16 +9,13 @@ import java.util.ArrayList;
 import java.util.concurrent.Callable;
 
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.io.PrintStream;
 
 import scriptmanager.objects.ToolDescriptions;
 import scriptmanager.objects.Exceptions.OptionException;
 import scriptmanager.util.DNAShapeReference;
 import scriptmanager.util.ExtensionFileFilter;
 import scriptmanager.scripts.Sequence_Analysis.DNAShapefromBED;
-import scriptmanager.scripts.Sequence_Analysis.DNAShapefromBEDold;
 
 /**
  * Command line interface for
@@ -90,10 +87,10 @@ public class DNAShapefromBEDCLI implements Callable<Integer> {
 		public boolean rise = false;
 		@Option(names = { "--shift" }, description = "output shift")
 		public boolean shift = false;
-		@Option(names = { "-a", "--2013" }, description = "output groove, roll, propeller twist, and helical twist (equivalent to -grpl).")
+		@Option(names = { "--2013" }, description = "output groove, roll, propeller twist, and helical twist (equivalent to -grpl).")
+		public boolean originalAll = false;
+		@Option(names = { "-a", "--2021" }, description = "output all 14 shapes")
 		public boolean all = false;
-		@Option(names = { "--2021" }, description = "output all 14 shapes")
-		public boolean everything = false;
 	}
 
 	private short outputMatrix = DNAShapefromBED.NO_MATRIX;
@@ -149,53 +146,53 @@ public class DNAShapefromBEDCLI implements Callable<Integer> {
 			// no extension check
 			// check directory
 			if (outParent == null) {
-// 				System.err.println("default to current directory");
+				System.err.println("default to current directory");
 			} else if (!new File(outParent).exists()) {
 				r += "(!)Check output directory exists: " + outParent + "\n";
 			}
 		}
 
-		// // Check & set output_type
-		// if (!(shape.groove || shape.propeller || shape.helical || shape.roll || shape.all)) {
-		// 	r += "(!)Please select at least one of the shape flags.\n";
-		// } else if ((shape.groove || shape.propeller || shape.helical || shape.roll) && shape.all) {
-		// 	r += "(!)Please avoid mixing the \"-a\" flag with the other shape flags.\n";
-		// }
-
 		OUTPUT_TYPES = new ArrayList<>();
-		if (shape.everything){
+		if (shape.groove) { OUTPUT_TYPES.add(DNAShapeReference.MGW); }
+		if (shape.propeller) { OUTPUT_TYPES.add(DNAShapeReference.PROPT); }
+		if (shape.helical) { OUTPUT_TYPES.add(DNAShapeReference.HELT); }
+		if (shape.roll) { OUTPUT_TYPES.add(DNAShapeReference.ROLL); }
+		if (shape.ep) { OUTPUT_TYPES.add(DNAShapeReference.EP); }
+		if (shape.stretch) { OUTPUT_TYPES.add(DNAShapeReference.STRETCH); }
+		if (shape.buckle) { OUTPUT_TYPES.add(DNAShapeReference.BUCKLE); }
+		if (shape.shear) { OUTPUT_TYPES.add(DNAShapeReference.SHEAR); }
+		if (shape.opening) { OUTPUT_TYPES.add(DNAShapeReference.OPENING); }
+		if (shape.stagger) { OUTPUT_TYPES.add(DNAShapeReference.STAGGER); }
+		if (shape.tilt) { OUTPUT_TYPES.add(DNAShapeReference.TILT); }
+		if (shape.slide) { OUTPUT_TYPES.add(DNAShapeReference.SLIDE); }
+		if (shape.rise) { OUTPUT_TYPES.add(DNAShapeReference.RISE); }
+		if (shape.shift) { OUTPUT_TYPES.add(DNAShapeReference.SHIFT); }
+		if (shape.all){
 			for (int i = 0; i < 14; i++){
-				OUTPUT_TYPES.add(i);
+				if (OUTPUT_TYPES.contains(i)){
+					r += "(!)Please avoid mixing the \"-a\" flag with the other shape flags.\n";
+				}
+				else {
+					OUTPUT_TYPES.add(i);
+				}
 			}
 		}
-		else if (shape.all){
+		else if (shape.originalAll){
 			for (int i = 0; i < 5; i++){
-				OUTPUT_TYPES.add(i);
+				if (OUTPUT_TYPES.contains(i)){
+					r += "(!)Please avoid mixing the \"-a\" flag with the other shape flags.\n";
+				}
+				else {
+					OUTPUT_TYPES.add(i);
+				}
 			}
 		}
-		else {
-			if (shape.groove) { OUTPUT_TYPES.add(DNAShapeReference.MGW); }
-			if (shape.propeller) { OUTPUT_TYPES.add(DNAShapeReference.PROPT); }
-			if (shape.helical) { OUTPUT_TYPES.add(DNAShapeReference.HELT); }
-			if (shape.roll) { OUTPUT_TYPES.add(DNAShapeReference.ROLL); }
-			if (shape.ep) { OUTPUT_TYPES.add(DNAShapeReference.EP); }
-			if (shape.stretch) { OUTPUT_TYPES.add(DNAShapeReference.STRETCH); }
-			if (shape.buckle) { OUTPUT_TYPES.add(DNAShapeReference.BUCKLE); }
-			if (shape.shear) { OUTPUT_TYPES.add(DNAShapeReference.SHEAR); }
-			if (shape.opening) { OUTPUT_TYPES.add(DNAShapeReference.OPENING); }
-			if (shape.stagger) { OUTPUT_TYPES.add(DNAShapeReference.STAGGER); }
-			if (shape.tilt) { OUTPUT_TYPES.add(DNAShapeReference.TILT); }
-			if (shape.slide) { OUTPUT_TYPES.add(DNAShapeReference.SLIDE); }
-			if (shape.rise) { OUTPUT_TYPES.add(DNAShapeReference.RISE); }
-			if (shape.shift) { OUTPUT_TYPES.add(DNAShapeReference.SHIFT); }
-		}
-
 		if (matrix && cdt) {
 			r += "(!)Please select either the matrix or the cdt flag.\n";
 		} else if (matrix) {
-			outputMatrix = DNAShapefromBEDold.TAB;
+			outputMatrix = DNAShapefromBED.TAB;
 		} else if (cdt) {
-			outputMatrix = DNAShapefromBEDold.CDT;
+			outputMatrix = DNAShapefromBED.CDT;
 		}
 
 		return (r);
@@ -210,8 +207,7 @@ public class DNAShapefromBEDCLI implements Callable<Integer> {
 	 *                        sequence from
 	 * @param out             the output file name base (to add
 	 *                        _&lt;shapetype&gt;.cdt suffix to)
-	 * @param type            a four-element boolean list for specifying shape type
-	 *                        to output (no enforcement on size)
+	 * @param type            An ArrayList specifying the shape type of the output with integers
 	 * @param str             force strandedness (true=forced, false=not forced)
 	 * @param outputComposite whether to output a composite average output
 	 * @param outputMatrix    value encoding not to write output matrix data, write
@@ -219,30 +215,44 @@ public class DNAShapefromBEDCLI implements Callable<Integer> {
 	 * @param gzOutput        whether or not to gzip output
 	 * @return command line to execute with formatted inputs
 	 */
-	public static String getCLIcommand(File gen, File b, File out, ArrayList<Integer> type, boolean str, boolean outputComposite, short outputMatrix, boolean gzOutput) throws OptionException {
+	public static String getCLIcommand(File gen, File input, File out, ArrayList<Integer> type, boolean str, boolean outputComposite, short outputMatrix, boolean gzOutput) throws OptionException {
 		String command = "java -jar $SCRIPTMANAGER sequence-analysis dna-shape-bed";
 		command += " -o " + out.getAbsolutePath();
-		// command += gzOutput ? " -z " : "";
-		// command += type[0] ? " --groove" : "";
-		// command += type[1] ? " --propeller" : "";
-		// command += type[2] ? " --helical" : "";
-		// command += type[3] ? " --roll" : "";
-		// command += str ? "" : "--no-force";
-		// command += outputComposite ? "--composite" : "";
-		// switch (outputMatrix) {
-		// 	case DNAShapefromBEDold.NO_MATRIX:
-		// 		break;
-		// 	case DNAShapefromBEDold.TAB:
-		// 		command += " --matrix";
-		// 		break;
-		// 	case DNAShapefromBEDold.CDT:
-		// 		command += " --cdt";
-		// 		break;
-		// 	default:
-		// 		throw new OptionException("outputMatrix type value " + outputMatrix + " not supported");
-		// }
-		// command += " " + gen.getAbsolutePath();
-		// command += " " + input.getAbsolutePath();
+		command += gzOutput ? " -z " : "";
+		if (type.size() == 14){
+			command += type.size() == 14? "-a" : "";
+		} else {
+			command += type.contains(0)? "--groove" : "";
+			command += type.contains(1)? "--propeller" : "";
+			command += type.contains(2)? "--helical" : "";
+			command += type.contains(3)? "--roll" : "";
+			command += type.contains(4)? "--electrostatic-potential" : "";
+			command += type.contains(5)? "--stretch" : "";
+			command += type.contains(6)? "--buckle" : "";
+			command += type.contains(7)? "--shear" : "";
+			command += type.contains(8)? "--opening" : "";
+			command += type.contains(9)? "--stagger" : "";
+			command += type.contains(10)? "--tilt" : "";
+			command += type.contains(11)? "--slide" : "";
+			command += type.contains(12)? "--rise" : "";
+			command += type.contains(13)? "--shift" : "";
+		}
+		command += str ? "" : "--no-force";
+		command += outputComposite ? "--composite" : "";
+		switch (outputMatrix) {
+			case DNAShapefromBED.NO_MATRIX:
+				break;
+			case DNAShapefromBED.TAB:
+				command += " --matrix";
+				break;
+			case DNAShapefromBED.CDT:
+				command += " --cdt";
+				break;
+			default:
+				throw new OptionException("outputMatrix type value " + outputMatrix + " not supported");
+		}
+		command += " " + gen.getAbsolutePath();
+		command += " " + input.getAbsolutePath();
 		return (command);
 	}
 }

@@ -14,7 +14,7 @@ import java.util.Comparator;
  * @see scriptmanager.scripts.Peak_Analysis.TileGenome
  * @see scriptmanager.scripts.Read_Analysis.ScalingFactor
  * @see scriptmanager.scripts.Read_Analysis.TagPileup
- * @see scriptmanager.scripts.Sequence_Analysis.DNAShapefromBEDold
+ * @see scriptmanager.scripts.Sequence_Analysis.DNAShapefromBED
  * @see scriptmanager.scripts.Sequence_Analysis.FASTAExtract
  */
 public class BEDCoord implements GenomicCoord {

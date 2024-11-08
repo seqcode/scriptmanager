@@ -88,17 +88,18 @@ public class DNAShapefromBED {
 	/**
 	 * Initialize object with script inputs for generating DNA shape reports.
 	 * 
-	 * @param input           the FASTA-formatted sequence to calculate shape for
+	 * @param gen             the reference genome sequence in FASTA-format (FAI
+	 *                        will be automatically generated)
+	 * @param b               the BED-formatted coordinate intervals to extract
+	 *                        sequence from
 	 * @param out             the output file name base (to add
 	 *                        _&lt;shapetype&gt;.cdt suffix to)
-	 * @param type            a four-element boolean list for specifying shape type
-	 *                        to output (no enforcement on size) [MGW, PropT, HelT, Roll, EP, Stretch, Buckle, Shear, Opening, Stagger, Tilt, Slide, Rise]
+	 * @param type            An ArrayList with integers corresponding to shape types stored in {@link DNAShapeReference} 
 	 * @param outputComposite whether to output a composite average output
 	 * @param outputMatrix    value encoding not to write output matrix data, write
 	 *                        matrix in CDT format, and write matrix in tab format
 	 * @param gzOutput        whether to output compressed file
-	 * @param ps              list of four PrintStream objects corresponding to each
-	 *                        shape type (for GUI)
+	 * @param ps              HashMap of PrintStream objects corresponding to each shape type (for GUI)
 	 * @throws IOException Invalid file or parameters
 	 */
 	public DNAShapefromBED(File gen, File b, File out, ArrayList<Integer> type, boolean str, boolean outputComposite, short outputMatrix, boolean gzOutput, HashMap<Integer, CustomOutputStream> ps) {
@@ -157,9 +158,8 @@ public class DNAShapefromBED {
 		}
 		br.close();
 		// Create coordinate domain
-		double[] domain = new double[0];
 		int numPredictions = (1 + (int)(longestSequence - 4));
-		domain = new double[numPredictions];
+		double[] domain = new double[numPredictions];
 		int temp = (int) (((double) (numPredictions) / 2.0) + 0.5);
 		for (int z = 0; z < numPredictions; z++) {
 			domain[z] = (temp - (numPredictions - z));
@@ -190,31 +190,39 @@ public class DNAShapefromBED {
 									OUT_FILES.get(shape).print("\tNAME");
 								}
 								// Adjust domain to fit number of predictions
-								int start;
+								int end;
 								if (new ArrayList<>(Arrays.asList( DNAShapeReference.HELT, DNAShapeReference.ROLL, DNAShapeReference.RISE,
 								DNAShapeReference.SHIFT, DNAShapeReference.TILT, DNAShapeReference.SLIDE)).contains(shape)){
-									start = 0;
+									end = numPredictions - 0;
 								} else {
-									start = 1;
+									end = numPredictions - 1;
 								}
-								for (int z = start; z < numPredictions; z++) {
-									OUT_FILES.get(shape).print("\t" + domain[z]);
+								for (int z = 0; z < end; z++) {
+									if (end == 1){ 
+										OUT_FILES.get(shape).print("\t" + 0); 
+									}
+									else{
+										OUT_FILES.get(shape).print("\t" + domain[z]);
+									}
 								}
 								OUT_FILES.get(shape).println();
 							}
 							// Initialize AVG storage object
 							double[][] avg = new double[2][numPredictions + 1];
+							Arrays.fill(avg[0], Double.NaN);
+							Arrays.fill(avg[1], Double.NaN);
 							AVG_ARRS.put(shape, avg);
 						}
+						int temporaryPredictions;
 						// Adjust domain to fit number of predictions
 						if (new ArrayList<>(Arrays.asList( DNAShapeReference.HELT, DNAShapeReference.ROLL, DNAShapeReference.RISE,
 							DNAShapeReference.SHIFT, DNAShapeReference.TILT, DNAShapeReference.SLIDE)).contains(shape)){
-							temp = numPredictions + 1;
+							temporaryPredictions = numPredictions + 1;
 						} else {
-							temp = numPredictions;
+							temporaryPredictions = numPredictions;
 						}
 						//Print values and save output as ArrayList
-						AVG_ARRS.put(shape, printVals(BED_Coord.get(y), PREDICTIONS.get(shape), AVG_ARRS.get(shape), OUT_FILES.get(shape), temp));
+						AVG_ARRS.put(shape, printVals(BED_Coord.get(y), PREDICTIONS.get(shape), AVG_ARRS.get(shape), OUT_FILES.get(shape), temporaryPredictions));
 						}
 					} // if seq contains 'N's
 				counter++;	
@@ -236,15 +244,15 @@ public class DNAShapefromBED {
 			for (int shape : OUTPUT_TYPES) {
 				double[] totals = AVG_ARRS.get(shape)[0];
 				double[] counts = AVG_ARRS.get(shape)[1];
-				double[][] averages;
-				if (counts[counts.length - 2] == 0){
-					averages = new double[1][numPredictions - 1];
-				} else {
-					averages = new double[1][numPredictions];
+				int predictionsLength = 0;
+				for (int i = 0; i < totals.length && !Double.isNaN(totals[i]); i++){
+					predictionsLength += 1;
 				}
-				for (int i = 0; i < totals.length; i++){
-					if (counts[i] != 0){
-						averages[0][i] = totals[i] / counts[i];
+				double[][] averages = new double[1][predictionsLength];
+				for (int i = 0; i < averages[0].length; i++){
+					if (!Double.isNaN(counts[i])){
+						// averages[0][i] = totals[i] / counts[i];
+						averages[0][i] = totals[i] / counter;
 					}
 				}
 				AVG_ARRS.put(shape, averages);
@@ -253,15 +261,12 @@ public class DNAShapefromBED {
 			if (OUTPUT_COMPOSITE){
 				for (Integer shape: OUTPUT_TYPES){
 					double[] scores = AVG_ARRS.get(shape)[0];
-					// Adjust domain to fit number of predictions
-					int start;
-					if (new ArrayList<>(Arrays.asList( DNAShapeReference.HELT, DNAShapeReference.ROLL, DNAShapeReference.RISE,
-					DNAShapeReference.SHIFT, DNAShapeReference.TILT, DNAShapeReference.SLIDE)).contains(shape)){
-						start = 0;
-					} else {
-						start = 1;
+					temp = (int) (((double) (scores.length) / 2.0) + 0.5);
+					domain = new double[scores.length];
+					for (int z = 0; z < scores.length; z++) {
+						domain[z] = (temp - (scores.length - z));
 					}
-					for (int z = start; z < numPredictions; z++) {
+					for (int z = 0; z < scores.length; z++) {
 						COMPOSITE_FILES.get(shape).print("\t" + domain[z]);
 					}
 					COMPOSITE_FILES.get(shape).println();
@@ -279,17 +284,16 @@ public class DNAShapefromBED {
 				for (Integer shape: OUTPUT_TYPES){
 					// Convert arraylist to array
 					double[] scores = AVG_ARRS.get(shape)[0];
-					System.out.println(Arrays.toString(scores));
-					// Make create domain for composite plot
-					double[] truncatedDomain = new double[scores.length];
-					for (int z = 1; z <= scores.length; z++){
-						truncatedDomain[truncatedDomain.length - z] = domain[domain.length - z];
+					temp = (int) (((double) (scores.length) / 2.0) + 0.5);
+					domain = new double[scores.length];
+					for (int z = 0; z < scores.length; z++) {
+						domain[z] = (temp - (scores.length - z));
 					}
 					for (int z = 0; z < scores.length; z++){
-						PS.get(shape).write((truncatedDomain[z] + "\t" + FORMAT.format(scores[z]) + "\n").getBytes(Charset.forName("UTF-8")));
+						PS.get(shape).write((domain[z] + "\t" + FORMAT.format(scores[z]) + "\n").getBytes(Charset.forName("UTF-8")));
 					}
 					// Create composite plot
-					CHARTS.put(shape, CompositePlot.createCompositePlot(truncatedDomain, scores, NAME + " " + DNAShapeReference.HEADERS[shape]));
+					CHARTS.put(shape, CompositePlot.createCompositePlot(domain, scores, NAME + " " + DNAShapeReference.HEADERS[shape]));
 				}
 			}
 		}
@@ -367,8 +371,13 @@ public class DNAShapefromBED {
 			// Print score if available or 'Nan'.  Save output to AVG array
 			if (z >= start && z < stop && index < SCORES.size()){
 				if (O != null) { O.print("\t" + FORMAT.format(SCORES.get(index))); }
-				AVG[0][z] += SCORES.get(index);
-				AVG[1][z] += 1;
+				if (Double.isNaN(AVG[0][z])){
+					AVG[0][z] = SCORES.get(index);
+					AVG[1][z] = 1;
+				} else {
+					AVG[0][z] += SCORES.get(index);
+					AVG[1][z] += 1;
+				}
 			} else {
 				if (O != null) { O.print("\tNan"); };
 			}

@@ -4,7 +4,6 @@ import java.awt.BorderLayout;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.io.PrintStream;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.Date;
@@ -140,17 +139,17 @@ public class DNAShapefromBEDOutput extends JFrame {
 				} catch (Exception e) {
 					e.printStackTrace();
 				}
-				// Update log item
+				// Update log item 
 				new_li.setStopTime(new Timestamp(new Date().getTime()));
 				new_li.setStatus(0);
 				old_li = new_li;
-				// Convert average and statistics to output tabs panes
-								for (Integer shape: OUTPUT_TYPE){
-					tabbedPane_Scatterplot.add(DNAShapeReference.HEADERS[shape], script_obj.getCharts(shape));
-					JScrollPane scrollPane = new JScrollPane(TextAreas.get(shape), JScrollPane.VERTICAL_SCROLLBAR_ALWAYS,
-					 			JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
-					tabbedPane_Statistics.add(DNAShapeReference.HEADERS[shape], scrollPane);
-				}
+					// Convert average and statistics to output tabs panes
+					for (Integer shape: OUTPUT_TYPE){
+						tabbedPane_Scatterplot.add(DNAShapeReference.HEADERS[shape], script_obj.getCharts(shape));
+						JScrollPane scrollPane = new JScrollPane(TextAreas.get(shape), JScrollPane.VERTICAL_SCROLLBAR_ALWAYS,
+									JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
+						tabbedPane_Statistics.add(DNAShapeReference.HEADERS[shape], scrollPane);
+					}
 				// Update progress
 				firePropertyChange("progress", x, x + 1);
 		}
