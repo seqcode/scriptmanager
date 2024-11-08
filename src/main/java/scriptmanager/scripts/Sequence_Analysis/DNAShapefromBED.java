@@ -1,5 +1,9 @@
 package scriptmanager.scripts.Sequence_Analysis;
 
+import htsjdk.samtools.SAMException;
+import htsjdk.samtools.reference.FastaSequenceIndexCreator;
+import htsjdk.samtools.reference.IndexedFastaSequenceFile;
+
 import java.awt.Component;
 import java.io.BufferedReader;
 import java.io.File;
@@ -15,10 +19,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import htsjdk.samtools.SAMException;
-import htsjdk.samtools.reference.FastaSequenceIndexCreator;
-import htsjdk.samtools.reference.IndexedFastaSequenceFile;
-
 import java.text.DecimalFormat;
 
 import scriptmanager.charts.CompositePlot;
@@ -32,14 +32,14 @@ import scriptmanager.util.ExtensionFileFilter;
 import scriptmanager.util.FASTAUtilities;
 
 /**
- * Calculate and score various aspects of DNA shape across a set of FASTA
+ * Calculate and score various aspects of DNA shape across a set of BED
  * sequences.
  * 
  * @author William KM Lai
  * @see scriptmanager.util.DNAShapeReference
- * @see scriptmanager.cli.Sequence_Analysis.DNAShapefromFASTACLI
- * @see scriptmanager.window_interface.Sequence_Analysis.DNAShapefromFASTAOutput
- * @see scriptmanager.window_interface.Sequence_Analysis.DNAShapefromFASTAWindow
+ * @see scriptmanager.cli.Sequence_Analysis.DNAShapefromBEDCLI
+ * @see scriptmanager.window_interface.Sequence_Analysis.DNAShapefromBEDOutput
+ * @see scriptmanager.window_interface.Sequence_Analysis.DNAShapefromBEDWindow
  */
 public class DNAShapefromBED {
 	private File GENOME = null;
@@ -100,7 +100,6 @@ public class DNAShapefromBED {
 	 *                        matrix in CDT format, and write matrix in tab format
 	 * @param gzOutput        whether to output compressed file
 	 * @param ps              HashMap of PrintStream objects corresponding to each shape type (for GUI)
-	 * @throws IOException Invalid file or parameters
 	 */
 	public DNAShapefromBED(File gen, File b, File out, ArrayList<Integer> type, boolean str, boolean outputComposite, short outputMatrix, boolean gzOutput, HashMap<Integer, CustomOutputStream> ps) {
 		GENOME = gen;
@@ -240,7 +239,7 @@ public class DNAShapefromBED {
 					OUT_FILES.get(shape).close();
 				}
 			}
-			// Calculate averages based on number of scores at each coordinate
+			// Calculate averages based on total number of strand (mimics TagPileup)
 			for (int shape : OUTPUT_TYPES) {
 				double[] totals = AVG_ARRS.get(shape)[0];
 				double[] counts = AVG_ARRS.get(shape)[1];
@@ -251,6 +250,7 @@ public class DNAShapefromBED {
 				double[][] averages = new double[1][predictionsLength];
 				for (int i = 0; i < averages[0].length; i++){
 					if (!Double.isNaN(counts[i])){
+						// Dividing by the count[i] would divide total by number of strands at that coord
 						// averages[0][i] = totals[i] / counts[i];
 						averages[0][i] = totals[i] / counter;
 					}

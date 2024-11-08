@@ -180,7 +180,7 @@ public class DNAShapefromBEDCLI implements Callable<Integer> {
 		else if (shape.originalAll){
 			for (int i = 0; i < 5; i++){
 				if (OUTPUT_TYPES.contains(i)){
-					r += "(!)Please avoid mixing the \"-a\" flag with the other shape flags.\n";
+					r += "(!)Please avoid mixing the \"--2013\" flag with the other shape flags.\n";
 				}
 				else {
 					OUTPUT_TYPES.add(i);

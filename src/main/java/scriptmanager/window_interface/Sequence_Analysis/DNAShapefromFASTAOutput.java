@@ -92,7 +92,7 @@ public class DNAShapefromFASTAOutput extends JFrame {
 	}
 
 	/**
-	 * Call script on each BED file to calculate shape scores and append the values
+	 * Call script on each FASTA file to calculate shape scores and append the values
 	 * for each shape type under the "DNA Shape Statistics" tab and append each
 	 * chart generated under the "DNA Shape Plot" tab.
 	 * 
@@ -104,7 +104,7 @@ public class DNAShapefromFASTAOutput extends JFrame {
 	 */
 	public void run() throws ScriptManagerException, OptionException, FileNotFoundException, IOException, InterruptedException {
 		LogItem old_li = null;
-		// Move through each BED File
+		// Move through each FASTA File
 		for (int x = 0; x < FASTA.size(); x++) {
 			File XFASTA = FASTA.get(x);
 			// Initialize TextAreas and PrintStream wrappers
@@ -144,7 +144,7 @@ public class DNAShapefromFASTAOutput extends JFrame {
 			// Update progress
 			firePropertyChange("progress", x, x + 1);
 			}
-			firePropertyChange("log", old_li, null);
+		firePropertyChange("log", old_li, null);
 		}
 		
 	}

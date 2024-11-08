@@ -28,11 +28,11 @@ import scriptmanager.scripts.Sequence_Analysis.DNAShapefromBED;
 
 /**
  * Output wrapper for running
- * {@link scriptmanager.scripts.Sequence_Analysis.DNAshapefromBED} and reporting
+ * {@link scriptmanager.scripts.Sequence_Analysis.DNAShapefromBED} and reporting
  * composite results
  * 
  * @author William KM Lai
- * @see scriptmanager.scripts.Sequence_Analysis.DNAshapefromBED
+ * @see scriptmanager.scripts.Sequence_Analysis.DNAShapefromBED
  * @see scriptmanager.window_interface.Sequence_Analysis.DNAShapefromBEDWindow
  */
 @SuppressWarnings("serial")
@@ -108,7 +108,7 @@ public class DNAShapefromBEDOutput extends JFrame {
 	 * @throws IOException Invalid file or parameters
 	 * @throws InterruptedException Thrown when more than one script is run at the same time
 	 */
-	public void run() throws OptionException, FileNotFoundException, IOException, InterruptedException {
+	public void run() throws OptionException, FileNotFoundException, IOException, InterruptedException, ScriptManagerException  {
 			LogItem old_li = null;
 			// Move through each BED File
 			for (int x = 0; x < BED.size(); x++) {
@@ -132,18 +132,14 @@ public class DNAShapefromBEDOutput extends JFrame {
 				String command = DNAShapefromBEDCLI.getCLIcommand(GENOME, XBED, OUT_BASENAME, OUTPUT_TYPE, STRAND, OUTPUT_COMPOSITE, OUTPUT_MATRIX, OUTPUT_GZIP);
 				LogItem new_li = new LogItem(command);
 				firePropertyChange("log", old_li, new_li);
-				// Execute script
 				DNAShapefromBED script_obj = new DNAShapefromBED(GENOME, XBED, OUT_BASENAME, OUTPUT_TYPE, STRAND, OUTPUT_COMPOSITE, OUTPUT_MATRIX, OUTPUT_GZIP, PS);
-				try {
-					script_obj.run();
-				} catch (Exception e) {
-					e.printStackTrace();
-				}
+				// Execute script
+				script_obj.run();
 				// Update log item 
 				new_li.setStopTime(new Timestamp(new Date().getTime()));
 				new_li.setStatus(0);
 				old_li = new_li;
-					// Convert average and statistics to output tabs panes
+					// Convert averages to output tabs panes
 					for (Integer shape: OUTPUT_TYPE){
 						tabbedPane_Scatterplot.add(DNAShapeReference.HEADERS[shape], script_obj.getCharts(shape));
 						JScrollPane scrollPane = new JScrollPane(TextAreas.get(shape), JScrollPane.VERTICAL_SCROLLBAR_ALWAYS,

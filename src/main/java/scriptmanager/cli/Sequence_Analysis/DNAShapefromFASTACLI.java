@@ -85,9 +85,9 @@ public class DNAShapefromFASTACLI implements Callable<Integer> {
 		@Option(names = { "--shift" }, description = "output shift")
 		public boolean shift = false;
 		@Option(names = { "-a", "--2013" }, description = "output groove, roll, propeller twist, and helical twist (equivalent to -grpl).")
-		public boolean all = false;
+		public boolean originalAll = false;
 		@Option(names = { "--2021" }, description = "output all 14 shapes")
-		public boolean everything = false;
+		public boolean all = false;
 	}
 
 	private short outputMatrix = DNAShapefromBED.NO_MATRIX;
@@ -146,33 +146,40 @@ public class DNAShapefromFASTACLI implements Callable<Integer> {
 			}
 		}
 
-
 		OUTPUT_TYPES = new ArrayList<>();
-		if (shape.everything){
+		if (shape.groove) { OUTPUT_TYPES.add(DNAShapeReference.MGW); }
+		if (shape.propeller) { OUTPUT_TYPES.add(DNAShapeReference.PROPT); }
+		if (shape.helical) { OUTPUT_TYPES.add(DNAShapeReference.HELT); }
+		if (shape.roll) { OUTPUT_TYPES.add(DNAShapeReference.ROLL); }
+		if (shape.ep) { OUTPUT_TYPES.add(DNAShapeReference.EP); }
+		if (shape.stretch) { OUTPUT_TYPES.add(DNAShapeReference.STRETCH); }
+		if (shape.buckle) { OUTPUT_TYPES.add(DNAShapeReference.BUCKLE); }
+		if (shape.shear) { OUTPUT_TYPES.add(DNAShapeReference.SHEAR); }
+		if (shape.opening) { OUTPUT_TYPES.add(DNAShapeReference.OPENING); }
+		if (shape.stagger) { OUTPUT_TYPES.add(DNAShapeReference.STAGGER); }
+		if (shape.tilt) { OUTPUT_TYPES.add(DNAShapeReference.TILT); }
+		if (shape.slide) { OUTPUT_TYPES.add(DNAShapeReference.SLIDE); }
+		if (shape.rise) { OUTPUT_TYPES.add(DNAShapeReference.RISE); }
+		if (shape.shift) { OUTPUT_TYPES.add(DNAShapeReference.SHIFT); }
+		if (shape.all){
 			for (int i = 0; i < 14; i++){
-				OUTPUT_TYPES.add(i);
+				if (OUTPUT_TYPES.contains(i)){
+					r += "(!)Please avoid mixing the \"-a\" flag with the other shape flags.\n";
+				}
+				else {
+					OUTPUT_TYPES.add(i);
+				}
 			}
 		}
-		else if (shape.all){
+		else if (shape.originalAll){
 			for (int i = 0; i < 5; i++){
-				OUTPUT_TYPES.add(i);
+				if (OUTPUT_TYPES.contains(i)){
+					r += "(!)Please avoid mixing the \"--2013\" flag with the other shape flags.\n";
+				}
+				else {
+					OUTPUT_TYPES.add(i);
+				}
 			}
-		}
-		else {
-			if (shape.groove) { OUTPUT_TYPES.add(DNAShapeReference.MGW); }
-			if (shape.propeller) { OUTPUT_TYPES.add(DNAShapeReference.PROPT); }
-			if (shape.helical) { OUTPUT_TYPES.add(DNAShapeReference.HELT); }
-			if (shape.roll) { OUTPUT_TYPES.add(DNAShapeReference.ROLL); }
-			if (shape.ep) { OUTPUT_TYPES.add(DNAShapeReference.EP); }
-			if (shape.stretch) { OUTPUT_TYPES.add(DNAShapeReference.STRETCH); }
-			if (shape.buckle) { OUTPUT_TYPES.add(DNAShapeReference.BUCKLE); }
-			if (shape.shear) { OUTPUT_TYPES.add(DNAShapeReference.SHEAR); }
-			if (shape.opening) { OUTPUT_TYPES.add(DNAShapeReference.OPENING); }
-			if (shape.stagger) { OUTPUT_TYPES.add(DNAShapeReference.STAGGER); }
-			if (shape.tilt) { OUTPUT_TYPES.add(DNAShapeReference.TILT); }
-			if (shape.slide) { OUTPUT_TYPES.add(DNAShapeReference.SLIDE); }
-			if (shape.rise) { OUTPUT_TYPES.add(DNAShapeReference.RISE); }
-			if (shape.shift) { OUTPUT_TYPES.add(DNAShapeReference.SHIFT); }
 		}
 
 		if (matrix && cdt) {

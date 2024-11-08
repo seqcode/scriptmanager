@@ -210,7 +210,7 @@ public class DNAShapefromFASTA {
 					OUT_FILES.get(shape).close();
 				}
 			}
-			// Calculate averages based on number of scores at each coordinate
+			// Calculate averages based on total number of strand (mimics TagPileup)
 			for (int shape : OUTPUT_TYPES) {
 				double[] totals = AVG_ARRS.get(shape)[0];
 				double[] counts = AVG_ARRS.get(shape)[1];
@@ -221,6 +221,7 @@ public class DNAShapefromFASTA {
 				double[][] averages = new double[1][predictionsLength];
 				for (int i = 0; i < averages[0].length; i++){
 					if (!Double.isNaN(counts[i])){
+						// Dividing by the count[i] would divide total by number of strands at that coord
 						// averages[0][i] = totals[i] / counts[i];
 						averages[0][i] = totals[i] / counter;
 					}
