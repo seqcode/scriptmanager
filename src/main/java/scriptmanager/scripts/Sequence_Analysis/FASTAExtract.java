@@ -1,4 +1,4 @@
-package scriptmanager.scripts.Sequence_Analysis;
+   package scriptmanager.scripts.Sequence_Analysis;
 
 import htsjdk.samtools.SAMException;
 import htsjdk.samtools.reference.FastaSequenceIndexCreator;

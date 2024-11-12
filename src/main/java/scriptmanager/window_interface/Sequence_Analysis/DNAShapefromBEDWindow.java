@@ -38,6 +38,7 @@ import javax.swing.border.TitledBorder;
 import scriptmanager.objects.Exceptions.OptionException;
 import scriptmanager.objects.Exceptions.ScriptManagerException;
 import scriptmanager.objects.ToolDescriptions;
+import scriptmanager.util.DNAShapeReference;
 import scriptmanager.util.FileSelection;
 
 import scriptmanager.scripts.Sequence_Analysis.DNAShapefromBED;
@@ -74,10 +75,21 @@ public class DNAShapefromBEDWindow extends JFrame implements ActionListener, Pro
 	private JProgressBar progressBar;
 
 	private JToggleButton tglAll;
-	private JCheckBox chckbxMinorGrooveWidth;
-	private JCheckBox chckbxRoll;
-	private JCheckBox chckbxHelicalTwist;
-	private JCheckBox chckbxPropellerTwist;
+    private JCheckBox chckbxMinorGrooveWidth;
+    private JCheckBox chckbxRoll;
+    private JCheckBox chckbxHelicalTwist;
+    private JCheckBox chckbxPropellerTwist;
+    private JCheckBox chckbxEP;
+    private JCheckBox chckbxStretch;
+    private JCheckBox chckbxBuckle;
+    private JCheckBox chckbxShear;
+    private JCheckBox chckbxOpening;
+    private JCheckBox chckbxStagger;
+    private JCheckBox chckbxTilt;
+    private JCheckBox chckbxSlide;
+    private JCheckBox chckbxRise;
+    private JCheckBox chckbxShift;
+	private ArrayList<JCheckBox> chckbxArray;
 
 	private JToggleButton tglTab;
 	private JToggleButton tglCdt;
@@ -109,11 +121,21 @@ public class DNAShapefromBEDWindow extends JFrame implements ActionListener, Pro
 					JOptionPane.showMessageDialog(null, "No Structural Predictions Selected!!!");
 				} else {
 					setProgress(0);
-					boolean[] OUTPUT_TYPE = new boolean[4];
-					OUTPUT_TYPE[0] = chckbxMinorGrooveWidth.isSelected();
-					OUTPUT_TYPE[1] = chckbxPropellerTwist.isSelected();
-					OUTPUT_TYPE[2] = chckbxHelicalTwist.isSelected();
-					OUTPUT_TYPE[3] = chckbxRoll.isSelected();
+                    ArrayList<Integer> OUTPUT_TYPES = new ArrayList<Integer>();
+                    if (chckbxMinorGrooveWidth.isSelected()) { OUTPUT_TYPES.add(DNAShapeReference.MGW); }
+                    if (chckbxPropellerTwist.isSelected()) { OUTPUT_TYPES.add(DNAShapeReference.PROPT); }
+                    if (chckbxHelicalTwist.isSelected()) { OUTPUT_TYPES.add(DNAShapeReference.HELT); }
+                    if (chckbxRoll.isSelected()) { OUTPUT_TYPES.add(DNAShapeReference.ROLL); }
+                    if (chckbxEP.isSelected()) { OUTPUT_TYPES.add(DNAShapeReference.EP); }
+                    if (chckbxStretch.isSelected()) { OUTPUT_TYPES.add(DNAShapeReference.STRETCH); }
+                    if (chckbxBuckle.isSelected()) { OUTPUT_TYPES.add(DNAShapeReference.BUCKLE); }
+                    if (chckbxShear.isSelected()) { OUTPUT_TYPES.add(DNAShapeReference.SHEAR); }
+                    if (chckbxOpening.isSelected()) { OUTPUT_TYPES.add(DNAShapeReference.OPENING); }
+                    if (chckbxStagger.isSelected()) { OUTPUT_TYPES.add(DNAShapeReference.STAGGER); }
+                    if (chckbxTilt.isSelected()) { OUTPUT_TYPES.add(DNAShapeReference.TILT); }
+                    if (chckbxSlide.isSelected()) { OUTPUT_TYPES.add(DNAShapeReference.SLIDE); }
+                    if (chckbxRise.isSelected()) { OUTPUT_TYPES.add(DNAShapeReference.RISE); }
+                    if (chckbxShift.isSelected()) { OUTPUT_TYPES.add(DNAShapeReference.SHIFT); }
 
 					short outputMatrix = 0;
 					if (chckbxOutputMatrixData.isSelected()) {
@@ -125,7 +147,7 @@ public class DNAShapefromBEDWindow extends JFrame implements ActionListener, Pro
 					}
 					// Execute script
 					DNAShapefromBEDOutput output_obj = new DNAShapefromBEDOutput(GENOME, BEDFiles,
-							OUT_DIR, OUTPUT_TYPE, chckbxStrand.isSelected(), chckbxOutputCompositeData.isSelected(), outputMatrix, chckbxOutputGzip.isSelected());
+							OUT_DIR, OUTPUT_TYPES, chckbxStrand.isSelected(), chckbxOutputCompositeData.isSelected(), outputMatrix, chckbxOutputGzip.isSelected());
 					output_obj.addPropertyChangeListener("progress", new PropertyChangeListener() {
 						public void propertyChange(PropertyChangeEvent propertyChangeEvent) {
 							int temp = (Integer) propertyChangeEvent.getNewValue();
@@ -169,7 +191,7 @@ public class DNAShapefromBEDWindow extends JFrame implements ActionListener, Pro
 		setTitle("DNA Shape Predictions from BED");
 		setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
 
-		setBounds(125, 125, 475, 500);
+		setBounds(125, 125, 475, 680);
 		contentPane = new JPanel();
 		contentPane.setBorder(new EmptyBorder(5, 5, 5, 5));
 		setContentPane(contentPane);
@@ -217,7 +239,7 @@ public class DNAShapefromBEDWindow extends JFrame implements ActionListener, Pro
 		contentPane.add(btnRemoveBed);
 
 		btnCalculate = new JButton("Calculate");
-		sl_contentPane.putConstraint(SpringLayout.SOUTH, scrollPane, -200, SpringLayout.NORTH, btnCalculate);
+		sl_contentPane.putConstraint(SpringLayout.SOUTH, scrollPane, -315, SpringLayout.NORTH, btnCalculate);
 		sl_contentPane.putConstraint(SpringLayout.SOUTH, btnCalculate, -5, SpringLayout.SOUTH, contentPane);
 		sl_contentPane.putConstraint(SpringLayout.WEST, btnCalculate, 165, SpringLayout.WEST, contentPane);
 		sl_contentPane.putConstraint(SpringLayout.EAST, btnCalculate, -165, SpringLayout.EAST, contentPane);
@@ -261,7 +283,7 @@ public class DNAShapefromBEDWindow extends JFrame implements ActionListener, Pro
 
 		// Shape Parameters
 		JPanel pnlShapeOptions = new JPanel();
-		sl_contentPane.putConstraint(SpringLayout.NORTH, pnlShapeOptions, -230, SpringLayout.SOUTH, contentPane);
+		sl_contentPane.putConstraint(SpringLayout.NORTH, pnlShapeOptions, -340, SpringLayout.SOUTH, contentPane);
 		sl_contentPane.putConstraint(SpringLayout.WEST, pnlShapeOptions, 0, SpringLayout.WEST, contentPane);
 		sl_contentPane.putConstraint(SpringLayout.EAST, pnlShapeOptions, 0, SpringLayout.EAST, contentPane);
 		sl_contentPane.putConstraint(SpringLayout.SOUTH, pnlShapeOptions, -160, SpringLayout.SOUTH, contentPane);
@@ -273,92 +295,125 @@ public class DNAShapefromBEDWindow extends JFrame implements ActionListener, Pro
 		ttlShapeOptions.setTitleFont(new Font("Lucida Grande", Font.ITALIC, 13));
 		pnlShapeOptions.setBorder(ttlShapeOptions);
 
+		chckbxArray = new ArrayList<JCheckBox>();
 		tglAll = new JToggleButton("Select All");
 		sl_ShapeOptions.putConstraint(SpringLayout.NORTH, tglAll, 0, SpringLayout.NORTH, pnlShapeOptions);
 		sl_ShapeOptions.putConstraint(SpringLayout.WEST, tglAll, 10, SpringLayout.WEST, pnlShapeOptions);
 		sl_ShapeOptions.putConstraint(SpringLayout.EAST, tglAll, 130, SpringLayout.WEST, pnlShapeOptions);
 		tglAll.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
-				chckbxMinorGrooveWidth.setSelected(tglAll.isSelected());
-				chckbxRoll.setSelected(tglAll.isSelected());
-				chckbxHelicalTwist.setSelected(tglAll.isSelected());
-				chckbxPropellerTwist.setSelected(tglAll.isSelected());
+				for (JCheckBox chckbx: chckbxArray){
+					chckbx.setEnabled(false);
+				}
+				boolean isSelected = tglAll.isSelected();
+				for (JCheckBox chckbx: chckbxArray){
+					chckbx.setSelected(isSelected);
+				}
+				for (JCheckBox chckbx: chckbxArray){
+					chckbx.setEnabled(true);
+				}	
 				tglAll.setText(tglAll.isSelected() ? "Deselect All" : "Select All");
 			}
 		});
 		pnlShapeOptions.add(tglAll);
 
 		chckbxMinorGrooveWidth = new JCheckBox("Minor Groove Width");
+		sl_ShapeOptions.putConstraint(SpringLayout.NORTH, chckbxMinorGrooveWidth, 0, SpringLayout.NORTH, tglAll);
 		sl_ShapeOptions.putConstraint(SpringLayout.WEST, chckbxMinorGrooveWidth, 30, SpringLayout.EAST, tglAll);
-		chckbxMinorGrooveWidth.addItemListener(new ItemListener() {
-			public void itemStateChanged(ItemEvent e) {
-				if (!chckbxMinorGrooveWidth.isSelected()) {
-					tglAll.setSelected(false);
-					tglAll.setText("Select All");
-				} else {
-					if (chckbxRoll.isSelected() && chckbxHelicalTwist.isSelected() && chckbxPropellerTwist.isSelected()) {
-						tglAll.setSelected(true);
-						tglAll.setText("Deselect All");
-					}
-				}
-			}
-		});
+		chckbxMinorGrooveWidth.addItemListener(e -> updateToggleAll());
 		pnlShapeOptions.add(chckbxMinorGrooveWidth);
+		chckbxArray.add(chckbxMinorGrooveWidth);
 
 		chckbxRoll = new JCheckBox("Roll");
-		sl_ShapeOptions.putConstraint(SpringLayout.NORTH, chckbxRoll, 0, SpringLayout.SOUTH, chckbxMinorGrooveWidth);
+		sl_ShapeOptions.putConstraint(SpringLayout.NORTH, chckbxRoll, 10, SpringLayout.SOUTH, chckbxMinorGrooveWidth);
 		sl_ShapeOptions.putConstraint(SpringLayout.WEST, chckbxRoll, 0, SpringLayout.WEST, chckbxMinorGrooveWidth);
-		chckbxRoll.addItemListener(new ItemListener() {
-			public void itemStateChanged(ItemEvent e) {
-				if (!chckbxRoll.isSelected()) {
-					tglAll.setSelected(false);
-					tglAll.setText("Select All");
-				} else {
-					if (chckbxMinorGrooveWidth.isSelected() && chckbxHelicalTwist.isSelected() && chckbxPropellerTwist.isSelected()) {
-						tglAll.setSelected(true);
-						tglAll.setText("Deselect All");
-					}
-				}
-			}
-		});
+		chckbxRoll.addItemListener(e -> updateToggleAll());
 		pnlShapeOptions.add(chckbxRoll);
+		chckbxArray.add(chckbxRoll);
 
 		chckbxHelicalTwist = new JCheckBox("Helical Twist");
-		sl_ShapeOptions.putConstraint(SpringLayout.NORTH, chckbxHelicalTwist, 0, SpringLayout.NORTH, chckbxMinorGrooveWidth);
+		sl_ShapeOptions.putConstraint(SpringLayout.NORTH, chckbxHelicalTwist, 0, SpringLayout.NORTH, chckbxRoll);
 		sl_ShapeOptions.putConstraint(SpringLayout.WEST, chckbxHelicalTwist, 10, SpringLayout.EAST, chckbxMinorGrooveWidth);
-		chckbxHelicalTwist.addItemListener(new ItemListener() {
-			public void itemStateChanged(ItemEvent e) {
-				if (!chckbxHelicalTwist.isSelected()) {
-					tglAll.setSelected(false);
-					tglAll.setText("Select All");
-				} else {
-					if (chckbxMinorGrooveWidth.isSelected() && chckbxRoll.isSelected() && chckbxPropellerTwist.isSelected()) {
-						tglAll.setSelected(true);
-						tglAll.setText("Deselect All");
-					}
-				}
-			}
-		});
+		chckbxHelicalTwist.addItemListener(e -> updateToggleAll());
 		pnlShapeOptions.add(chckbxHelicalTwist);
+		chckbxArray.add(chckbxHelicalTwist);
 
 		chckbxPropellerTwist = new JCheckBox("Propeller Twist");
-		sl_ShapeOptions.putConstraint(SpringLayout.NORTH, chckbxPropellerTwist, 0, SpringLayout.NORTH, chckbxRoll);
+		sl_ShapeOptions.putConstraint(SpringLayout.NORTH, chckbxPropellerTwist, 0, SpringLayout.NORTH, chckbxMinorGrooveWidth);
 		sl_ShapeOptions.putConstraint(SpringLayout.WEST, chckbxPropellerTwist, 0, SpringLayout.WEST, chckbxHelicalTwist);
-		chckbxPropellerTwist.addItemListener(new ItemListener() {
-			public void itemStateChanged(ItemEvent e) {
-				if (!chckbxPropellerTwist.isSelected()) {
-					tglAll.setSelected(false);
-					tglAll.setText("Select All");
-				} else {
-					if (chckbxMinorGrooveWidth.isSelected() && chckbxRoll.isSelected() && chckbxHelicalTwist.isSelected()) {
-						tglAll.setSelected(true);
-						tglAll.setText("Deselect All");
-					}
-				}
-			}
-		});
+		chckbxPropellerTwist.addItemListener(e -> updateToggleAll());
 		pnlShapeOptions.add(chckbxPropellerTwist);
+		chckbxArray.add(chckbxPropellerTwist);
 
+		chckbxEP = new JCheckBox("EP");
+		sl_ShapeOptions.putConstraint(SpringLayout.NORTH, chckbxEP, 10, SpringLayout.SOUTH, chckbxMinorGrooveWidth);
+		sl_ShapeOptions.putConstraint(SpringLayout.WEST, chckbxEP, 0, SpringLayout.WEST, tglAll);
+		chckbxEP.addItemListener(e -> updateToggleAll());
+		pnlShapeOptions.add(chckbxEP);
+		chckbxArray.add(chckbxEP);
+
+		chckbxStretch = new JCheckBox("Stretch");
+		sl_ShapeOptions.putConstraint(SpringLayout.NORTH, chckbxStretch, 10, SpringLayout.SOUTH, chckbxEP);
+		sl_ShapeOptions.putConstraint(SpringLayout.WEST, chckbxStretch, 0, SpringLayout.WEST, tglAll);
+		chckbxStretch.addItemListener(e -> updateToggleAll());
+		pnlShapeOptions.add(chckbxStretch);
+		chckbxArray.add(chckbxStretch);
+
+		chckbxBuckle = new JCheckBox("Buckle");
+		sl_ShapeOptions.putConstraint(SpringLayout.NORTH, chckbxBuckle, 0, SpringLayout.NORTH, chckbxStretch);
+		sl_ShapeOptions.putConstraint(SpringLayout.WEST, chckbxBuckle, 00, SpringLayout.WEST, chckbxMinorGrooveWidth);
+		chckbxBuckle.addItemListener(e -> updateToggleAll());
+		pnlShapeOptions.add(chckbxBuckle);
+		chckbxArray.add(chckbxBuckle);
+
+		chckbxShear = new JCheckBox("Shear");
+		sl_ShapeOptions.putConstraint(SpringLayout.NORTH, chckbxShear, 0, SpringLayout.NORTH, chckbxBuckle);
+		sl_ShapeOptions.putConstraint(SpringLayout.WEST, chckbxShear, 00, SpringLayout.WEST, chckbxHelicalTwist);
+		chckbxShear.addItemListener(e -> updateToggleAll());
+		pnlShapeOptions.add(chckbxShear);
+		chckbxArray.add(chckbxShear);
+
+		chckbxOpening = new JCheckBox("Opening");
+		sl_ShapeOptions.putConstraint(SpringLayout.NORTH, chckbxOpening, 10, SpringLayout.SOUTH, chckbxStretch);
+		sl_ShapeOptions.putConstraint(SpringLayout.WEST, chckbxOpening, 0, SpringLayout.WEST, tglAll);
+		chckbxOpening.addItemListener(e -> updateToggleAll());
+		pnlShapeOptions.add(chckbxOpening);
+		chckbxArray.add(chckbxOpening);
+
+		chckbxStagger = new JCheckBox("Stagger");
+		sl_ShapeOptions.putConstraint(SpringLayout.NORTH, chckbxStagger, 0, SpringLayout.NORTH, chckbxOpening);
+		sl_ShapeOptions.putConstraint(SpringLayout.WEST, chckbxStagger, 0, SpringLayout.WEST, chckbxMinorGrooveWidth);
+		chckbxStagger.addItemListener(e -> updateToggleAll());
+		pnlShapeOptions.add(chckbxStagger);
+		chckbxArray.add(chckbxStagger);
+
+		chckbxTilt = new JCheckBox("Tilt");
+		sl_ShapeOptions.putConstraint(SpringLayout.NORTH, chckbxTilt, 0, SpringLayout.NORTH, chckbxStagger);
+		sl_ShapeOptions.putConstraint(SpringLayout.WEST, chckbxTilt, 0, SpringLayout.WEST, chckbxHelicalTwist);
+		chckbxTilt.addItemListener(e -> updateToggleAll());
+		pnlShapeOptions.add(chckbxTilt);
+		chckbxArray.add(chckbxTilt);
+
+		chckbxSlide = new JCheckBox("Slide");
+		sl_ShapeOptions.putConstraint(SpringLayout.NORTH, chckbxSlide, 10, SpringLayout.SOUTH, chckbxOpening);
+		sl_ShapeOptions.putConstraint(SpringLayout.WEST, chckbxSlide, 0, SpringLayout.WEST, tglAll);
+		chckbxSlide.addItemListener(e -> updateToggleAll());
+		pnlShapeOptions.add(chckbxSlide);
+		chckbxArray.add(chckbxSlide);
+
+		chckbxRise = new JCheckBox("Rise");
+		sl_ShapeOptions.putConstraint(SpringLayout.NORTH, chckbxRise, 0, SpringLayout.NORTH, chckbxSlide);
+		sl_ShapeOptions.putConstraint(SpringLayout.WEST, chckbxRise, 0, SpringLayout.WEST, chckbxMinorGrooveWidth);
+		chckbxRise.addItemListener(e -> updateToggleAll());
+		pnlShapeOptions.add(chckbxRise);
+		chckbxArray.add(chckbxRise);
+
+		chckbxShift = new JCheckBox("Shift");
+		sl_ShapeOptions.putConstraint(SpringLayout.NORTH, chckbxShift, 0, SpringLayout.NORTH, chckbxRise);
+		sl_ShapeOptions.putConstraint(SpringLayout.WEST, chckbxShift, 0, SpringLayout.WEST, chckbxHelicalTwist);
+		chckbxShift.addItemListener(e -> updateToggleAll());
+		pnlShapeOptions.add(chckbxShift);
+		chckbxArray.add(chckbxShift);
 
 		// Output Parameters
 		JPanel pnlOutputOptions = new JPanel();
@@ -485,6 +540,22 @@ public class DNAShapefromBEDWindow extends JFrame implements ActionListener, Pro
 			firePropertyChange("log", evt.getOldValue(), evt.getNewValue());
 		}
 	}
+
+	public void updateToggleAll(){
+		boolean allSelected = true;
+		for (JCheckBox chckbx: chckbxArray){
+			if (!chckbx.isSelected()){
+				allSelected = false;
+			}
+		}
+        if (allSelected) {
+			tglAll.setSelected(true);
+			tglAll.setText("Deselect All");
+		} else {
+			tglAll.setSelected(false);
+			tglAll.setText("Select All");
+		}
+    }
 
 	/**
 	 * Makes the content pane non-interactive If the window should be interactive data
