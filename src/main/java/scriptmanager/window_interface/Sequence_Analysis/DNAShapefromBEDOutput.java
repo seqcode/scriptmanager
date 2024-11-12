@@ -15,6 +15,7 @@ import javax.swing.JScrollPane;
 import javax.swing.JTabbedPane;
 import javax.swing.JTextArea;
 import javax.swing.SpringLayout;
+import javax.swing.SwingUtilities;
 
 import scriptmanager.objects.Exceptions.OptionException;
 import scriptmanager.objects.Exceptions.ScriptManagerException;
@@ -139,13 +140,16 @@ public class DNAShapefromBEDOutput extends JFrame {
 				new_li.setStopTime(new Timestamp(new Date().getTime()));
 				new_li.setStatus(0);
 				old_li = new_li;
-					// Convert averages to output tabs panes
-					for (Integer shape: OUTPUT_TYPE){
+				// Convert average and statistics to output tabs panes
+				for (Integer shape: OUTPUT_TYPE){
+					JScrollPane scrollPane = new JScrollPane(TextAreas.get(shape), JScrollPane.VERTICAL_SCROLLBAR_ALWAYS,
+								JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
+					// Prevent RuntimeException caused by multithreading
+					SwingUtilities.invokeLater(() -> {
 						tabbedPane_Scatterplot.add(DNAShapeReference.HEADERS[shape], script_obj.getCharts(shape));
-						JScrollPane scrollPane = new JScrollPane(TextAreas.get(shape), JScrollPane.VERTICAL_SCROLLBAR_ALWAYS,
-									JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
 						tabbedPane_Statistics.add(DNAShapeReference.HEADERS[shape], scrollPane);
-					}
+					});
+				}
 				// Update progress
 				firePropertyChange("progress", x, x + 1);
 		}

@@ -100,6 +100,7 @@ public class DNAShapefromBED {
 	 *                        matrix in CDT format, and write matrix in tab format
 	 * @param gzOutput        whether to output compressed file
 	 * @param ps              HashMap of PrintStream objects corresponding to each shape type (for GUI)
+	 * @throws IOException Invalid file or parameters
 	 */
 	public DNAShapefromBED(File gen, File b, File out, ArrayList<Integer> type, boolean str, boolean outputComposite, short outputMatrix, boolean gzOutput, HashMap<Integer, CustomOutputStream> ps) {
 		GENOME = gen;
