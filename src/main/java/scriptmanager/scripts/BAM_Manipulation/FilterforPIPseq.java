@@ -4,6 +4,7 @@ import htsjdk.samtools.AbstractBAMFileIndex;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMFileWriter;
 import htsjdk.samtools.SAMFileWriterFactory;
+import htsjdk.samtools.SAMProgramRecord;
 import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SAMSequenceRecord;
 import htsjdk.samtools.SamReader;
@@ -16,7 +17,10 @@ import htsjdk.samtools.util.IOUtil;
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintStream;
+import java.util.ArrayList;
 
+import scriptmanager.cli.BAM_Manipulation.FilterforPIPseqCLI;
+import scriptmanager.objects.ToolDescriptions;
 import scriptmanager.util.FASTAUtilities;
 
 public class FilterforPIPseq {
@@ -48,6 +52,33 @@ public class FilterforPIPseq {
 		IOUtil.assertFileIsWritable(output);
 		final SamReader reader = SamReaderFactory.makeDefault().open(bamFile);
 		reader.getFileHeader().setSortOrder(SAMFileHeader.SortOrder.coordinate);
+
+		Integer idNumber = -1;
+		String programName = "scriptmanager";
+		String previousRecord = null;
+		//Determine if there are multiple instances of ScriptManager usage
+		for (SAMProgramRecord record: reader.getFileHeader().getProgramRecords()){
+			previousRecord = record.getId();
+			if (previousRecord.contains(programName)) {
+				String numerics = previousRecord.replaceAll("[^0-9]", "");
+				if (numerics.isEmpty()) {
+					idNumber = 0;
+				} else {
+					idNumber = Math.max(idNumber, Integer.parseInt(numerics));
+				}
+			}
+		}
+		//Create new SAMProgramRecord with appropriate details
+		String programID = (idNumber > -1)? programName + "." + (idNumber + 1): programName;
+		SAMProgramRecord record = new SAMProgramRecord(programID);
+		record.setCommandLine(FilterforPIPseqCLI.getCLIcommand(bamFile, genome, output, SEQ));
+		record.setProgramVersion(ToolDescriptions.VERSION);
+		record.setProgramName(programName);
+		if (previousRecord != null){
+			record.setPreviousProgramGroupId(previousRecord);
+		}
+		reader.getFileHeader().addProgramRecord(record);
+
 		final SAMFileWriter writer = new SAMFileWriterFactory().makeSAMOrBAMWriter(reader.getFileHeader(), false,
 				output);
 
