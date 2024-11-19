@@ -12,21 +12,24 @@ import java.util.ArrayList;
  * @author Erik Pavloski
  * @see scriptmanager.window_interface.BAM_Manipulation.BAIIndexerWindow
  */
-public class BAIIndexerWrapper {
+public class BAIIndexer {
+	/**
+	 * Creates a new BAIIndexer object (unnecessary becuase this class is a collection of static methods)
+	 */
+	public BAIIndexer(){}
 	/**
 	 * Index a BAM file and output said index to a file of the same name with a .bai
 	 * extension
 	 * 
 	 * @param input the BAM file to index
 	 * @return the BAM index file (.bai)
-	 * @throws IOException
+	 * @throws IOException Invalid file or parameters
 	 */
 	public static File generateIndex(File input) throws IOException {
 		// Tells user that their file is being generated
 		System.out.println("Generating Index File...");
 		// Build output filepath
-		String[] NAME = input.getName().split("\\.");
-		String output = input.getParent() + File.separator + NAME[0] + "_index.bai";
+		String output = input.getCanonicalPath() + ".bai";
 		File retVal = new File(output);
 		// Instatiate Picard object
 		final BuildBamIndex buildBamIndex = new BuildBamIndex();
@@ -36,6 +39,7 @@ public class BAIIndexerWrapper {
 		args.add("OUTPUT=" + retVal.getAbsolutePath());
 		// Call Picard with args
 		buildBamIndex.instanceMain(args.toArray(new String[args.size()]));
+
 		System.out.println("Index File Generated");
 		return retVal;
 	}

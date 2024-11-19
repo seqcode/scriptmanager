@@ -32,7 +32,7 @@ import javax.swing.border.EmptyBorder;
 import scriptmanager.objects.LogItem;
 import scriptmanager.cli.BAM_Manipulation.BAIIndexerCLI;
 import scriptmanager.util.FileSelection;
-import scriptmanager.scripts.BAM_Manipulation.BAIIndexerWrapper;
+import scriptmanager.scripts.BAM_Manipulation.BAIIndexer;
 
 /**
  * GUI for collecting inputs to be processed by

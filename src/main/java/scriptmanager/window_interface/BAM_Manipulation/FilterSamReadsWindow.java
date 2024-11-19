@@ -2,7 +2,7 @@ package scriptmanager.window_interface.BAM_Manipulation;
 
 
 import htsjdk.samtools.SAMException;
-import scriptmanager.scripts.BAM_Manipulation.BAIIndexerWrapper;
+import scriptmanager.scripts.BAM_Manipulation.BAIIndexer;
 import scriptmanager.scripts.BAM_Manipulation.BAMFileSort;
 import scriptmanager.scripts.BAM_Manipulation.FilterSamReadsWrapper;
 import scriptmanager.scripts.BAM_Manipulation.ValidateSamWrapper;
