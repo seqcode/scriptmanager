@@ -12,11 +12,15 @@ import java.util.ArrayList;
 import java.util.concurrent.Callable;
 
 import scriptmanager.objects.ToolDescriptions;
+import scriptmanager.objects.Exceptions.OptionException;
 import scriptmanager.scripts.Read_Analysis.AggregateData;
 
 /**
-	Read_AnalysisCLI/AggregateDataCLI
-*/
+ * Command line interface for
+ * {@link scriptmanager.scripts.Read_Analysis.AggregateData}
+ * 
+ * @author Olivia Lang
+ */
 @Command(name = "aggregate-data", mixinStandardHelpOptions = true,
 	description = ToolDescriptions.aggregate_data_description,
 	version = "ScriptManager "+ ToolDescriptions.VERSION,
@@ -24,6 +28,11 @@ import scriptmanager.scripts.Read_Analysis.AggregateData;
 	exitCodeOnInvalidInput = 1,
 	exitCodeOnExecutionException = 1)
 public class AggregateDataCLI implements Callable<Integer> {
+
+	/**
+     * Creates a new AggreagateDataCLI object
+     */
+    public AggregateDataCLI() {}
 	
 	@Parameters( index="0..", description = "The matrix files whose statistics we want.")
 	private File[] matrixFiles;
@@ -32,6 +41,8 @@ public class AggregateDataCLI implements Callable<Integer> {
 	private boolean fileList = false;
 	@Option(names = {"-o", "--output"}, description = "Specify output file (default = <input1>_SCORES.out, <input2_SCORES.out, ... or ALL_SCORES.out if -m flag is used)")
 	private File output;
+	@Option(names = {"-z", "--gzip"}, description = "gzip output (default=false)")
+	private boolean gzOutput = false;
 	
 	@ArgGroup(exclusive = true, heading = "Aggregation Method%n")
 	AggType aggr = new AggType();
@@ -62,6 +73,10 @@ public class AggregateDataCLI implements Callable<Integer> {
 	private int aggType = 0;
 	private ArrayList<File> matFiles = new ArrayList<File>();
 	
+	/**
+	 * Runs when this subcommand is called, running script in respective script package with user defined arguments
+	 * @throws IOException Invalid file or parameters
+	 */
 	@Override
 	public Integer call() throws Exception {
 		System.err.println( ">AggregateDataCLI.call()" );
@@ -72,10 +87,9 @@ public class AggregateDataCLI implements Callable<Integer> {
 			System.exit(1);
 		}
 		
-		AggregateData script_obj = new AggregateData(matFiles, output, merge, startROW, startCOL, aggType);
+		AggregateData script_obj = new AggregateData(matFiles, output, merge, startROW, startCOL, aggType, gzOutput);
 		script_obj.run();
 		
-		System.err.println(script_obj.getMessage());
 		return(0);
 	}
 	
@@ -136,22 +150,73 @@ public class AggregateDataCLI implements Callable<Integer> {
 					r += "(!)Must indicate directory (not a file) if you're not using the merge option.";
 				}
 			}
-		}else{
+		} else {
 			output = new File(System.getProperty("user.dir"));
 		}
 		
 		//Set numeric indicator for aggregation method
-		if(aggr.avg) { aggType = 1; }
-		else if(aggr.med) { aggType = 2; }
-		else if(aggr.mod) { aggType = 3; }
-		else if(aggr.min) { aggType = 4; }
-		else if(aggr.max) { aggType = 5; }
-		else if(aggr.var) { aggType = 6; }
-		
+		if(aggr.avg) { aggType = AggregateData.AVERAGE; }
+		else if(aggr.med) { aggType = AggregateData.MEDIAN; }
+		else if(aggr.mod) { aggType = AggregateData.MODE; }
+		else if(aggr.min) { aggType = AggregateData.MINIMUM; }
+		else if(aggr.max) { aggType = AggregateData.MAXIMUM; }
+		else if(aggr.var) { aggType = AggregateData.POSITIONAL_VARIANCE; }
+
 		//validate row&column start indexes
 		if(startROW<0){ r += "(!)Row start must not be less than zero\n"; }
 		if(startCOL<0){ r += "(!)Column start must not be less than zero\n"; }
 				
 		return(r);
+	}
+
+	/**
+	 * Reconstruct CLI command
+	 * 
+	 * @param in       ArrayList of TAB files to be processed
+	 * @param output   Output directory
+	 * @param m        Whether results should be merged into one file
+	 * @param r        Starting row (1-indexed)
+	 * @param l        Starting column (1-indexed)
+	 * @param index    the metric to aggregate by
+	 * @param gzOutput gzip output
+	 * @return command line to execute with formatted inputs
+	 * @throws OptionException
+	 */
+	public static String getCLIcommand(ArrayList<File> in, File output, boolean m, int r, int l, int index, boolean gzOutput) throws OptionException {
+		String command = "java -jar $SCRIPTMANAGER read-analysis aggregate-data";
+		command += " -o " + output.getAbsolutePath();
+		command += gzOutput ? " --gzip" : "";
+		command += m ? " -m" : "";
+		switch (index) {
+			case AggregateData.SUM:
+				command += " --sum";
+				break;
+			case AggregateData.AVERAGE:
+				command += " --avg";
+				break;
+			case AggregateData.MEDIAN:
+				command += " --med";
+				break;
+			case AggregateData.MODE:
+				command += " --mod";
+				break;
+			case AggregateData.MINIMUM:
+				command += " --min";
+				break;
+			case AggregateData.MAXIMUM:
+				command += " --max";
+				break;
+			case AggregateData.POSITIONAL_VARIANCE:
+				command += " --var";
+				break;
+			default:
+				throw new OptionException("invalid scaling type value");
+		}
+		command += " -r " + r;
+		command += " -l " + l;
+		for (int i = 0; i<in.size(); i++) {
+			command += " " + in.get(i).getAbsolutePath();
+		}
+		return (command);
 	}
 }

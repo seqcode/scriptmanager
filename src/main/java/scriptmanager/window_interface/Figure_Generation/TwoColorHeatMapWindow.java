@@ -37,11 +37,24 @@ import javax.swing.SwingConstants;
 import javax.swing.SwingWorker;
 import javax.swing.border.EmptyBorder;
 
+import scriptmanager.objects.ToolDescriptions;
+import scriptmanager.objects.Exceptions.OptionException;
 import scriptmanager.util.FileSelection;
 
+/**
+ * GUI for collecting inputs to be processed by
+ * {@link scriptmanager.scripts.Figure_Generation.TwoColorHeatMap}
+ * 
+ * @author William KM Lai
+ * @see scriptmanager.scripts.Figure_Generation.TwoColorHeatMap
+ * @see scriptmanager.window_interface.Figure_Generation.TwoColorHeatMapOutput
+ */
 @SuppressWarnings("serial")
 public class TwoColorHeatMapWindow extends JFrame implements ActionListener, PropertyChangeListener {
 	private JPanel contentPane;
+	/**
+	 * FileChooser which opens to user's directory
+	 */
 	protected JFileChooser fc = new JFileChooser(new File(System.getProperty("user.dir")));
 
 	final DefaultListModel<String> expList;
@@ -52,6 +65,9 @@ public class TwoColorHeatMapWindow extends JFrame implements ActionListener, Pro
 	private JButton btnGen;
 	private JProgressBar progressBar;
 
+	/**
+	 * Used to run the script efficiently
+	 */
 	public Task task;
 	private JTextField txtRow;
 	private JTextField txtCol;
@@ -75,11 +91,12 @@ public class TwoColorHeatMapWindow extends JFrame implements ActionListener, Pro
 
 	private File OUT_DIR = null;
 
+	/**
+	 * Organizes user inputs for calling script
+	 */
 	class Task extends SwingWorker<Void, Void> {
 		@Override
-		public Void doInBackground() throws IOException {
-			setProgress(0);
-
+		public Void doInBackground() {
 			try {
 				if (txtFiles.size() < 1) {
 					JOptionPane.showMessageDialog(null, "No files loaded!!!");
@@ -101,6 +118,7 @@ public class TwoColorHeatMapWindow extends JFrame implements ActionListener, Pro
 					JOptionPane.showMessageDialog(null,
 							"Invalid quantile contrast threshold value entered!!! Must be larger than 0-1");
 				}
+				setProgress(0);
 
 				Color COLOR = btnColor.getForeground();
 				int startR = Integer.parseInt(txtRow.getText());
@@ -118,32 +136,41 @@ public class TwoColorHeatMapWindow extends JFrame implements ActionListener, Pro
 				if (OUT_DIR == null) {
 					OUT_DIR = new File(System.getProperty("user.dir"));
 				}
-
 				double absolute = Double.parseDouble(txtAbsolute.getText());
 				if (rdbtnPercentileValue.isSelected()) {
 					absolute = -999;
 				}
 				double quantile = Double.parseDouble(txtPercent.getText());
 
-				TwoColorHeatMapOutput heat = new TwoColorHeatMapOutput(txtFiles, COLOR, startR, startC, pHeight, pWidth,
+				TwoColorHeatMapOutput output_obj = new TwoColorHeatMapOutput(txtFiles, COLOR, startR, startC, pHeight, pWidth,
 						scaletype, absolute, quantile, OUT_DIR, chckbxOutputHeatmap.isSelected(), chckbxTransparentBackground.isSelected());
-
-				heat.addPropertyChangeListener("heat", new PropertyChangeListener() {
+				output_obj.addPropertyChangeListener("progress", new PropertyChangeListener() {
 					public void propertyChange(PropertyChangeEvent propertyChangeEvent) {
 						int temp = (Integer) propertyChangeEvent.getNewValue();
 						int percentComplete = (int) (((double) (temp) / (txtFiles.size())) * 100);
 						setProgress(percentComplete);
 					}
 				});
-
-				heat.setVisible(true);
-				heat.run();
-
-				setProgress(100);
-				return null;
+				output_obj.addPropertyChangeListener("log", new PropertyChangeListener() {
+					public void propertyChange(PropertyChangeEvent evt) {
+						firePropertyChange("log", evt.getOldValue(), evt.getNewValue());
+					}
+				});
+				output_obj.setVisible(true);
+				output_obj.run();
 			} catch (NumberFormatException nfe) {
 				JOptionPane.showMessageDialog(null, "Invalid Input in Fields!!!");
+			} catch (OptionException oe) {
+				oe.printStackTrace();
+				JOptionPane.showMessageDialog(null, oe.getMessage());
+			} catch (IOException ioe) {
+				ioe.printStackTrace();
+				JOptionPane.showMessageDialog(null, "I/O issues: " + ioe.getMessage());
+			} catch (Exception e) {
+				e.printStackTrace();
+				JOptionPane.showMessageDialog(null, ToolDescriptions.UNEXPECTED_EXCEPTION_MESSAGE + e.getMessage());
 			}
+			setProgress(100);
 			return null;
 		}
 
@@ -514,12 +541,19 @@ public class TwoColorHeatMapWindow extends JFrame implements ActionListener, Pro
 		btnGen.addActionListener(this);
 	}
 
+	/**
+	 * Activates the appropriate settings for outputting a PNG
+	 * @param activate Whether a heat map PNG should be output
+	 */
 	public void activateOutput(boolean activate) {
 		btnOutput.setEnabled(activate);
 		lblOutput.setEnabled(activate);
 		lblCurrentOutput.setEnabled(activate);
 	}
 
+/**
+	 * Runs when a task is invoked, making window non-interactive and executing the task.
+	 */
 	@Override
 	public void actionPerformed(ActionEvent arg0) {
 		massXable(contentPane, false);
@@ -531,15 +565,22 @@ public class TwoColorHeatMapWindow extends JFrame implements ActionListener, Pro
 	}
 
 	/**
-	 * Invoked when task's progress property changes.
+	 * Invoked when task's progress property changes and updates the progress bar.
 	 */
 	public void propertyChange(PropertyChangeEvent evt) {
 		if ("progress" == evt.getPropertyName()) {
 			int progress = (Integer) evt.getNewValue();
 			progressBar.setValue(progress);
+		} else if ("log" == evt.getPropertyName()) {
+			firePropertyChange("log", evt.getOldValue(), evt.getNewValue());
 		}
 	}
 
+	/**
+	 * Makes the content pane non-interactive If the window should be interactive data
+	 * @param con Content pane to make non-interactive
+	 * @param status If the window should be interactive
+	 */
 	public void massXable(Container con, boolean status) {
 		for (Component c : con.getComponents()) {
 			c.setEnabled(status);

@@ -11,6 +11,8 @@ import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.io.File;
 import java.io.IOException;
+import java.sql.Timestamp;
+import java.util.Date;
 import java.util.Vector;
 
 import javax.swing.ButtonGroup;
@@ -31,13 +33,27 @@ import javax.swing.SpringLayout;
 import javax.swing.SwingWorker;
 import javax.swing.border.EmptyBorder;
 
+import scriptmanager.objects.LogItem;
+import scriptmanager.objects.ToolDescriptions;
 import scriptmanager.util.ExtensionFileFilter;
 import scriptmanager.util.FileSelection;
+
+import scriptmanager.cli.File_Utilities.ConvertGFFChrNamesCLI;
 import scriptmanager.scripts.File_Utilities.ConvertChrNames;
 
+/**
+ * GUI for collecting inputs to be processed by
+ * {@link scriptmanager.scripts.File_Utilities.ConvertChrNames}
+ * 
+ * @author Olivia Lang
+ * @see scriptmanager.scripts.File_Utilities.ConvertChrNames
+ */
 @SuppressWarnings("serial")
 public class ConvertGFFChrNamesWindow extends JFrame implements ActionListener, PropertyChangeListener {
 	private JPanel contentPane;
+	/**
+	 * FileChooser which opens to user's directory
+	 */
 	protected JFileChooser fc = new JFileChooser(new File(System.getProperty("user.dir")));
 
 	private File OUT_DIR = null;
@@ -54,43 +70,64 @@ public class ConvertGFFChrNamesWindow extends JFrame implements ActionListener, 
 	private JCheckBox chckbxGzipOutput;
 
 	private JProgressBar progressBar;
+	/**
+	 * Used to run the script efficiently
+	 */
 	public Task task;
 	private JLabel lblCurrentOutput;
 	private JLabel lblDefaultToLocal;
 	private JButton btnOutput;
 
+	/**
+	 * Organizes user inputs for calling script
+	 */
 	class Task extends SwingWorker<Void, Void> {
 		@Override
-		public Void doInBackground() throws IOException {
-			setProgress(0);
-			// apply to each fil in vector
-			for (int x = 0; x < GFFFiles.size(); x++) {
-				File XGFF = GFFFiles.get(x);
-				// Set suffix format
-				String SUFFIX = rdbtnA2R.isSelected() ? "_toRoman.gff" : "_toArabic.gff";
-				SUFFIX += chckbxGzipOutput.isSelected() ? ".gz" : "";
-				// Set output filepath with name and output directory
-				String OUTPUT = ExtensionFileFilter.stripExtension(XGFF);
-				// Strip second extension if input has ".gz" first extension
-				if (XGFF.getName().endsWith(".gff.gz")) {
-					OUTPUT = ExtensionFileFilter.stripExtensionPath(new File(OUTPUT)) ;
+		public Void doInBackground() {
+			try {
+				setProgress(0);
+				LogItem old_li = null;
+				// apply to each fil in vector
+				for (int x = 0; x < GFFFiles.size(); x++) {
+					File XGFF = GFFFiles.get(x);
+					// Construct output filename
+					String NAME = ExtensionFileFilter.stripExtensionIgnoreGZ(XGFF);
+					NAME += rdbtnA2R.isSelected() ? "_toRoman.gff" : "_toArabic.gff";
+					NAME += chckbxGzipOutput.isSelected() ? ".gz" : "";
+					File OUT_FILEPATH = new File(NAME);
+					if (OUT_DIR != null) {
+						OUT_FILEPATH = new File(OUT_DIR.getCanonicalPath() + File.separator + NAME);
+					}
+					// Initialize LogItem
+					String command = ConvertGFFChrNamesCLI.getCLIcommand(rdbtnR2A.isSelected(), XGFF, OUT_FILEPATH, chckbxChrmt.isSelected(), chckbxGzipOutput.isSelected());
+					LogItem new_li = new LogItem(command);
+					firePropertyChange("log", old_li, new_li);
+					// Execute script
+					if (rdbtnR2A.isSelected()) {
+						ConvertChrNames.convert_RomantoArabic(XGFF, OUT_FILEPATH, chckbxChrmt.isSelected(), chckbxGzipOutput.isSelected());
+					} else {
+						ConvertChrNames.convert_ArabictoRoman(XGFF, OUT_FILEPATH, chckbxChrmt.isSelected(), chckbxGzipOutput.isSelected());
+					}
+					// Update log item
+					new_li.setStopTime(new Timestamp(new Date().getTime()));
+					new_li.setStatus(0);
+					old_li = new_li;
+					// Update progress
+					int percentComplete = (int) (((double) (x + 1) / GFFFiles.size()) * 100);
+					setProgress(percentComplete);
 				}
-				// Add user-selected directory
-				if (OUT_DIR != null) {
-					OUTPUT = OUT_DIR + File.separator + OUTPUT;
-				}
-				// Execute conversion and update progress
-				if (rdbtnA2R.isSelected()) {
-					ConvertChrNames.convert_ArabictoRoman(XGFF, new File(OUTPUT + SUFFIX), chckbxChrmt.isSelected(), chckbxGzipOutput.isSelected());
-				} else {
-					ConvertChrNames.convert_RomantoArabic(XGFF, new File(OUTPUT + SUFFIX), chckbxChrmt.isSelected(), chckbxGzipOutput.isSelected());
-				}
-				// Update progress bar
-				int percentComplete = (int) (((double) (x + 1) / GFFFiles.size()) * 100);
-				setProgress(percentComplete);
+				// Update log at completion
+				firePropertyChange("log", old_li, null);
+				setProgress(100);
+				JOptionPane.showMessageDialog(null, "Conversion Complete");
+			} catch (IOException ioe) {
+				ioe.printStackTrace();
+				JOptionPane.showMessageDialog(null, "I/O issues: " + ioe.getMessage());
+			} catch (Exception e) {
+				e.printStackTrace();
+				JOptionPane.showMessageDialog(null, ToolDescriptions.UNEXPECTED_EXCEPTION_MESSAGE + e.getMessage());
 			}
 			setProgress(100);
-			JOptionPane.showMessageDialog(null, "Conversion Complete");
 			return null;
 		}
 
@@ -100,6 +137,9 @@ public class ConvertGFFChrNamesWindow extends JFrame implements ActionListener, 
 		}
 	}
 
+	/**
+	 * Creates a new ConvertGFFChrNamesWindow object
+	 */
 	public ConvertGFFChrNamesWindow() {
 		setTitle("Convert Yeast Reference Genome for GFF Files");
 		setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
@@ -185,9 +225,9 @@ public class ConvertGFFChrNamesWindow extends JFrame implements ActionListener, 
 		sl_contentPane.putConstraint(SpringLayout.WEST, chckbxChrmt, 0, SpringLayout.WEST, rdbtnA2R);
 		contentPane.add(chckbxChrmt);
 
-		chckbxGzipOutput = new JCheckBox("Output GZIP");
+		chckbxGzipOutput = new JCheckBox("Output GZip");
 		sl_contentPane.putConstraint(SpringLayout.NORTH, chckbxGzipOutput, 0, SpringLayout.NORTH, chckbxChrmt);
-		sl_contentPane.putConstraint(SpringLayout.EAST, chckbxGzipOutput, 10, SpringLayout.EAST, contentPane);
+		sl_contentPane.putConstraint(SpringLayout.EAST, chckbxGzipOutput, -10, SpringLayout.EAST, contentPane);
 		contentPane.add(chckbxGzipOutput);
 
 		btnOutput = new JButton("Output Directory");
@@ -223,6 +263,9 @@ public class ConvertGFFChrNamesWindow extends JFrame implements ActionListener, 
 		btnConvert.addActionListener(this);
 	}
 
+	/**
+	 * Runs when a task is invoked, making window non-interactive and executing the task.
+	 */
 	@Override
 	public void actionPerformed(ActionEvent arg0) {
 		massXable(contentPane, false);
@@ -235,13 +278,21 @@ public class ConvertGFFChrNamesWindow extends JFrame implements ActionListener, 
 	/**
 	 * Invoked when task's progress property changes.
 	 */
+	@Override
 	public void propertyChange(PropertyChangeEvent evt) {
 		if ("progress" == evt.getPropertyName()) {
 			int progress = (Integer) evt.getNewValue();
 			progressBar.setValue(progress);
+		} else if ("log" == evt.getPropertyName()) {
+			firePropertyChange("log", evt.getOldValue(), evt.getNewValue());
 		}
 	}
 
+	/**
+	 * Makes the content pane non-interactive If the window should be interactive data
+	 * @param con Content pane to make non-interactive
+	 * @param status If the window should be interactive
+	 */
 	public void massXable(Container con, boolean status) {
 		for (Component c : con.getComponents()) {
 			c.setEnabled(status);

@@ -14,6 +14,8 @@ import java.beans.PropertyChangeListener;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.sql.Timestamp;
+import java.util.Date;
 
 import javax.swing.ButtonGroup;
 import javax.swing.JButton;
@@ -31,14 +33,17 @@ import javax.swing.SwingConstants;
 import javax.swing.SwingWorker;
 import javax.swing.border.EmptyBorder;
 
+import scriptmanager.cli.Coordinate_Manipulation.BED_Manipulation.SortBEDCLI;
+import scriptmanager.objects.LogItem;
+import scriptmanager.objects.ToolDescriptions;
 import scriptmanager.util.CDTUtilities;
 import scriptmanager.util.ExtensionFileFilter;
 import scriptmanager.util.FileSelection;
 import scriptmanager.scripts.Coordinate_Manipulation.BED_Manipulation.SortBED;
 
-
 /**
- * Graphical interface window for sorting BED coordinate interval files by CDT matrix occupancies by calling the method implemented in the scripts package.
+ * GUI for collecting inputs to be processed by
+ * {@link scriptmanager.scripts.Coordinate_Manipulation.BED_Manipulation.SortBED}
  * 
  * @author William KM Lai
  * @see scriptmanager.scripts.Coordinate_Manipulation.BED_Manipulation.SortBED
@@ -46,6 +51,9 @@ import scriptmanager.scripts.Coordinate_Manipulation.BED_Manipulation.SortBED;
 @SuppressWarnings("serial")
 public class SortBEDWindow extends JFrame implements ActionListener, PropertyChangeListener {
 	private JPanel contentPane;
+	/**
+	 * FileChooser which opens to user's directory
+	 */
 	protected JFileChooser fc = new JFileChooser(new File(System.getProperty("user.dir")));
 
 	private static File OUT_DIR = null;
@@ -63,6 +71,9 @@ public class SortBEDWindow extends JFrame implements ActionListener, PropertyCha
 	private JButton btnExecute;
 
 	private JProgressBar progressBar;
+	/**
+	 * Used to run the script efficiently
+	 */
 	public Task task;
 	private JLabel lblCurrent;
 	private JLabel lblDefaultToLocal;
@@ -84,11 +95,14 @@ public class SortBEDWindow extends JFrame implements ActionListener, PropertyCha
 	private static JCheckBox chckbxGzipOutput;
 
 	/**
-	 * Organize user inputs for calling script.
+	 * Organize user inputs for calling script
+	 */
+	/**
+	 * Organizes user inputs for calling script
 	 */
 	class Task extends SwingWorker<Void, Void> {
 		@Override
-		public Void doInBackground() throws IOException {
+		public Void doInBackground() {
 			try {
 				if (rdbtnSortbyCenter.isSelected() && Integer.parseInt(txtMid.getText()) > CDT_SIZE) {
 					JOptionPane.showMessageDialog(null, "Sort Size is larger than CDT File!!!");
@@ -105,19 +119,35 @@ public class SortBEDWindow extends JFrame implements ActionListener, PropertyCha
 						STOP_INDEX = Integer.parseInt(txtStop.getText());
 					}
 
-					String OUTPUT = ExtensionFileFilter.stripExtension(txtOutput.getText());
-					OUTPUT = txtOutput.getText().endsWith(".gz") ? ExtensionFileFilter.stripExtension(OUTPUT) : OUTPUT;
+					String OUTPUT = ExtensionFileFilter.stripExtensionIgnoreGZ(BED_File);
 					if (OUT_DIR != null) {
 						OUTPUT = OUT_DIR.getCanonicalPath() + File.separator + OUTPUT;
 					}
 
 					setProgress(0);
-					SortBED.sortBEDbyCDT(OUTPUT, BED_File, CDT_File, START_INDEX, STOP_INDEX, chckbxGzipOutput.isSelected());
+					LogItem old_li = null;
+					// Initialize LogItem
+					String command = SortBEDCLI.getCLIcommand(BED_File, CDT_File, new File(OUTPUT), START_INDEX, STOP_INDEX, chckbxGzipOutput.isSelected());
+					LogItem new_li = new LogItem(command);
+					firePropertyChange("log", old_li, new_li);
+					// Execute script
+					SortBED.sortBEDbyCDT(BED_File, CDT_File, new File(OUTPUT), START_INDEX, STOP_INDEX, chckbxGzipOutput.isSelected());
+					// Update log item
+					new_li.setStopTime(new Timestamp(new Date().getTime()));
+					new_li.setStatus(0);
+					old_li = new_li;
+					firePropertyChange("log", old_li, null);
 					setProgress(100);
 					JOptionPane.showMessageDialog(null, "Sort Complete");
 				}
 			} catch (NumberFormatException nfe) {
 				JOptionPane.showMessageDialog(null, "Invalid Input in Fields!!!");
+			} catch (IOException ioe) {
+				ioe.printStackTrace();
+				JOptionPane.showMessageDialog(null, "I/O issues: " + ioe.getMessage());
+			} catch (Exception e) {
+				e.printStackTrace();
+				JOptionPane.showMessageDialog(null, ToolDescriptions.UNEXPECTED_EXCEPTION_MESSAGE + e.getMessage());
 			}
 			return null;
 		}
@@ -181,7 +211,7 @@ public class SortBEDWindow extends JFrame implements ActionListener, PropertyCha
 		});
 		contentPane.add(btnOutput);
 
-		chckbxGzipOutput = new JCheckBox("Output GZIP");
+		chckbxGzipOutput = new JCheckBox("Output GZip");
 		sl_contentPane.putConstraint(SpringLayout.NORTH, chckbxGzipOutput, 0, SpringLayout.NORTH, btnOutput);
 		sl_contentPane.putConstraint(SpringLayout.EAST, chckbxGzipOutput, -10, SpringLayout.EAST, contentPane);
 		contentPane.add(chckbxGzipOutput);
@@ -327,11 +357,14 @@ public class SortBEDWindow extends JFrame implements ActionListener, PropertyCha
 					lblBEDFile.setText(BED_File.getName());
 					txtOutput.setEnabled(true);
 					// Set default output filename
-					String NAME = ExtensionFileFilter.stripExtension(BED_File.getName());
-					NAME = BED_File.getName().endsWith(".bed.gz") ? ExtensionFileFilter.stripExtension(NAME) : NAME;
-					NAME += "_SORT.bed";
-					NAME += chckbxGzipOutput.isSelected() ? ".gz" : "";
-					txtOutput.setText(NAME);
+					String sortName = "";
+					try {
+						sortName = ExtensionFileFilter.stripExtensionIgnoreGZ(BED_File) + "_SORT.bed";
+						sortName += chckbxGzipOutput.isSelected() ? ".gz" : "";
+					} catch (IOException ioe) {
+						JOptionPane.showMessageDialog(null, "Invalid BED");
+					}
+					txtOutput.setText(sortName);
 				}
 			}
 		});
@@ -376,6 +409,9 @@ public class SortBEDWindow extends JFrame implements ActionListener, PropertyCha
 		contentPane.add(btnLoadCdtFile);
 	}
 
+	/**
+	 * Runs when a task is invoked, making window non-interactive and executing the task.
+	 */
 	@Override
 	public void actionPerformed(ActionEvent arg0) {
 		massXable(contentPane, false);
@@ -387,15 +423,23 @@ public class SortBEDWindow extends JFrame implements ActionListener, PropertyCha
 	}
 
 	/**
-	 * Invoked when task's progress property changes.
+	 * Invoked when task's progress property changes and updates the progress bar
 	 */
+	@Override
 	public void propertyChange(PropertyChangeEvent evt) {
 		if ("progress" == evt.getPropertyName()) {
 			int progress = (Integer) evt.getNewValue();
 			progressBar.setValue(progress);
+		} else if ("log" == evt.getPropertyName()) {
+			firePropertyChange("log", evt.getOldValue(), evt.getNewValue());
 		}
 	}
 
+	/**
+	 * Makes the content pane non-interactive If the window should be interactive data
+	 * @param con Content pane to make non-interactive
+	 * @param status If the window should be interactive
+	 */
 	public void massXable(Container con, boolean status) {
 		for (Component c : con.getComponents()) {
 			c.setEnabled(status);

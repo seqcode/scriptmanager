@@ -15,6 +15,11 @@ import javax.swing.JFrame;
 import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
 
+/**
+ * (Dev) GUI for running a gene track window
+ * 
+ * @author William KM Lai
+ */
 @SuppressWarnings("serial")
 public class GeneTrack extends JFrame {
 	private JTextArea textArea;
@@ -304,21 +309,37 @@ public class GeneTrack extends JFrame {
 	
 	private int firstvalue;
 
-	/***the purpose of the below holders are to hold overlapped data so peaks have correct sums when split between two chunks***
-	 *anti/sensedata		- holds the end overlapping region of the sense strand
-	 *anti/sensehold 		- holds the end overlapping sum values of the anti strand
-	 *anti/sensesum			- holds the moving sum value over the end overlap
-	 *anti/senseavg			- holds the standard deviation sum over the end overlap
-	 *anit/sensestand		- holds the values that form the standard deviation sum
+	/**
+	 * Holds the end overlapping region of the anti strand
 	 */
-	
 	private double[] antidata;
+	/**
+	 * Holds the end overlapping region of the sense strand
+	 */
 	private double[] sensedata;
-	private ArrayList<Integer> sensehold = new ArrayList<Integer>();	
+	/**
+	 * Holds the end overlapping sum values of the sense strand
+	 */
+	private ArrayList<Integer> sensehold = new ArrayList<Integer>();
+	/**
+	 * Holds the end overlapping sum values of the anti strand
+	 */	
 	private ArrayList<Integer> antihold = new ArrayList<Integer>();
+	/**
+	 * Holds the moving sum value over the end overlap for the sense strand
+	 */
 	private int sensesum = 0;
+	/**
+	 * Holds the moving sum value over the end overlap for the anti strand
+	 */
 	private int antisum = 0;
+	/**
+	 * Holds the standard deviation sum over the end overlap for the sense strand
+	 */
 	private double senseavg = 0;
+	/**
+	 * Holds the standard deviation sum over the end overlap for the anti strand
+	 */
 	private double antiavg = 0;
 	private ArrayList<Integer> antistand = new ArrayList<Integer>();	
 	private ArrayList<Integer> sensestand = new ArrayList<Integer>();

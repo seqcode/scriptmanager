@@ -37,11 +37,24 @@ import javax.swing.SwingConstants;
 import javax.swing.SwingWorker;
 import javax.swing.border.EmptyBorder;
 
+import scriptmanager.objects.ToolDescriptions;
+import scriptmanager.objects.Exceptions.OptionException;
 import scriptmanager.util.FileSelection;
 
+/**
+ * GUI for collecting inputs to be processed by
+ * {@link scriptmanager.scripts.Figure_Generation.ThreeColorHeatMap}
+ * 
+ * @author William KM Lai
+ * @see scriptmanager.scripts.Figure_Generation.ThreeColorHeatMap
+ * @see scriptmanager.window_interface.Figure_Generation.ThreeColorHeatMapOutput
+ */
 @SuppressWarnings("serial")
 public class ThreeColorHeatMapWindow extends JFrame implements ActionListener, PropertyChangeListener {
 	private JPanel contentPane;
+	/**
+	 * FileChooser which opens to user's directory
+	 */
 	protected JFileChooser fc = new JFileChooser(new File(System.getProperty("user.dir")));
 
 	final DefaultListModel<String> expList;
@@ -52,6 +65,9 @@ public class ThreeColorHeatMapWindow extends JFrame implements ActionListener, P
 	private JButton btnGen;
 	private JProgressBar progressBar;
 
+	/**
+	 * Used to run the script efficiently
+	 */
 	public Task task;
 	private JTextField txtRow;
 	private JTextField txtCol;
@@ -93,45 +109,40 @@ public class ThreeColorHeatMapWindow extends JFrame implements ActionListener, P
 
 	private File OUT_DIR = null;
 
+	/**
+	 * Organizes user inputs for calling script
+	 */
 	class Task extends SwingWorker<Void, Void> {
 		@Override
-		public Void doInBackground() throws IOException {
-			setProgress(0);
-
+		public Void doInBackground() {
 			try {
 				if (txtFiles.size() < 1) {
 					JOptionPane.showMessageDialog(null, "No files loaded!!!");
 				} else if (Integer.parseInt(txtRow.getText()) < 0) {
-					JOptionPane.showMessageDialog(null,
-							"Invalid Starting Row!!! Must be greater than 0, 0-based indexing");
+					JOptionPane.showMessageDialog(null, "Invalid Starting Row!!! Must be greater than 0, 0-based indexing");
 				} else if (Integer.parseInt(txtCol.getText()) < 0) {
-					JOptionPane.showMessageDialog(null,
-							"Invalid Starting Column!!! Must be greater than 0, 0-based indexing");
+					JOptionPane.showMessageDialog(null, "Invalid Starting Column!!! Must be greater than 0, 0-based indexing");
 				} else if (Integer.parseInt(txtHeight.getText()) < 1) {
 					JOptionPane.showMessageDialog(null, "Invalid Image Height!!! Must be greater than 0");
 				} else if (Integer.parseInt(txtWidth.getText()) < 1) {
 					JOptionPane.showMessageDialog(null, "Invalid Image Width!!! Must be greater than 0");
 				} else if (rdbtnMaxAbsoluteValue.isSelected() && Double.parseDouble(txtAbsoluteMax.getText()) <= Double
 						.parseDouble(txtAbsoluteMid.getText())) {
-					JOptionPane.showMessageDialog(null,
-							"Invalid absolute contrast threshold values entered!!! Max be larger than Mid");
+					JOptionPane.showMessageDialog(null, "Invalid absolute contrast threshold values entered!!! Max be larger than Mid");
 				} else if (rdbtnMinAbsoluteValue.isSelected() && Double.parseDouble(txtAbsoluteMid.getText()) <= Double
 						.parseDouble(txtAbsoluteMin.getText())) {
-					JOptionPane.showMessageDialog(null,
-							"Invalid absolute contrast threshold values entered!!! Mid be larger than Min");
+					JOptionPane.showMessageDialog(null, "Invalid absolute contrast threshold values entered!!! Mid be larger than Min");
 				} else if (rdbtnMaxPercentileValue.isSelected() && (Double.parseDouble(txtPercentMax.getText()) <= 0
 						|| Double.parseDouble(txtPercentMax.getText()) > 1)) {
-					JOptionPane.showMessageDialog(null,
-							"Invalid max quantile contrast threshold value entered!!! Must be larger than 0-1");
+					JOptionPane.showMessageDialog(null, "Invalid max quantile contrast threshold value entered!!! Must be larger than 0-1");
 				} else if (rdbtnMaxPercentileValue.isSelected() && (Double.parseDouble(txtPercentMin.getText()) <= 0
 						|| Double.parseDouble(txtPercentMin.getText()) > 1)) {
-					JOptionPane.showMessageDialog(null,
-							"Invalid min quantile contrast threshold value entered!!! Must be larger than 0-1");
+					JOptionPane.showMessageDialog(null, "Invalid min quantile contrast threshold value entered!!! Must be larger than 0-1");
 				} else if (rdbtnMaxPercentileValue.isSelected() && (Double
 						.parseDouble(txtPercentMax.getText()) <= Double.parseDouble(txtPercentMin.getText()))) {
-					JOptionPane.showMessageDialog(null,
-							"Invalid quantile contrast threshold values entered!!! Max must be larger than Min");
+					JOptionPane.showMessageDialog(null, "Invalid quantile contrast threshold values entered!!! Max must be larger than Min");
 				}
+				setProgress(0);
 // parameter input checks need to be added to script portion
 				Color c_min = btnMinColor.getForeground();
 				Color c_mid = btnMidColor.getForeground();
@@ -158,7 +169,6 @@ public class ThreeColorHeatMapWindow extends JFrame implements ActionListener, P
 					q_mid = Double.parseDouble(txtPercentMid.getText());
 					q_max = Double.parseDouble(txtPercentMax.getText());
 				}
-
 // AAA > 0
 // AAP > 1
 // APA > 2
@@ -167,26 +177,38 @@ public class ThreeColorHeatMapWindow extends JFrame implements ActionListener, P
 // PAP > 5
 // PPA > 6
 // PPP > 7
-
-				ThreeColorHeatMapOutput heat = new ThreeColorHeatMapOutput(txtFiles, c_max, c_mid, c_min, c_nan, startR,
+				// Execute script
+				ThreeColorHeatMapOutput output_obj = new ThreeColorHeatMapOutput(txtFiles, c_max, c_mid, c_min, c_nan, startR,
 						startC, pHeight, pWidth, scaletype, rdbtnMinPercentileValue.isSelected(),
 						rdbtnMidPercentileValue.isSelected(), rdbtnMaxPercentileValue.isSelected(), q_min, q_mid, q_max,
 						chckbxExcludeZeros.isSelected(), OUT_DIR, chckbxOutputHeatmap.isSelected());
-
-				heat.addPropertyChangeListener("heat", new PropertyChangeListener() {
+				output_obj.addPropertyChangeListener("progress", new PropertyChangeListener() {
 					public void propertyChange(PropertyChangeEvent propertyChangeEvent) {
 						int temp = (Integer) propertyChangeEvent.getNewValue();
 						int percentComplete = (int) (((double) (temp) / (txtFiles.size())) * 100);
 						setProgress(percentComplete);
 					}
 				});
-				heat.setVisible(true);
-				heat.run();
-				setProgress(100);
-				return null;
+				output_obj.addPropertyChangeListener("log", new PropertyChangeListener() {
+					public void propertyChange(PropertyChangeEvent evt) {
+						firePropertyChange("log", evt.getOldValue(), evt.getNewValue());
+					}
+				});
+				output_obj.setVisible(true);
+				output_obj.run();
 			} catch (NumberFormatException nfe) {
 				JOptionPane.showMessageDialog(null, "Invalid Input in Fields!!!");
+			} catch (OptionException oe) {
+				oe.printStackTrace();
+				JOptionPane.showMessageDialog(null, oe.getMessage());
+			} catch (IOException ioe) {
+				ioe.printStackTrace();
+				JOptionPane.showMessageDialog(null, "I/O issues: " + ioe.getMessage());
+			} catch (Exception e) {
+				e.printStackTrace();
+				JOptionPane.showMessageDialog(null, ToolDescriptions.UNEXPECTED_EXCEPTION_MESSAGE + e.getMessage());
 			}
+			setProgress(100);
 			return null;
 		}
 
@@ -196,6 +218,9 @@ public class ThreeColorHeatMapWindow extends JFrame implements ActionListener, P
 		}
 	}
 
+	/**
+	 * Creates a new ThreeColorHeatMapWindow
+	 */
 	public ThreeColorHeatMapWindow() {
 		setTitle("Hi-Lo Heatmap Generator");
 		setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
@@ -684,6 +709,9 @@ public class ThreeColorHeatMapWindow extends JFrame implements ActionListener, P
 		txtAbsoluteMax.setEnabled(!activate);
 	}
 
+/**
+	 * Runs when a task is invoked, making window non-interactive and executing the task.
+	 */
 	@Override
 	public void actionPerformed(ActionEvent arg0) {
 		massXable(contentPane, false);
@@ -694,15 +722,22 @@ public class ThreeColorHeatMapWindow extends JFrame implements ActionListener, P
 	}
 
 	/**
-	 * Invoked when task's progress property changes.
+	 * Invoked when task's progress property changes and updates the progress bar.
 	 */
 	public void propertyChange(PropertyChangeEvent evt) {
 		if ("progress" == evt.getPropertyName()) {
 			int progress = (Integer) evt.getNewValue();
 			progressBar.setValue(progress);
+		} else if ("log" == evt.getPropertyName()) {
+			firePropertyChange("log", evt.getOldValue(), evt.getNewValue());
 		}
 	}
 
+	/**
+	 * Makes the content pane non-interactive If the window should be interactive data
+	 * @param con Content pane to make non-interactive
+	 * @param status If the window should be interactive
+	 */
 	public void massXable(Container con, boolean status) {
 		for (Component c : con.getComponents()) {
 			c.setEnabled(status);

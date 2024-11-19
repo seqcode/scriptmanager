@@ -31,11 +31,12 @@ import javax.swing.SpringLayout;
 import javax.swing.SwingWorker;
 import javax.swing.border.EmptyBorder;
 
+import scriptmanager.objects.ToolDescriptions;
 import scriptmanager.util.FileSelection;
 
 /**
- * Graphical interface window for extracting the genomic sequence of a set of
- * BED intervals by calling a script implemented in the scripts package.
+ * GUI for collecting inputs to be processed by
+ * {@link scriptmanager.scripts.Sequence_Analysis.FASTAExtract}
  * 
  * @author William KM Lai
  * @see scriptmanager.scripts.Sequence_Analysis.FASTAExtract
@@ -44,6 +45,9 @@ import scriptmanager.util.FileSelection;
 @SuppressWarnings("serial")
 public class FASTAExtractWindow extends JFrame implements ActionListener, PropertyChangeListener {
 	private JPanel contentPane;
+	/**
+	 * FileChooser which opens to user's directory
+	 */
 	protected JFileChooser fc = new JFileChooser(new File(System.getProperty("user.dir")));
 
 	final DefaultListModel<String> expList;
@@ -64,14 +68,17 @@ public class FASTAExtractWindow extends JFrame implements ActionListener, Proper
 	private JCheckBox chckbxStrand;
 	private static JCheckBox chckbxGzipOutput;
 
+	/**
+	 * Used to run the script efficiently
+	 */
 	public Task task;
 
 	/**
-	 * Organize user inputs for calling script.
+	 * Organizes user inputs for calling script
 	 */
 	class Task extends SwingWorker<Void, Void> {
 		@Override
-		public Void doInBackground() throws IOException {
+		public Void doInBackground() {
 			try {
 				if (INPUT == null) {
 					JOptionPane.showMessageDialog(null, "Genomic File Not Loaded!!!");
@@ -79,26 +86,36 @@ public class FASTAExtractWindow extends JFrame implements ActionListener, Proper
 					JOptionPane.showMessageDialog(null, "No BED Files Loaded!!!");
 				} else {
 					setProgress(0);
-					FASTAExtractOutput signal = new FASTAExtractOutput(INPUT, BEDFiles, OUT_DIR,
+					FASTAExtractOutput output_obj = new FASTAExtractOutput(INPUT, BEDFiles, OUT_DIR,
 							chckbxStrand.isSelected(), rdbtnBedName.isSelected(), chckbxGzipOutput.isSelected());
 
-					signal.addPropertyChangeListener("fa", new PropertyChangeListener() {
+					output_obj.addPropertyChangeListener("progress", new PropertyChangeListener() {
 						public void propertyChange(PropertyChangeEvent propertyChangeEvent) {
 							int temp = (Integer) propertyChangeEvent.getNewValue();
 							int percentComplete = (int) (((double) (temp) / BEDFiles.size()) * 100);
 							setProgress(percentComplete);
 						}
 					});
-
-					signal.setVisible(true);
-					signal.run();
-
+					output_obj.addPropertyChangeListener("log", new PropertyChangeListener() {
+						public void propertyChange(PropertyChangeEvent evt) {
+							firePropertyChange("log", evt.getOldValue(), evt.getNewValue());
+						}
+					});
+					output_obj.setVisible(true);
+					output_obj.run();
 				}
 			} catch (NumberFormatException nfe) {
 				JOptionPane.showMessageDialog(null, "Invalid Input in Fields!!!");
 			} catch (InterruptedException e) {
 				e.printStackTrace();
+			} catch (IOException ioe) {
+				ioe.printStackTrace();
+				JOptionPane.showMessageDialog(null, "I/O issues: " + ioe.getMessage());
+			} catch (Exception e) {
+				e.printStackTrace();
+				JOptionPane.showMessageDialog(null, ToolDescriptions.UNEXPECTED_EXCEPTION_MESSAGE + e.getMessage());
 			}
+			setProgress(100);
 			return null;
 		}
 
@@ -215,9 +232,9 @@ public class FASTAExtractWindow extends JFrame implements ActionListener, Proper
 		});
 		contentPane.add(btnOutput);
 
-		chckbxGzipOutput = new JCheckBox("Output GZIP");
-		sl_contentPane.putConstraint(SpringLayout.NORTH, chckbxGzipOutput, 0, SpringLayout.NORTH, btnOutput);
-		sl_contentPane.putConstraint(SpringLayout.EAST, chckbxGzipOutput, -10, SpringLayout.EAST, contentPane);
+		chckbxGzipOutput = new JCheckBox("Output GZip");
+		sl_contentPane.putConstraint(SpringLayout.NORTH, chckbxGzipOutput, 0, SpringLayout.NORTH, btnCalculate);
+		sl_contentPane.putConstraint(SpringLayout.WEST, chckbxGzipOutput, 30, SpringLayout.WEST, contentPane);
 		contentPane.add(chckbxGzipOutput);
 
 		chckbxStrand = new JCheckBox("Force Strandedness");
@@ -259,6 +276,9 @@ public class FASTAExtractWindow extends JFrame implements ActionListener, Proper
 		btnCalculate.addActionListener(this);
 	}
 
+	/**
+	 * Runs when a task is invoked, making window non-interactive and executing the task.
+	 */
 	@Override
 	public void actionPerformed(ActionEvent arg0) {
 		massXable(contentPane, false);
@@ -272,13 +292,21 @@ public class FASTAExtractWindow extends JFrame implements ActionListener, Proper
 	/**
 	 * Invoked when task's progress property changes.
 	 */
+	@Override
 	public void propertyChange(PropertyChangeEvent evt) {
 		if ("progress" == evt.getPropertyName()) {
 			int progress = (Integer) evt.getNewValue();
 			progressBar.setValue(progress);
+		} else if ("log" == evt.getPropertyName()) {
+			firePropertyChange("log", evt.getOldValue(), evt.getNewValue());
 		}
 	}
 
+	/**
+	 * Makes the content pane non-interactive If the window should be interactive data
+	 * @param con Content pane to make non-interactive
+	 * @param status If the window should be interactive
+	 */
 	public void massXable(Container con, boolean status) {
 		for (Component c : con.getComponents()) {
 			c.setEnabled(status);

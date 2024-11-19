@@ -1,0 +1,77 @@
+<tool id="scriptmanager_rand-coord" name="ScriptManager: Random Coordinate Generator"
+    version="0.1.0+galaxy0" python_template_version="3.5" profile="21.05">
+    <description> Random Coordinate Generator </description>
+    <macros>
+        <import>scriptmanager_macros.xml</import>
+    </macros>
+    <requirements>
+        <expand macro="requirement_openjdk" />
+    </requirements>
+    <command detect_errors="exit_code"><![CDATA[
+        java -jar $__tool_directory__/@JAR_FILENAME@ peak-analysis rand-coord
+
+        "$genome_name"
+        
+        #if str($output_file_name.bool) == "Yes" :
+            -o "$output_file_name.file_name"
+        #end if
+
+        #if str($output_file) != "bed" :
+            -f
+        #end if
+        
+        #if str($num_sites) != "1000" :
+            -n "$num_sites"
+        #end if
+        
+        #if str($window) != "200" :
+            -w "$window"
+        #end if
+
+    ]]></command>
+    <inputs>
+        <param type="select" name="genome_name" label="Genome Name">
+            <option value="sacCer3" selected="True" >sacCer3</option>
+            <option value="sacCer3_cegr" >sacCer3_cegr</option>
+            <option value="hg38" >hg38</option>
+            <option value="hg38_contigs" >hg38_contigs</option>
+            <option value="hg19" >hg19</option>
+            <option value="hg19_contigs" >hg19_contigs</option>
+            <option value="mm10" >mm10</option>
+        </param>
+        
+        <conditional name="output_file_name">
+        <param type="boolean" name="bool" truevalue="Yes" falsevalue="No" label="Output File Name" >
+        </param>
+            <when value="Yes">
+                <param type="text" name="file_name" value="" label="File Name" />
+            </when>
+            <when value="No">
+            </when>
+        </conditional>
+        
+        <param type="select" name="output_file" label="Output File Type">
+            <option value="bed" selected="True" >BED</option>
+            <option value="gff" >GFF</option>
+        </param>
+        
+        <param type="integer" name="num_sites" value="1000" label="Number of Sites" />
+        <param type="integer" name="window" value="200" label="Window" />
+    </inputs>
+            
+    <outputs>
+        <data name="output_bed" format="bed" label="${tool.name} on ${on_string}: BED Format" >
+            <filter>output_file == 'bed'</filter>
+        </data>
+        <data name="output_gff" format="gff" label="${tool.name} on ${on_string}: GFF Format" >
+            <filter>output_file == 'gff'</filter>
+        </data>
+    </outputs>
+    
+    <help>
+        
+    **What it does**
+    Generate random BED coordinates based on reference genome.
+    
+    </help>
+</tool>

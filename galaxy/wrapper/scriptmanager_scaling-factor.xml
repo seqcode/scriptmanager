@@ -1,0 +1,94 @@
+<tool id="scriptmanager_scaling-factor" name="ScriptManager: Scaling Factor"
+    version="0.1.0+galaxy0" python_template_version="3.5" profile="21.05">
+    <description> Calculate Scaling Factor </description>
+    <macros>
+        <import>scriptmanager_macros.xml</import>
+    </macros>
+    <requirements>
+        <expand macro="requirement_openjdk" />
+        <expand macro="requirement_samtools" />
+    </requirements>
+
+    <command detect_errors="exit_code"><![CDATA[
+        ln -s "$input1" "temp_input.bam" &&
+        ln -s "$input2" "temp_control.bam" &&
+
+        samtools index "temp_input.bam" &&
+        samtools index "temp_control.bam" &&
+        
+        java -jar $__tool_directory__/@JAR_FILENAME@ read-analysis scaling-factor
+
+        #if str($output_file_name.bool) == "Yes" :
+            -o "$output_file_name.file_name"
+        #end if
+        
+        #if str($blacklist_file.bool) == "Yes" :
+            -f "$blacklist_file.file_name"
+        #end if
+            
+        -c "temp_control.bam"
+            
+        #if str($window_size) != "500" :
+            -w "$window_size"
+        #end if
+        
+        #if str($min_fraction) != "0.75" :
+            -m "$min_fraction"
+        #end if
+        
+        #if str($scaling_options) == "total_tag":
+            -t
+        #elif str($scaling_options) == "ncis":
+            -n
+        #elif str($scaling_options) == "both":
+            -b
+        #end if
+        
+        "temp_input.bam"
+    ]]></command>
+    <inputs>
+        <param type="data" name="input1" format="bam" label="Input BAM File"/>
+        <param type="data" name="input2" format="bam" label="Control BAM File"/>
+
+        <conditional name="output_file_name">
+        <param type="boolean" name="bool" truevalue="Yes" falsevalue="No" label="Output File Name" >
+        </param>
+            <when value="Yes">
+                <param type="text" name="file_name" value="" label="File Name" />
+            </when>
+            <when value="No">
+            </when>
+        </conditional>
+        
+        
+        <conditional name="blacklist_file">
+        <param type="boolean" name="bool" truevalue="Yes" falsevalue="No" label="Blacklist File" >
+        </param>
+            <when value="Yes">
+                <param type="text" name="file_name" value="" label="File Name" />
+            </when>
+            <when value="No">
+            </when>
+        </conditional>
+        
+        <param type="integer" name="window_size" value="500" label="Window Size for NCIS-related scaling types" />
+        
+        <param type="float" name="min_fraction" value="0.75" label="Minimum Fraction for NCIS-related scaling types" />
+        
+        <param type="select" name="scaling_options" label="Scaling Option">
+            <option value="total_tag" selected="True" >Total_Tag</option>
+            <option value="ncis" >NCIS</option>
+            <option value="both" >Total_Tag with NCIS</option>
+        </param>
+    </inputs>
+            
+    <outputs>
+        <data name="output" format="tabular" label="${tool.name} on ${on_string}"/>
+    </outputs>
+    <help>
+        
+    **What it does**
+    Calculate scaling factor as either total tag normalization or normalization of ChIP-seq data with control.
+
+    </help>
+</tool>

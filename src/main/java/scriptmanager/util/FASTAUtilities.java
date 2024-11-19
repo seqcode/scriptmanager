@@ -12,6 +12,11 @@ import java.util.regex.Pattern;
  * @see scriptmanager.scripts.Sequence_Analysis.FASTAExtract
  */
 public class FASTAUtilities {
+
+	/**
+	 * Creates a new FASTAUtilities object (unnecessary because only contains static methods)
+	 */
+	public FASTAUtilities(){}
 	
 	/**
 	 * Return the reverse complement DNA sequence of the input string (skipping over non-[ATCGN] char) and where rev complement of N is N.

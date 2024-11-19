@@ -31,7 +31,7 @@ public class LineChart {
 	 * @param y the duplication rate values
 	 * @param x the domain values
 	 * @return the line plot chart
-	 * @throws IOException
+	 * @throws IOException Invalid file or parameters
 	 */
 	public static ChartPanel createLineChart(ArrayList<Double> y, String[] x) throws IOException {
 		DefaultCategoryDataset dataset = new DefaultCategoryDataset();
@@ -53,7 +53,7 @@ public class LineChart {
 	 * @param y2 the genome duplication rate values
 	 * @param x  the domain values
 	 * @return the line plot chart
-	 * @throws IOException
+	 * @throws IOException Invalid file or parameters
 	 */
 	public static ChartPanel createLineChart(ArrayList<Double> y1, ArrayList<Double> y2, String[] x) throws IOException {
 		DefaultCategoryDataset dataset = new DefaultCategoryDataset();
@@ -75,7 +75,7 @@ public class LineChart {
 	 * @param x the domain values
 	 * @param output the path of the PNG file to save the chart image to
 	 * @return the line plot chart
-	 * @throws IOException
+	 * @throws IOException Invalid file or parameters
 	 */
 	public static ChartPanel createLineChart(ArrayList<Double> y, String[] x, File output) throws IOException {
 		DefaultCategoryDataset dataset = new DefaultCategoryDataset();
@@ -102,7 +102,7 @@ public class LineChart {
 	 * 
 	 * @param dataset the formatted dataset to plot
 	 * @return the line plot chart
-	 * @throws IOException
+	 * @throws IOException Invalid file or parameters
 	 */
 	private static JFreeChart createChart(CategoryDataset dataset) throws IOException {
         final JFreeChart chart = ChartFactory.createLineChart(

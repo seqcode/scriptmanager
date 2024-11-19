@@ -15,8 +15,11 @@ import scriptmanager.util.ExtensionFileFilter;
 import scriptmanager.scripts.Coordinate_Manipulation.GFF_Manipulation.ExpandGFF;
 
 /**
-	Coordinate_ManipulationCLI/ExpandGFFCLI
-*/
+ * Command line interface for
+ * {@link scriptmanager.scripts.Coordinate_Manipulation.BED_Manipulation.ExpandBED}
+ * 
+ * @author Olivia Lang
+ */
 @Command(name = "expand-gff", mixinStandardHelpOptions = true,
 	description = ToolDescriptions.expand_gff_description,
 	version = "ScriptManager "+ ToolDescriptions.VERSION,
@@ -24,14 +27,21 @@ import scriptmanager.scripts.Coordinate_Manipulation.GFF_Manipulation.ExpandGFF;
 	exitCodeOnInvalidInput = 1,
 	exitCodeOnExecutionException = 1)
 public class ExpandGFFCLI implements Callable<Integer> {
+
+	/**
+	 * Creates a new ExpandGFFCLI object
+	 */
+	public ExpandGFFCLI(){}
 	
 	@Parameters( index = "0", description = "the GFF file to expand on")
 	private File gffFile;
 	
 	@Option(names = {"-o", "--output"}, description = "specify output filename (name will be same as original with coordinate info appended)")
 	private File output = null;
-	@Option(names = {"-s", "--stdout"}, description = "output bed to STDOUT")
+	@Option(names = {"-s", "--stdout"}, description = "output gff to STDOUT")
 	private boolean stdout = false;
+	@Option(names = {"-z", "--gzip"}, description = "gzip output (default=false)")
+	private boolean gzOutput = false;
 	
 	@ArgGroup(validate = false, heading = "%nType of Expansion%n")
 	ExpandType expandType = new ExpandType();
@@ -45,6 +55,10 @@ public class ExpandGFFCLI implements Callable<Integer> {
 	private boolean byCenter = true;
 	private int SIZE = 250;
 	
+	/**
+	 * Runs when this subcommand is called, running script in respective script package with user defined arguments
+	 * @throws IOException Invalid file or parameters
+	 */
 	@Override
 	public Integer call() throws Exception {
 		System.err.println( ">ExpandGFFCLI.call()" );
@@ -55,7 +69,7 @@ public class ExpandGFFCLI implements Callable<Integer> {
 			System.exit(1);
 		}
 		
-		ExpandGFF.expandGFFBorders(output, gffFile, SIZE, byCenter);
+		ExpandGFF.expandGFFBorders(gffFile, output, SIZE, byCenter, gzOutput);
 		
 		System.err.println("Expansion Complete");
 		return(0);
@@ -70,7 +84,7 @@ public class ExpandGFFCLI implements Callable<Integer> {
 			return(r);
 		}
 		//check input extensions
-		if(!"gff".equals(ExtensionFileFilter.getExtension(gffFile))){
+		if(!"gff".equals(ExtensionFileFilter.getExtensionIgnoreGZ(gffFile))){
 			r += "(!)Is this a GFF file? Check extension: " + gffFile.getName() + "\n";
 		}
 		
@@ -116,5 +130,13 @@ public class ExpandGFFCLI implements Callable<Integer> {
 		}
 		
 		return(r);
+	}
+	public static String getCLIcommand(File input, File output, int size, boolean byCenter, boolean gzOutput) {
+		String command = "java -jar $SCRIPTMANAGER coordinate-manipulation expand-gff";
+		command += " " + input.getAbsolutePath();
+		command += " -o " + output.getAbsolutePath();
+		command += gzOutput ? " -z " : "";
+		command += byCenter ? " -c " + size : " -b " + size;
+		return command;
 	}
 }

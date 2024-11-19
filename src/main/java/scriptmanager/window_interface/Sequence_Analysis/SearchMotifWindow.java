@@ -30,11 +30,12 @@ import javax.swing.SwingWorker;
 import javax.swing.border.EmptyBorder;
 
 import scriptmanager.util.FileSelection;
+import scriptmanager.objects.ToolDescriptions;
 import scriptmanager.util.FASTAUtilities;
 
 /**
- * Graphical interface window for searching for genomic motif sequences by
- * calling a script implemented in the scripts package.
+ * GUI for collecting inputs to be processed by
+ * {@link scriptmanager.scripts.Sequence_Analysis.SearchMotif}
  * 
  * @author William KM Lai
  * @see scriptmanager.scripts.Sequence_Analysis.SearchMotif
@@ -43,6 +44,9 @@ import scriptmanager.util.FASTAUtilities;
 @SuppressWarnings("serial")
 public class SearchMotifWindow extends JFrame implements ActionListener, PropertyChangeListener {
 
+	/**
+	 * FileChooser which opens to user's directory
+	 */
 	protected JFileChooser fc = new JFileChooser(new File(System.getProperty("user.dir")));
 
 	final DefaultListModel<String> genomeList;
@@ -55,14 +59,17 @@ public class SearchMotifWindow extends JFrame implements ActionListener, Propert
 	private static JCheckBox chckbxGzipOutput;
 	private JProgressBar progressBar;
 
+	/**
+	 * Used to run the script efficiently
+	 */
 	public Task task;
 
 	/**
-	 * Organize user inputs for calling script.
+	 * Organizes user inputs for calling script
 	 */
 	class Task extends SwingWorker<Void, Void> {
 		@Override
-		public Void doInBackground() throws IOException, InterruptedException {
+		public Void doInBackground() {
 			try {
 				if (GenomeFiles.size() < 1) {
 					JOptionPane.showMessageDialog(null, "No FASTA Files Selected!!!");
@@ -76,18 +83,35 @@ public class SearchMotifWindow extends JFrame implements ActionListener, Propert
 				} else {
 					setProgress(0);
 					for (int gfile = 0; gfile < GenomeFiles.size(); gfile++) {
-						SearchMotifOutput search = new SearchMotifOutput(GenomeFiles.get(gfile), txtMotif.getText(),
+						SearchMotifOutput output_obj = new SearchMotifOutput(GenomeFiles.get(gfile), txtMotif.getText(),
 								Integer.parseInt(txtMismatch.getText()), OUT_DIR, chckbxGzipOutput.isSelected());
-						search.setVisible(true);
-						search.run();
+						output_obj.addPropertyChangeListener("log", new PropertyChangeListener() {
+							public void propertyChange(PropertyChangeEvent evt) {
+								firePropertyChange("log", evt.getOldValue(), evt.getNewValue());
+							}
+						});
+						output_obj.setVisible(true);
+						output_obj.run();
+						// Update progress
 						int percentComplete = (int) (((double) (gfile + 1) / (GenomeFiles.size())) * 100);
 						setProgress(percentComplete);
 					}
+					setProgress(100);
 					JOptionPane.showMessageDialog(null, "Search Complete");
 				}
 			} catch (NumberFormatException nfe) {
 				JOptionPane.showMessageDialog(null, "Invalid Input in Fields!!!");
+			} catch (InterruptedException ie) {
+				ie.printStackTrace();
+				JOptionPane.showMessageDialog(null, "Unexpected InterruptedException: " + ie.getMessage());
+			} catch (IOException ioe) {
+				ioe.printStackTrace();
+				JOptionPane.showMessageDialog(null, "I/O issues: " + ioe.getMessage());
+			} catch (Exception e) {
+				e.printStackTrace();
+				JOptionPane.showMessageDialog(null, ToolDescriptions.UNEXPECTED_EXCEPTION_MESSAGE + e.getMessage());
 			}
+			setProgress(100);
 			return null;
 		}
 
@@ -137,12 +161,7 @@ public class SearchMotifWindow extends JFrame implements ActionListener, Propert
 			}
 		});
 		contentPane.add(btnOutputDirectory);
-
-		chckbxGzipOutput = new JCheckBox("Output GZIP");
-		sl_contentPane.putConstraint(SpringLayout.NORTH, chckbxGzipOutput, 0, SpringLayout.NORTH, btnOutputDirectory);
-		sl_contentPane.putConstraint(SpringLayout.EAST, chckbxGzipOutput, -10, SpringLayout.EAST, contentPane);
-		contentPane.add(chckbxGzipOutput);
-
+		
 		JLabel lblCurrentOutput = new JLabel("Current Output:");
 		sl_contentPane.putConstraint(SpringLayout.NORTH, lblNewLabel, 5, SpringLayout.SOUTH, lblCurrentOutput);
 		sl_contentPane.putConstraint(SpringLayout.NORTH, lblCurrentOutput, 6, SpringLayout.SOUTH, btnOutputDirectory);
@@ -158,6 +177,11 @@ public class SearchMotifWindow extends JFrame implements ActionListener, Propert
 		btnSearch.setActionCommand("start");
 		btnSearch.addActionListener(this);
 
+		chckbxGzipOutput = new JCheckBox("Output GZip");
+		sl_contentPane.putConstraint(SpringLayout.NORTH, chckbxGzipOutput, 0, SpringLayout.NORTH, btnSearch);
+		sl_contentPane.putConstraint(SpringLayout.WEST, chckbxGzipOutput, 25, SpringLayout.WEST, contentPane);
+		contentPane.add(chckbxGzipOutput);
+		
 		progressBar = new JProgressBar();
 		sl_contentPane.putConstraint(SpringLayout.WEST, progressBar, -125, SpringLayout.EAST, contentPane);
 		sl_contentPane.putConstraint(SpringLayout.SOUTH, progressBar, -10, SpringLayout.SOUTH, contentPane);
@@ -232,6 +256,9 @@ public class SearchMotifWindow extends JFrame implements ActionListener, Propert
 
 	}
 
+	/**
+	 * Runs when a task is invoked, making window non-interactive and executing the task.
+	 */
 	@Override
 	public void actionPerformed(ActionEvent arg0) {
 		massXable(contentPane, false);
@@ -245,13 +272,21 @@ public class SearchMotifWindow extends JFrame implements ActionListener, Propert
 	/**
 	 * Invoked when task's progress property changes.
 	 */
+	@Override
 	public void propertyChange(PropertyChangeEvent evt) {
 		if ("progress" == evt.getPropertyName()) {
 			int progress = (Integer) evt.getNewValue();
 			progressBar.setValue(progress);
+		} else if ("log" == evt.getPropertyName()) {
+			firePropertyChange("log", evt.getOldValue(), evt.getNewValue());
 		}
 	}
 
+	/**
+	 * Makes the content pane non-interactive If the window should be interactive data
+	 * @param con Content pane to make non-interactive
+	 * @param status If the window should be interactive
+	 */
 	public void massXable(Container con, boolean status) {
 		for (Component c : con.getComponents()) {
 			c.setEnabled(status);

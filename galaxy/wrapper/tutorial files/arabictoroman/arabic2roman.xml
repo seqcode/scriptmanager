@@ -1,0 +1,50 @@
+<tool id="arabic2roman" name="arabic-roman" version="1.0.0">
+<requirements>
+        <requirement type="package" version="1.3.2">pandas</requirement>
+</requirements>
+<tool id="arabic2roman" name="arabic-roman" version="1.0.0">
+<requirements>
+        <requirement type="package" version="1.3.2">pandas</requirement>
+</requirements>
+<description>Arabicto-roman</description>
+<command>
+python3 '$__tool_directory__/arabic2roman_bed.py' --input '${input_arabic}' --output '${output_roman}'
+</command>
+<inputs>
+     <param name="input_arabic" type="data" format="bed" label="Bed file in arabic numerals"/>
+</inputs>
+<outputs>
+    <data name="output_roman" format="bed" label="Bed file in roman numerals"/>
+</outputs>
+<help>
+**What it does**
+
+This tool switches out the chromosome numbers from arabic numerals to roman numerals
+
+
+-----
+**Example**
+
+Input File::
+chr5	306268	306268	YER074W	215
+chr13	551801	551801	YMR143W	193
+chr16	282065	282065	YPL143W	163
+chr14	302648	302648	YNL178W	140
+chr7	726918	726918	YGR118W	119
+chr15	867043	867043	YOR293W	118
+chr13	146432	146432	YML063W	117
+chr4	1359892	1359892	YDR450W	116
+chr10	90634	90634	YJL177W	115
+
+Output File::
+chrV	306268	306268	YER074W	215
+chrXIII	551801	551801	YMR143W	193
+chrXVI	282065	282065	YPL143W	163
+chrXIV	302648	302648	YNL178W	140
+chrVII	726918	726918	YGR118W	119
+chrXV	867043	867043	YOR293W	118
+chrXIII	146432	146432	YML063W	117
+chrIV	1359892	1359892	YDR450W	116
+chrX	90634	90634	YJL177W	115
+       </help>
+</tool>

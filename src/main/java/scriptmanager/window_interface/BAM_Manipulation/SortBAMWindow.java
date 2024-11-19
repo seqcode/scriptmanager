@@ -12,7 +12,10 @@ import java.awt.Color;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.io.File;
+import java.io.IOException;
+import java.sql.Timestamp;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 
 import javax.swing.DefaultListModel;
@@ -30,12 +33,26 @@ import javax.swing.SpringLayout;
 import javax.swing.SwingWorker;
 import javax.swing.border.EmptyBorder;
 
+import scriptmanager.cli.BAM_Manipulation.SortBAMCLI;
+import scriptmanager.objects.LogItem;
+import scriptmanager.objects.ToolDescriptions;
 import scriptmanager.scripts.BAM_Manipulation.BAMFileSort;
+import scriptmanager.util.ExtensionFileFilter;
 import scriptmanager.util.FileSelection;
 
+/**
+ * GUI for collecting inputs to be processed by
+ * {@link scriptmanager.scripts.BAM_Manipulation.BAMFileSort}
+ * 
+ * @author William KM Lai
+ * @see scriptmanager.scripts.BAM_Manipulation.BAMFileSort
+ */
 @SuppressWarnings("serial")
 public class SortBAMWindow extends JFrame implements ActionListener, PropertyChangeListener {
 	private JPanel contentPane;
+	/**
+	 * FileChooser which opens to user's directory
+	 */
 	protected JFileChooser fc = new JFileChooser(new File(System.getProperty("user.dir")));
 
 	final DefaultListModel<String> expList;
@@ -47,34 +64,59 @@ public class SortBAMWindow extends JFrame implements ActionListener, PropertyCha
 	private JButton btnSort;
 
 	private JProgressBar progressBar;
+	/**
+	 * Used to run the script efficiently
+	 */
 	public Task task;
 	private JButton btnOutput;
 	private JLabel label;
 	private JLabel lblDefaultToLocal;
 
+	/**
+	 * Organizes user inputs for calling script
+	 */
 	class Task extends SwingWorker<Void, Void> {
         @Override
-        public Void doInBackground() throws Exception {
-        	setProgress(0);
+        public Void doInBackground() {
 			try {
-				for(int x = 0; x < BAMFiles.size(); x++) {
-					// Build output filepath
-					String[] NAME = BAMFiles.get(x).getName().split("\\.");
-					File OUTPUT = null;
-					if(OUT_DIR != null) { OUTPUT = new File(OUT_DIR.getCanonicalPath() + File.separator + NAME[0] + "_sorted.bam"); }
-					else { OUTPUT = new File(NAME[0] + "_sorted.bam"); }
+				setProgress(0);
+				LogItem old_li = null;
+				for (int x = 0; x < BAMFiles.size(); x++) {
+					// Construct output filename
+					String NAME = ExtensionFileFilter.stripExtension(BAMFiles.get(x).getName()) + "_sorted.bam";
+					File OUTPUT = new File(NAME);
+					if (OUT_DIR != null) {
+						OUTPUT = new File(OUT_DIR.getCanonicalPath() + File.separator + NAME);
+					}
+					// Initialize LogItem
+					String command = SortBAMCLI.getCLIcommand(BAMFiles.get(x), OUTPUT);
+					LogItem new_li = new LogItem(command);
+					firePropertyChange("log", old_li, new_li);
 					// Execute Picard wrapper
 					BAMFileSort.sort(BAMFiles.get(x), OUTPUT);
+					// Update LogItem
+					new_li.setStopTime(new Timestamp(new Date().getTime()));
+					new_li.setStatus(0);
+					old_li = new_li;
 					// Update progress
 					int percentComplete = (int)(((double)(x + 1) / BAMFiles.size()) * 100);
 					setProgress(percentComplete);
 					
 				}
+				// final update
+				firePropertyChange("log", old_li, null);
 				setProgress(100);
 				JOptionPane.showMessageDialog(null, "Sorting Complete");
 			} catch (SAMException se) {
 				JOptionPane.showMessageDialog(null, se.getMessage());
+			} catch (IOException ioe) {
+				ioe.printStackTrace();
+				JOptionPane.showMessageDialog(null, "I/O issues: " + ioe.getMessage());
+			} catch (Exception e) {
+				e.printStackTrace();
+				JOptionPane.showMessageDialog(null, ToolDescriptions.UNEXPECTED_EXCEPTION_MESSAGE + e.getMessage());
 			}
+			setProgress(100);
         	return null;
         }
         
@@ -84,6 +126,9 @@ public class SortBAMWindow extends JFrame implements ActionListener, PropertyCha
         }
 	}
 	
+	/**
+	 * Creates a new SortBAMWindow
+	 */
 	public SortBAMWindow() {
 		setTitle("BAM File Sort");
 		setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
@@ -180,6 +225,9 @@ public class SortBAMWindow extends JFrame implements ActionListener, PropertyCha
 		contentPane.add(lblDefaultToLocal);
 	}
 
+/**
+	 * Runs when a task is invoked, making window non-interactive and executing the task.
+	 */
 	@Override
 	public void actionPerformed(ActionEvent arg0) {
 		massXable(contentPane, false);
@@ -189,15 +237,25 @@ public class SortBAMWindow extends JFrame implements ActionListener, PropertyCha
         task.addPropertyChangeListener(this);
         task.execute();
 	}
-	
+
+	/**
+	 * Invoked when task's progress changes, updating the progress bar.
+	 */
 	@Override
 	public void propertyChange(PropertyChangeEvent evt) {
-        if ("progress" == evt.getPropertyName()) {
-            int progress = (Integer) evt.getNewValue();
-            progressBar.setValue(progress);
-        }
+		if ("progress" == evt.getPropertyName()) {
+			int progress = (Integer) evt.getNewValue();
+			progressBar.setValue(progress);
+		} else if ("log" == evt.getPropertyName()) {
+			firePropertyChange("log", evt.getOldValue(), evt.getNewValue());
+		}
 	}
 	
+	/**
+	 * Makes the content pane non-interactive If the window should be interactive data
+	 * @param con Content pane to make non-interactive
+	 * @param status If the window should be interactive
+	 */
 	public void massXable(Container con, boolean status) {
 		for(Component c : con.getComponents()) {
 			c.setEnabled(status);

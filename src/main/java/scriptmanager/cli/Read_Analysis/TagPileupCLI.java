@@ -13,14 +13,19 @@ import java.io.File;
 import java.io.IOException;
 import java.io.PrintStream;
 
-import scriptmanager.util.BAMUtilities;
 import scriptmanager.objects.PileupParameters;
 import scriptmanager.objects.ToolDescriptions;
+import scriptmanager.objects.Exceptions.OptionException;
+import scriptmanager.util.BAMUtilities;
+
 import scriptmanager.scripts.Read_Analysis.TagPileup;
 
 /**
-	Read_AnalysisCLI/TagPileupCLI
-*/
+ * Command line interface for
+ * {@link scriptmanager.scripts.Read_Analysis.TagPileup}
+ * 
+ * @author Olivia Lang
+ */
 @Command(name = "tag-pileup", mixinStandardHelpOptions = true,
 	description = ToolDescriptions.tag_pileup_description,
 	version = "ScriptManager "+ ToolDescriptions.VERSION,
@@ -50,7 +55,7 @@ public class TagPileupCLI implements Callable<Integer> {
 			arity="0..1")
 		private ArrayList<String> outputMatrix = new ArrayList<String>(Arrays.asList("no","matrix","output"));
 		@Option(names = {"-z", "--gzip"}, description = "output compressed output (default=false)")
-		private boolean zip = false;
+		private boolean gzOutput = false;
 		@Option(names = {"--cdt"}, description = "output matrix in cdt format (default)")
 		private boolean cdt = false;
 		@Option(names = {"--tab"}, description = "output matrix in tab format")
@@ -110,6 +115,8 @@ public class TagPileupCLI implements Callable<Integer> {
 		private int shift = 0;
 		@Option(names = {"-b", "--bin-size"}, description = "set a bin size for the output (default=1bp)")
 		private int binSize = 1;
+		@Option(names = {"-e", "--tag-extend"}, description = "set a bp length to extend the tag (default=0)")
+		private int tagExtend = 0;
 		@Option(names = {"-t", "--standard"}, description = "set tags to be equal (default=false)")
 		private boolean tagsEqual;
 		@Option(names = {"--cpu"}, description = "set number of CPUs to use (default=1)")
@@ -128,9 +135,15 @@ public class TagPileupCLI implements Callable<Integer> {
 		@Option(names = {"-x", "--max-insert"}, description = "filter by maximum insert size in bp, require PE (default=no maximum)")
 		private int MAX_INSERT = -9999;
 	}
-	
+
 	PileupParameters p;
-	
+
+	/**
+	 * Runs when this subcommand is called, running script in respective script
+	 * package with user defined arguments
+	 * 
+	 * @throws IOException Invalid file or parameters
+	 */
 	@Override
 	public Integer call() throws Exception {
 		System.err.println( ">TagPileupCLI.call()" );
@@ -154,10 +167,10 @@ public class TagPileupCLI implements Callable<Integer> {
 		System.err.println( "Calculations complete" );
 		return(0);
 	}
-	
+
 	private String validateInput() throws IOException {
 		String r = "";
-		
+
 		// Set ASPECT
 		if(aspectType.fiveprime) { p.setAspect(PileupParameters.FIVE); }
 		else if(aspectType.threeprime) { p.setAspect(PileupParameters.THREE); }
@@ -168,7 +181,7 @@ public class TagPileupCLI implements Callable<Integer> {
 		if(readType.read1){ p.setRead(PileupParameters.READ1); }
 		else if(readType.read2){ p.setRead(PileupParameters.READ2); }
 		else if(readType.allreads){ p.setRead(PileupParameters.ALLREADS); }
-		
+
 		//check inputs exist
 		if(!bedFile.exists()){
 			r += "(!)BED file does not exist: " + bedFile.getCanonicalPath() +  "\n";
@@ -182,12 +195,11 @@ public class TagPileupCLI implements Callable<Integer> {
 		if(!f.exists() || f.isDirectory()){
 			r += "(!)BAI Index File does not exist for: " + bamFile.getName() +  "\n";
 		}
-		
+
 		//set default output COMPOSITE filename (done by picocli)
 		//check output COMPOSITE filename is valid
 		if(outputOptions.outputComposite!="composite_average.out"){
 			File output = new File(outputOptions.outputComposite);
-			//no check ext
 			//check directory
 			if(output.getParent()==null){
 // 				System.err.println("default to current directory");
@@ -195,7 +207,7 @@ public class TagPileupCLI implements Callable<Integer> {
 				r += "(!)Check output directory exists: " + output.getParent() + "\n";
 			}
 		}
-		
+
 		//validate smooth params
 		if(smoothType.winVals!=-9999 && smoothType.winVals<1){ r += "(!)Invalid Smoothing Window Size. Must be larger than 0 bins, winSize=" + smoothType.winVals + "\n"; }
 		if(smoothType.winVals!=-9999 && smoothType.winVals%2==0){ r += "(!)Invalid Smoothing Window Size. Must be odd for symmetrical smoothing (so that the window is centered properly), winSize=" + smoothType.winVals + "\n"; }
@@ -245,15 +257,15 @@ public class TagPileupCLI implements Callable<Integer> {
 				}
 			}
 		}
-		
+
 		//Set COMPOSITE file
 		p.setOutputCompositeStatus(true);
 		p.setCompositePrintStream(new PrintStream(outputOptions.outputComposite));
-		
+
 		//Set STRAND
 		p.setStrand(PileupParameters.SEPARATE);
 		if(combStatus || p.getAspect() == PileupParameters.MIDPOINT) { p.setStrand(PileupParameters.COMBINED); }
-		
+
 		//Set smooth type and parameters
 		if(smoothType.noSmooth){			//default behavior
 			p.setTrans(PileupParameters.NO_SMOOTH);
@@ -272,19 +284,20 @@ public class TagPileupCLI implements Callable<Integer> {
 			p.setStdSize(smoothType.gaussVals[0]);
 			p.setStdNum(smoothType.gaussVals[1]);
 		}else{ p.setTrans(0); }      //default behavior
-		
+
 		//Set SHIFT, BIN, CPU
 		p.setShift(calcOptions.shift);
 		p.setBin(calcOptions.binSize);
+		p.setTagExtend(calcOptions.tagExtend);
 		p.setCPU(calcOptions.cpu);
-		
+
 		//Set BLACKLIST & STANDARD
 		p.setBlacklist(filterOptions.blacklistFilter);
 		p.setStandard(calcOptions.tagsEqual);
-		
+
 		//Set output statuses
-		p.setGZIPstatus(outputOptions.zip);
-		
+		p.setGZIPstatus(outputOptions.gzOutput);
+
 		//Set Ratio (code to standardize tags sequenced to genome size (1 tag / 1 bp))
 		if( p.getStandard() && filterOptions.blacklistFilter!=null ){
 			p.setRatio(BAMUtilities.calculateStandardizationRatio(bamFile, filterOptions.blacklistFilter, p.getRead()));
@@ -299,4 +312,22 @@ public class TagPileupCLI implements Callable<Integer> {
 		return(r);
 	}
 	
+	/**
+	 * Reconstruct CLI command
+	 * 
+	 * @param BED   input BED file
+	 * @param BAM   input BAM file
+	 * @param PARAM parameters for tag pileup
+	 * @return command line to execute with formatted inputs
+	 * @throws OptionException thrown by PileupParameters if invalid param values given
+	 */
+	public static String getCLIcommand(File BED, File BAM, PileupParameters PARAM) throws OptionException {
+		String command = "java -jar $SCRIPTMANAGER read-analysis tag-pileup";
+		command += " " + BED.getAbsolutePath();
+		command += " " + BAM.getAbsolutePath();
+		command += " " + PARAM.getCLIOptions();
+		String NAME = PARAM.getOutputDirectory() + File.separator + PARAM.generateFileBase(BED.getName(), BAM.getName());
+		command += " -M " + NAME + " -o " + NAME;
+		return(command);
+	}
 }

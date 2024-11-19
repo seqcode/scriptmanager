@@ -1,0 +1,55 @@
+<tool id="scriptmanager_scale-matrix" name="ScriptManager: Scale Matrix"
+    version="0.1.0+galaxy0" python_template_version="3.5" profile="21.05">
+    <description> Scale Matrix Data </description>
+    <macros>
+        <import>scriptmanager_macros.xml</import>
+    </macros>
+    <requirements>
+        <expand macro="requirement_openjdk" />
+    </requirements>
+    <command detect_errors="exit_code"><![CDATA[
+        java -jar $__tool_directory__/@JAR_FILENAME@ read-analysis scale-matrix
+
+        #if str($output_file_name.bool) == "Yes" :
+            -o "$output_file_name.file_name"
+        #end if
+        
+        #if str($scaling_factor) != "1" :
+            -s "$scaling_factor"
+        #end if
+        
+        -r "$start_row"
+        
+        -l "$start_col"
+                    
+        "$input"
+    ]]></command>
+    <inputs>
+        <param type="data" name="input" format="tabular" label="Input TAB File"/>
+        
+        <conditional name="output_file_name">
+        <param type="boolean" name="bool" truevalue="Yes" falsevalue="No" label="Output File Name" >
+        </param>
+            <when value="Yes">
+                <param type="text" name="file_name" value="" label="File Name" />
+            </when>
+            <when value="No">
+            </when>
+        </conditional>
+        
+        
+        <param type="integer" name="scaling_factor" value="1" label="Scaling Factor" />
+        <param type="integer" name="start_row" value="1" label="Start at Row" />
+        <param type="integer" name="start_col" value="2" label="Start at Column" />
+    </inputs>
+            
+    <outputs>
+        <data name="output" format="tabular" label="${tool.name} on ${on_string}"/>
+    </outputs>
+    <help>
+        
+    **What it does**
+    Apply a user-specified scaling factor to tab-delimited matrix data.
+    
+    </help>
+</tool>

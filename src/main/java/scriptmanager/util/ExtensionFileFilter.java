@@ -118,7 +118,7 @@ public class ExtensionFileFilter extends FileFilter{
 	 * 
 	 * @param f the File to strip an extension from
 	 * @return string of filename with extension stripped away
-	 * @throws IOException
+	 * @throws IOException Invalid file or parameters
 	 */
 	public static String stripExtension(File f) throws IOException {
 		String[] name = f.getName().split("\\.");
@@ -140,7 +140,7 @@ public class ExtensionFileFilter extends FileFilter{
 	 * 
 	 * @param f the File to strip an extension from
 	 * @return string of filename with extension stripped away
-	 * @throws IOException
+	 * @throws IOException Invalid file or parameters
 	 */
 	public static String stripExtensionIgnoreGZ(File f) throws IOException {
 		String NEWNAME = f.getName();
@@ -179,7 +179,7 @@ public class ExtensionFileFilter extends FileFilter{
 	 * @param f the File object whose path a substring is taken from
 	 * @param n the length of the substring to take
 	 * @return the ending substring of length n
-	 * @throws IOException
+	 * @throws IOException Invalid file or parameters
 	 */
 	public static String getSubstringEnd(File f, int n) throws IOException {
 		String NAME = f.getCanonicalPath();
@@ -196,13 +196,17 @@ public class ExtensionFileFilter extends FileFilter{
 	 * 
 	 * @param f the String to strip an extension from
 	 * @return string of filename with extension stripped away
-	 * @throws IOException
+	 * @throws IOException Invalid file or parameters
 	 */
 	public static String stripExtensionPath(File f) throws IOException {
 		String NAME = f.getCanonicalPath();
 		return(NAME.substring(0, NAME.lastIndexOf('.')));
 	}
 
+	/**
+	 * Returns null (under-development)
+	 * @return null
+	 */
 	@Override
 	public String getDescription() {
 		return null;

@@ -1,0 +1,70 @@
+<tool id="scriptmanager_cross-corr" name="ScriptManager: Cross Correlation"
+    version="0.1.0+galaxy0" python_template_version="3.5" profile="21.05">
+    <description> BAM Cross Correlation </description>
+    <macros>
+        <import>scriptmanager_macros.xml</import>
+    </macros>
+    <requirements>
+        <expand macro="requirement_openjdk" />
+    </requirements>
+    <command detect_errors="exit_code"><![CDATA[
+        ln -s "$input" "temp_input.bam" &&
+        samtools index "temp_input.bam" &&
+
+        java -jar $__tool_directory__/@JAR_FILENAME@ bam-statistics cross-corr
+        
+        #if str($output_file_name.bool) == "Yes" :
+            -o "$output_file_name.file_name"
+        #end if
+
+        #if str($cpu) != "1" :
+            -t "$cpu"
+        #end if
+        
+        #if str($correlation_strategy.bool) == "Yes" :
+            -r
+            -w "$correlation_strategy.window_size"
+            -i "$correlation_strategy.iterations"
+        #else if str($correlation_strategy.bool) == "No" :
+            -g
+        #end if
+
+        "temp_input.bam"
+    ]]></command>
+    <inputs>
+        <param name="input" type="data" format="bam" label="Input BAM file"/>
+        
+        <conditional name="output_file_name">
+        <param type="boolean" name="bool" truevalue="Yes" falsevalue="No" label="Output File Name" >
+        </param>
+            <when value="Yes">
+                <param type="text" name="file_name" value="" label="File Name" />
+            </when>
+            <when value="No">
+            </when>
+        </conditional>
+        
+        <param type="integer" name="cpu" value="1" label="CPU's to Use" />
+        
+        <conditional name="correlation_strategy">
+            <param type="boolean" name="bool" truevalue="Yes" falsevalue="No" label="Use Full Genome Correlation Method as Opposed to Random Sampling Correlation">
+            </param>
+            <when value="Yes">
+                <param type="integer" name="window_size" value="50000" label="Window Size (bp)" />
+                <param type="integer" name="iterations" value="10" label="Number of Samplings" />
+            </when>
+            <when value="No">
+            </when>
+        </conditional>
+
+    </inputs>
+            
+    <outputs>
+        <data name="output" format="text" label="${tool.name} on ${on_string}"/>
+    </outputs>
+    <help>
+        
+    **What it does**
+    Calculate optimal tag shift based on ArchTEx implementation
+    </help>
+</tool>

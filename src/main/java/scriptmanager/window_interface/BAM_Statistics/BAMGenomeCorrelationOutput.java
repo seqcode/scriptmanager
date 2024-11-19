@@ -7,6 +7,8 @@ import java.beans.PropertyChangeListener;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.sql.Timestamp;
+import java.util.Date;
 import java.util.Vector;
 
 import javax.swing.JFrame;
@@ -16,17 +18,27 @@ import javax.swing.JTabbedPane;
 import javax.swing.JTable;
 import javax.swing.SpringLayout;
 
+import scriptmanager.cli.BAM_Statistics.BAMGenomeCorrelationCLI;
+import scriptmanager.objects.LogItem;
+import scriptmanager.objects.Exceptions.OptionException;
 import scriptmanager.scripts.BAM_Statistics.BAMGenomeCorrelation;
 
-// Output Window wrapper for executing the script and displaying output
+/**
+ * Output wrapper for running
+ * {@link scriptmanager.scripts.BAM_Statistics.BAMGenomeCorrelation} and
+ * reporting the correlation heatmap and values
+ * 
+ * @author William KM Lai
+ * @see scriptmanager.scripts.BAM_Statistics.BAMGenomeCorrelation
+ * @see scriptmanager.window_interface.BAM_Statistics.BAMGenomeCorrelationWindow
+ */
 @SuppressWarnings("serial")
 public class BAMGenomeCorrelationOutput extends JFrame {
 	
 	Vector<File> bamFiles = null;
 	String[] fileID = null;
-	private File OUTPUT_PATH = null;
+	private File OUT_DIR = null;
 	private boolean OUTPUT_STATUS = false;
-	File OUT = null;
 	private int SHIFT;
 	private int BIN;
 	private int CPU;
@@ -35,7 +47,18 @@ public class BAMGenomeCorrelationOutput extends JFrame {
 	
 	final JLayeredPane layeredPane;
 	final JTabbedPane tabbedPane;
-		
+
+	/**
+	 * Creates new BAMGenomeCorrelationOutput
+	 * @param input Vector containing bam files
+	 * @param o Base name for output files
+	 * @param out Specifies if an output file should be generated
+	 * @param s The tag shift in #of base pairs
+	 * @param b The bin size in #of base pairs
+	 * @param c Number of CPU's to use
+	 * @param r Specifies which reads to correlate 
+	 * @param cs Color scale to use when generating heatmap
+	 */
 	public BAMGenomeCorrelationOutput(Vector<File> input, File o, boolean out, int s, int b, int c, int r, short cs) {
 		setTitle("Genome Correlation");
 		setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
@@ -55,7 +78,7 @@ public class BAMGenomeCorrelationOutput extends JFrame {
 		
 		bamFiles = input;
 		fileID = new String[bamFiles.size()];
-		OUTPUT_PATH = o;
+		OUT_DIR = o;
 		OUTPUT_STATUS = out;
 		SHIFT = s;
 		BIN = b;
@@ -64,21 +87,26 @@ public class BAMGenomeCorrelationOutput extends JFrame {
 		COLORSCALE = cs;
 	}
 	
-	public void run() throws IOException {
-		//Open Output File
-		if(OUTPUT_STATUS) {
-			String NAME = "correlation_matrix";
-			if(OUTPUT_PATH != null) {
-				try { OUT = new File(OUTPUT_PATH.getCanonicalPath() + File.separator + NAME); }
-				catch (FileNotFoundException e) { e.printStackTrace(); }
-				catch (IOException e) { e.printStackTrace(); }
-			} else {
-				OUT = new File(NAME);
-			}
-		} else {
-			OUTPUT_PATH = null;
+	/**
+	 * Runs the analysis and displays results
+	 * @throws FileNotFoundException
+	 * @throws IOException invalid file or parameters
+	 * @throws OptionException
+	 */
+	public void run() throws FileNotFoundException, IOException, OptionException {
+		// Construct output filename
+		String NAME = "correlation_matrix.txt";
+		File OUT_FILEPATH = new File(NAME);
+		if (OUT_DIR != null) {
+			OUT_FILEPATH = new File(OUT_DIR.getCanonicalPath() + File.separator + NAME);
 		}
-		BAMGenomeCorrelation script_obj = new BAMGenomeCorrelation( bamFiles, OUT, SHIFT, BIN, CPU, READ, COLORSCALE );
+
+		// Initialize LogItem
+		String command = BAMGenomeCorrelationCLI.getCLIcommand(bamFiles, OUT_FILEPATH, SHIFT, BIN, CPU, READ, COLORSCALE );
+		LogItem li = new LogItem(command);
+		if (OUTPUT_STATUS) { firePropertyChange("log", null, li); }
+		// Execute script
+		BAMGenomeCorrelation script_obj = new BAMGenomeCorrelation(bamFiles, OUT_FILEPATH, SHIFT, BIN, CPU, READ, COLORSCALE );
 		script_obj.addPropertyChangeListener("progress", new PropertyChangeListener() {
 			public void propertyChange(PropertyChangeEvent evt) {
 				if ("progress" == evt.getPropertyName()) {
@@ -88,13 +116,24 @@ public class BAMGenomeCorrelationOutput extends JFrame {
 		});
 		script_obj.getBAMGenomeCorrelation(true);
 
+		// Update log item
+		li.setStopTime(new Timestamp(new Date().getTime()));
+		li.setStatus(0);
+		// Add plot and data to tabs
 		tabbedPane.addTab("Correlation Plot", script_obj.getHeatMap());
 		tabbedPane.addTab("Correlation Data", makeTablePanel(script_obj.getMatrix()));
 		
 		//Make frame visible at completion of correlations
 		this.setVisible(true);
+		// Update log at completion
+		if (OUTPUT_STATUS) { firePropertyChange("log", li, null); }
 	}
 		
+	/**
+	 * Makes the matrix panel based on given matrix of correlation data
+	 * @param MATRIX Matrix of correlation data
+	 * @return Matrix correlation panel
+	 */
 	public JScrollPane makeTablePanel(double[][] MATRIX) {
 		JTable table = new JTable(MATRIX.length, MATRIX.length);
 		table.setName("Correlation Matrix");

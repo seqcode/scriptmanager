@@ -11,7 +11,9 @@ import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.io.File;
 import java.io.IOException;
+import java.sql.Timestamp;
 import java.util.ArrayList;
+import java.util.Date;
 
 import javax.swing.ButtonGroup;
 import javax.swing.DefaultComboBoxModel;
@@ -32,12 +34,24 @@ import javax.swing.SpringLayout;
 import javax.swing.SwingWorker;
 import javax.swing.border.EmptyBorder;
 
+import scriptmanager.objects.LogItem;
 import scriptmanager.util.FileSelection;
+import scriptmanager.cli.Read_Analysis.SimilarityMatrixCLI;
 import scriptmanager.scripts.Read_Analysis.SimilarityMatrix;
 
+/**
+ * GUI for collecting inputs to be processed by
+ * {@link scriptmanager.scripts.Read_Analysis.SimilarityMatrix}
+ * 
+ * @author William KM Lai
+ * @see scriptmanager.scripts.Read_Analysis.SimilarityMatrix
+ */
 @SuppressWarnings("serial")
 public class SimilarityMatrixWindow extends JFrame implements ActionListener, PropertyChangeListener {
 	private JPanel contentPane;
+	/**
+	 * FileChooser which opens to user's directory
+	 */
 	protected JFileChooser fc = new JFileChooser(new File(System.getProperty("user.dir")));
 
 	final DefaultListModel<String> expList;
@@ -56,10 +70,13 @@ public class SimilarityMatrixWindow extends JFrame implements ActionListener, Pr
 	private JRadioButton rdbtnCorrelateRows;
 	private JComboBox<String> comboBox;
 
+	/**
+	 * Used to run the script efficiently
+	 */
 	public Task task;
 
 	/**
-	 * Organize user inputs for calling script.
+	 * Organizes user inputs for calling script
 	 */
 	class Task extends SwingWorker<Void, Void> {
 		@Override
@@ -68,18 +85,32 @@ public class SimilarityMatrixWindow extends JFrame implements ActionListener, Pr
 				JOptionPane.showMessageDialog(null, "No TAB Files Loaded!!!");
 			} else {
 				setProgress(0);
-
+				LogItem old_li = null;
 				for (int x = 0; x < TABFiles.size(); x++) {
+					// Initialize LogItem
+					String command = SimilarityMatrixCLI.getCLIcommand(TABFiles.get(x), OUT_DIR,
+							comboBox.getSelectedIndex(), rdbtnCorrelateColumns.isSelected());
+					LogItem new_li = new LogItem(command);
+					firePropertyChange("log", old_li, new_li);
+					// Execute script
 					SimilarityMatrix matrix = new SimilarityMatrix(TABFiles.get(x), OUT_DIR,
 							comboBox.getSelectedIndex(), rdbtnCorrelateColumns.isSelected());
 					matrix.run();
-
+					// Update LogItem
+					new_li.setStopTime(new Timestamp(new Date().getTime()));
+					new_li.setStatus(0);
+					old_li = new_li;
+					// Update progress
 					int percentComplete = (int) (((double) (x + 1) / TABFiles.size()) * 100);
 					setProgress(percentComplete);
 				}
+				// final update
+				firePropertyChange("log", old_li, null);
 				setProgress(100);
 				JOptionPane.showMessageDialog(null, "All Matrices Generated");
 			}
+			/* TODO: Add try-catch block */
+			setProgress(100);
 			return null;
 		}
 
@@ -215,6 +246,9 @@ public class SimilarityMatrixWindow extends JFrame implements ActionListener, Pr
 		rdbtnCorrelateColumns.setSelected(true);
 	}
 
+	/**
+	 * Runs when a task is invoked, making window non-interactive and executing the task.
+	 */
 	@Override
 	public void actionPerformed(ActionEvent arg0) {
 		massXable(contentPane, false);
@@ -228,13 +262,21 @@ public class SimilarityMatrixWindow extends JFrame implements ActionListener, Pr
 	/**
 	 * Invoked when task's progress property changes.
 	 */
+	@Override
 	public void propertyChange(PropertyChangeEvent evt) {
 		if ("progress" == evt.getPropertyName()) {
 			int progress = (Integer) evt.getNewValue();
 			progressBar.setValue(progress);
+		} else if ("log" == evt.getPropertyName()) {
+			firePropertyChange("log", evt.getOldValue(), evt.getNewValue());
 		}
 	}
 
+	/**
+	 * Makes the content pane non-interactive If the window should be interactive data
+	 * @param con Content pane to make non-interactive
+	 * @param status If the window should be interactive
+	 */
 	public void massXable(Container con, boolean status) {
 		for (Component c : con.getComponents()) {
 			c.setEnabled(status);

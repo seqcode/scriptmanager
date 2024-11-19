@@ -143,6 +143,10 @@ public class GenetrackParameters {
 		return NAME;
 	}
 
+	/**
+	 * Returns the different variables of a GenetrackParameter represented by a string
+	 * @return The different variables of a GenetrackParameter represented by a string
+	 */
 	public String toString() {
 		String temp = "genetrack_s" + SIGMA + "e" + EXCLUSION;
 		if(UP != -999) temp += "u" + UP;

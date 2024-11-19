@@ -1,0 +1,163 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<macros>
+    <token name="@WRAPPER_VERSION@">1.0</token>
+    <token name="@JAVA_VERSION@">11.0</token>
+    <token name="@TOOL_VERSION@">0.14</token>
+    <token name="@JAR_FILENAME@">scriptmanager-v0.14-dev.jar</token>
+    <xml name="requirement_openjdk">
+        <requirement type="package" version="11.0.1" >openjdk</requirement>
+    </xml>
+    <xml name="requirement_samtools">
+        <requirement type="package" version="1.9" >samtools</requirement>
+        <requirement type="package" version="1.0" >openssl</requirement>
+    </xml>
+
+    <xml name="four_color_plot_selector_default_red">
+        <option value="D00000" selected="True">red</option>
+        <option value="00D000">green</option>
+        <option value="0000D0">blue</option>
+        <option value="FFB400">yellow</option>
+        <option value="6600FF">purple</option>
+        <option value="FF6600">orange</option>
+        <option value="808080">gray</option>
+        <option value="000000">black</option>
+    </xml>
+   <xml name="four_color_plot_selector_default_green">
+       <option value="D00000">red</option>
+       <option value="00D000" selected="True">green</option>
+       <option value="0000D0">blue</option>
+       <option value="FFB400">yellow</option>
+       <option value="6600FF">purple</option>
+       <option value="FF6600">orange</option>
+       <option value="808080">gray</option>
+       <option value="000000">black</option>
+    </xml>
+    <xml name="four_color_plot_selector_default_yellow">
+        <option value="D00000">red</option>
+        <option value="00D000">green</option>
+        <option value="0000D0">blue</option>
+        <option value="FFB400" selected="True">yellow</option>
+        <option value="6600FF">purple</option>
+        <option value="FF6600">orange</option>
+        <option value="808080">gray</option>
+        <option value="000000">black</option>
+    </xml>
+    <xml name="four_color_plot_selector_default_blue">
+        <option value="D00000">red</option>
+        <option value="00D000">green</option>
+        <option value="0000D0" selected="True">blue</option>
+        <option value="FFB400">yellow</option>
+        <option value="6600FF">purple</option>
+        <option value="FF6600">orange</option>
+        <option value="808080">gray</option>
+        <option value="000000">black</option>
+    </xml>
+    <xml name="four_color_plot_selector_default_gray">
+        <option value="D00000">red</option>
+        <option value="00D000">green</option>
+        <option value="0000D0">blue</option>
+        <option value="FFB400">yellow</option>
+        <option value="6600FF">purple</option>
+        <option value="FF6600">orange</option>
+        <option value="808080" selected="True">gray</option>
+        <option value="000000">black</option>
+    </xml>
+    <xml name="color_selector_default_red">
+        <option value="FF0000" selected="True">red</option>
+        <option value="00FF00">green</option>
+        <option value="0000FF">blue</option>
+        <option value="FFFF00">yellow</option>
+        <option value="6600FF">purple</option>
+        <option value="FF6600">orange</option>
+        <option value="808080">gray</option>
+        <option value="000000" selected="True">black</option>
+    </xml>
+    <xml name="color_selector_default_blue">
+        <option value="FF0000">red</option>
+        <option value="00FF00">green</option>
+        <option value="0000FF" selected="True">blue</option>
+        <option value="FFFF00">yellow</option>
+        <option value="6600FF">purple</option>
+        <option value="FF6600">orange</option>
+        <option value="808080">gray</option>
+        <option value="000000" selected="True">black</option>
+    </xml>
+    <xml name="color_selector_default_black">
+        <option value="FF0000">red</option>
+        <option value="00FF00">green</option>
+        <option value="0000FF">blue</option>
+        <option value="FFFF00">yellow</option>
+        <option value="6600FF">purple</option>
+        <option value="FF6600">orange</option>
+        <option value="808080">gray</option>
+        <option value="000000" selected="True">black</option>
+    </xml>
+
+    <xml name="stdio">
+        <stdio>
+            <exit_code range="1:"/>
+            <exit_code range=":-1"/>
+            <regex match="Error:"/>
+            <regex match="Exception:"/>
+        </stdio>
+    </xml>
+    <xml name="citations">
+        <citations>
+            <citation type="bibtex">
+                @unpublished{None,
+                author = {Greg Von Kuster},
+                title = {None},
+                year = {None},
+                eprint = {None},
+                url = {http://www.huck.psu.edu/content/research/independent-centers-excellence/center-for-eukaryotic-gene-regulation}
+            }</citation>
+        </citations>
+    </xml>
+    <xml name="citations_two">
+        <citations>
+            <citation type="bibtex">
+                @unpublished{None,
+                author = {Ali Nematbakhsh},
+                title = {None},
+                year = {None},
+                eprint = {None},
+                url = {https://www.cegr.psu.edu/}
+            }</citation>
+        </citations>
+    </xml>
+    <xml name="citations_three">
+        <citations>
+            <citation type="bibtex">
+                @unpublished{None,
+                author = {Ali Nematbakhsh, William Kai Ming Lai},
+                title = {None},
+                year = {None},
+                eprint = {None},
+                url = {http://pughlab.mbg.cornell.edu/}
+            }</citation>
+        </citations>
+    </xml>
+    <xml name="citations_pearc">
+        <citations>
+            <citation type="bibtex">
+                @inproceedings{10.1145/3491418.3535161,
+                author = {Lang, Olivia and Pugh, B Franklin and Lai, William KM},
+                title = {ScriptManager: An Interactive Platform for Reducing Barriers to Genomics Analysis},
+                year = {2022},
+                isbn = {9781450391610},
+                publisher = {Association for Computing Machinery},
+                address = {New York, NY, USA},
+                url = {https://doi.org/10.1145/3491418.3535161},
+                doi = {10.1145/3491418.3535161},
+                abstract = {ScriptManager was built to be a lightweight and easy to use genomics analysis tool for novice bioinformaticians. It includes both a graphical interface for easy navigation of inputs and options while also supporting a command line interface for automation and integration with workflow managers like Galaxy. We describe here how a user unfamiliar with the command line can leverage national supercomputing resources using a graphical desktop interface like Open OnDemand to perform their analyses and generate publication quality figures for their research. Widespread adoption of this tool in the genomics community would lower technical barriers to accessing supercomputing resources and allow biochemists to prototype their own workflows that can be integrated into large scale production pipelines. Source code and precompiled binaries available at https://github.com/CEGRcode/scriptmanager.},
+                booktitle = {Practice and Experience in Advanced Research Computing},
+                articleno = {33},
+                numpages = {6},
+                keywords = {XSEDE, high performance/throughput computing, sequencing, workflow, genomics, Galaxy, supercomputing, Graphical interface/GUI, Java application, OSG, Open OnDemand},
+                location = {Boston, MA, USA},
+                series = {PEARC '22}
+            }</citation>
+        </citations>
+    </xml>
+
+</macros>

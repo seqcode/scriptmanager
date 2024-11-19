@@ -3,6 +3,8 @@ package scriptmanager.objects;
 import java.io.File;
 import java.io.PrintStream;
 
+import scriptmanager.objects.Exceptions.OptionException;
+
 /**
  * Object for storing pileup-related parameter information and constants.
  *
@@ -12,7 +14,6 @@ import java.io.PrintStream;
  * @see scriptmanager.cli.Read_Analysis.TagPileupCLI
  * @see scriptmanager.window_interface.Read_Analysis.TagPileupWindow
  */
-
 public class PileupParameters {
 	/**
 	 * Read Aspect value encoding 5 prime end
@@ -117,6 +118,9 @@ public class PileupParameters {
 
 	private int CPU = 1;
 
+	/**
+	 * Print all PileupParameters attributes (mainly for debugging purposes).
+	 */
 	public void printAll(){
 		System.out.println( "<><><><><><><><><><><><><><><><><><><><>" );
 		System.out.println( "private File OUTPUT = " + OUTPUT );
@@ -144,6 +148,32 @@ public class PileupParameters {
 		System.out.println( "private int MAX_INSERT = " + MAX_INSERT );
 		System.out.println();
 		System.out.println( "<><><><><><><><><><><><><><><><><><><><>" );
+	}
+
+	public String getAspectString() throws OptionException {
+		switch (ASPECT) {
+			case PileupParameters.FIVE:
+				return("Read Aspect: Five");
+			case PileupParameters.THREE:
+				return("Read Aspect: Three");
+			case PileupParameters.MIDPOINT:
+				return("Read Aspect: Midpoint");
+			case PileupParameters.FRAGMENT:
+				return("Read Aspect: Fragment");
+		}
+		throw new OptionException("Unknown PileupParameters read aspect value: " + ASPECT);
+	}
+
+	public String getReadString() throws OptionException {
+		switch (READ) {
+			case PileupParameters.READ1:
+				return("Read Output: Read1");
+			case PileupParameters.THREE:
+				return("Read Output: Read2");
+			case PileupParameters.MIDPOINT:
+				return("Read Output: All Reads");
+		}
+		throw new OptionException("Unknown PileupParameters read output value: " + READ);
 	}
 
 	/**
@@ -273,16 +303,34 @@ public class PileupParameters {
 		outputCOMPOSITE = out;
 	}
 
+	/**
+	 * Returns the standardization ratio (default value = 1)
+	 * @return The standardization ration
+	 */
 	public double getRatio() {
 		return STANDRATIO;
 	}
+	
+	/**
+	 * Sets the standardization ratio
+	 * @param rat New value of STANDRATIO
+	 */
 	public void setRatio(double rat) {
 		STANDRATIO = rat;
 	}
 
+	/**
+	 * Returns Whether to perform Tag Standardization
+	 * @return Whether to perform Tag Standardization (default false)
+	 */
 	public boolean getStandard() {
 		return STANDARD;
 	}
+	
+	/**
+	 * Sets if Tag Standardization should be performed
+	 * @param stand New value of STANDARD
+	 */
 	public void setStandard(boolean stand) {
 		STANDARD = stand;
 	}
@@ -511,25 +559,130 @@ public class PileupParameters {
 	}
 
 	/**
-	 * recreate TagPileup command from the provided parameters (unused)
-	 *
-	 * @return the string command
+	 * Returns the file name and path for an output file (without the extension or strand #)
+	 * @param bed file path to the BED file (name included)
+	 * @param bam file bath to the BAM file  (name included)
+	 * @return The file name, with the path, of an output file (without the extension or strand #)
 	 */
-	public String getCLIcmd(){
+	public String generateFileBase(String bed, String bam) {
+		String[] bedname = bed.split("\\.");
+		String[] bamname = bam.split("\\.");
 
-		String cliCommand = "java -jar ScriptManager.jar read-analysis tag-pileup <bed-file> <bam-file>";
+		String read = "5read1";
+		if (getAspect() == PileupParameters.FIVE && getRead() == PileupParameters.READ2) {
+			read = "5read2";
+		} else if (getAspect() == PileupParameters.FIVE && getRead() == PileupParameters.ALLREADS) {
+			read = "5readc";
+		} else if (getAspect() == PileupParameters.THREE && getRead() == PileupParameters.READ1) {
+			read = "3read1";
+		} else if (getAspect() == PileupParameters.THREE && getRead() == PileupParameters.READ2) {
+			read = "3read2";
+		} else if (getAspect() == PileupParameters.THREE && getRead() == PileupParameters.ALLREADS) {
+			read = "3readc";
+		} else if (getAspect() == PileupParameters.MIDPOINT) {
+			read = "midpoint";
+		} else if (getAspect() == PileupParameters.FRAGMENT) {
+			read = "fragment";
+		}
 
-		//Add READ
-		if(READ==0){ cliCommand += " -1"; }
-		else if(READ==1){ cliCommand += " -2"; }
-		else if(READ==2){ cliCommand += " -a"; }
-		else if(READ==3){ cliCommand += " -m"; }
-		else{ System.err.println("This should not print."); }
-		//Add STRAND
-		if(STRAND==0){ cliCommand += " --separate"; }
-		else if(STRAND==1){ cliCommand += " --combined"; }
-		else{ System.err.println("This should not print."); }
-		//Add TRANS
+		return (bedname[0] + "_" + bamname[0] + "_" + read);
+	}
+
+	/**
+	 * Generates the fine name and path for an output
+	 * @param bed file path to the BED file (name included)
+	 * @param bam file bath to the BAM file  (name included)
+	 * @param strandnum strand # to be used in the file name
+	 * @return The file name, with the path, of an output file (including the file extension and strand #)
+	 */
+	public String generateFileName(String bed, String bam, int strandnum) {
+		return (generateFileName(generateFileBase(bed, bam), strandnum));
+	}
+
+	/**
+	 * Generates the file name and path for an output
+	 * @param basename Base name of the file (created with {@link PileupParameters#generateFileBase(String, String)})
+	 * @param strandnum strand # to be used in the file name
+	 * @return The file name, with the path, of an output file (including the file extension and strand #)
+	 */
+	public String generateFileName(String basename, int strandnum) {
+		String strand = "sense";
+		if (strandnum == 1) {
+			strand = "anti";
+		} else if (strandnum == 2) {
+			strand = "combined";
+		}
+
+		String filename = basename + "_" + strand;
+		if (getOutputType() == 1) {
+			filename += ".tab";
+		} else {
+			filename += ".cdt";
+		}
+
+		if (getOutputGZIP()) {
+			filename += ".gz";
+		}
+
+		return filename;
+	}
+
+	/**
+	 * Get the flag options for a cli execution with this object's parameter
+	 * settings.
+	 *
+	 * @return the string of flags and options
+	 * @throws OptionException when PileupParameters value is unrecognized
+	 */
+	public String getCLIOptions() throws OptionException {
+		String cliCommand = "";
+
+		// Add ASPECT
+		switch (ASPECT) {
+			case PileupParameters.FIVE:
+				cliCommand += " -5";
+				break;
+			case PileupParameters.THREE:
+				cliCommand += " -3";
+				break;
+			case PileupParameters.MIDPOINT:
+				cliCommand += " -m";
+				break;
+			case PileupParameters.FRAGMENT:
+				cliCommand += " --full-fragment";
+				break;
+			default:
+				throw new OptionException("Unknown PileupParameters read aspect value: " + ASPECT);
+		}
+
+		// Add READ
+		switch (READ) {
+			case PileupParameters.READ1:
+				cliCommand += " -1";
+				break;
+			case PileupParameters.READ2:
+				cliCommand += " -2";
+				break;
+			case PileupParameters.ALLREADS:
+				cliCommand += " -a";
+				break;
+			default:
+				throw new OptionException("Unknown PileupParameters read output value: " + READ);
+		}
+
+		// Add STRAND
+		switch (STRAND) {
+			case PileupParameters.SEPARATE:
+				cliCommand += " --separate";
+				break;
+			case PileupParameters.COMBINED:
+				cliCommand += " --combined";
+				break;
+			default:
+				throw new OptionException("Unknown PileupParameters strand value: " + STRAND);
+		}
+
+		// Add TRANS
 		if(TRANS==0){
 			cliCommand += " --no-smooth";
 		}else if(TRANS==1){
@@ -540,15 +693,17 @@ public class PileupParameters {
 			else{ cliCommand += " -G " + STDSIZE + " " + STDNUM; }
 		}else{ System.err.println("This should not print."); }
 
-		//Add SHIFT
-		if(SHIFT!=0){ cliCommand += " -s " + SHIFT; }
-		//Add BIN
-		if(BIN!=1){ cliCommand += " -b " + BIN; }
+		// Add SHIFT
+		if (SHIFT != 0) { cliCommand += " -s " + SHIFT; }
+		// Add BIN
+		if (BIN != 1) { cliCommand += " -b " + BIN; }
+		// Add TagExtend
+		if (TAGEXTEND != 0) { cliCommand += " -e " + TAGEXTEND; }
 
 		//Add STANDARD
 		if(STANDARD==true){ cliCommand += " -t"; }
 		//Add BLACKLIST
-		if(BLACKLIST!=null){ cliCommand += " -f " + BLACKLIST; }
+		if(BLACKLIST!=null){ cliCommand += " -f " + BLACKLIST.getAbsolutePath(); }
 
 		//Add requirePE
 		if(requirePE==true){ cliCommand += " -p"; }
@@ -557,6 +712,7 @@ public class PileupParameters {
 		//Add MAX_INSERT
 		if(MAX_INSERT!=-9999){ cliCommand += " -x " + MAX_INSERT; }
 
+		if (OUTTYPE == PileupParameters.TAB) { cliCommand += " --tab"; }
 		//Add outputGZIP
 		if(outputGZIP==true){ cliCommand += " -z"; }
 
@@ -565,5 +721,4 @@ public class PileupParameters {
 
 		return(cliCommand);
 	}
-
 }

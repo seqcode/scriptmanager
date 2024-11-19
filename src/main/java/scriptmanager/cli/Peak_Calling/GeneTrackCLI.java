@@ -2,14 +2,17 @@ package scriptmanager.cli.Peak_Calling;
 
 import picocli.CommandLine.Command;
 import java.util.concurrent.Callable;
-
+import java.io.File;
 import java.io.IOException;
 
 import scriptmanager.objects.ToolDescriptions;
 
 /**
-	Peak_CallingCLI/GeneTrackCLI
-*/
+ * (Dev) Unfinished command line interface for
+ * {@link scriptmanager.scripts.Peak_Calling.GeneTrack}
+ * 
+ * @author Olivia Lang
+ */
 @Command(name = "gene-track", mixinStandardHelpOptions = true,
 	description = ToolDescriptions.gene_track_description,
 	version = "ScriptManager "+ ToolDescriptions.VERSION,
@@ -18,6 +21,10 @@ import scriptmanager.objects.ToolDescriptions;
 	exitCodeOnExecutionException = 1)
 public class GeneTrackCLI implements Callable<Integer> {
 	
+	/**
+	 * Runs when this subcommand is called, running script in respective script package with user defined arguments
+	 * @throws IOException Invalid file or parameters
+	 */
 	@Override
 	public Integer call() throws Exception {
 		System.out.println( ">GeneTrackCLI.call()" );
@@ -31,6 +38,7 @@ public class GeneTrackCLI implements Callable<Integer> {
 		//SEStats.getSEStats( output, bamFile, null );
 		
 		//System.err.println("Calculations Complete");
+		System.err.println("CLI GeneTrack not yet implemented");
 		return(0);
 	}
 	
@@ -39,5 +47,23 @@ public class GeneTrackCLI implements Callable<Integer> {
 		//validate input here
 		//append messages to the user to `r`
 		return(r);
+	}
+
+	/**
+	 * Reconstruct CLI command
+	 * 
+	 * @param id
+	 * @param s
+	 * @param e
+	 * @param f
+	 * @param u
+	 * @param d
+	 * @param path
+	 * @return command line to execute with formatted inputs
+	 */
+	public static String getCLIcommand(File id, int s, int e, int f, int u, int d, String path) {
+		String command = "# (Not yet implemented) java -jar $SCRIPTMANAGER peak-calling gene-track";
+		/* TODO: implement CLI */
+		return(command);
 	}
 }

@@ -17,14 +17,25 @@ import java.util.Date;
 import java.util.Vector;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import javax.swing.JOptionPane;
 
 import org.jfree.chart.ChartPanel;
 
 import scriptmanager.charts.HeatMap;
+import scriptmanager.objects.Exceptions.OptionException;
 import scriptmanager.scripts.BAM_Statistics.CorrelationScripts.CorrelationCoord;
 import scriptmanager.scripts.BAM_Statistics.CorrelationScripts.CorrelationExtract;
 
+/**
+ * Perform genome-genome correlations for replicate comparisons on multiple BAM
+ * files
+ * 
+ * @author William KM Lai
+ * @see scriptmanager.scripts.BAM_Statistics.CorrelationScripts.CorrelationCoord
+ * @see scriptmanager.scripts.BAM_Statistics.CorrelationScripts.CorrelationExtract
+ * @see scriptmanager.cli.BAM_Statistics.BAMGenomeCorrelationCLI
+ * @see scriptmanager.window_interface.BAM_Statistics.BAMGenomeCorrelationWindow
+ * @see scriptmanager.window_interface.BAM_Statistics.BAMGenomeCorrelationOutput
+ */
 @SuppressWarnings("serial")
 public class BAMGenomeCorrelation extends Component {
 	
@@ -38,11 +49,21 @@ public class BAMGenomeCorrelation extends Component {
 	private int CPU;
 	private int READ;
 	private short COLORSCALE;
-	private boolean GUI = false;
 	
 	SamReader reader;
 	final SamReaderFactory factory = SamReaderFactory.makeDefault().enable(SamReaderFactory.Option.INCLUDE_SOURCE_IN_RECORDS, SamReaderFactory.Option.VALIDATE_CRC_CHECKSUMS).validationStringency(ValidationStringency.SILENT);
 	
+	/**
+	 * Creates a new BAMGenomeCorrelation object given parameters
+	 * 
+	 * @param input list of indexed BAM files to correlate
+	 * @param o     Base name for output files
+	 * @param s     The tag shift in #of base pairs
+	 * @param b     The bin size in #of base pairs
+	 * @param c     Number of CPU's to use
+	 * @param r     Specifies which reads to correlate
+	 * @param cs    Color scale to use when generating heatmap
+	 */
 	public BAMGenomeCorrelation(Vector<File> input, File o, int s, int b, int c, int r, short cs ){
 		//Load in bamFiles
 		bamFiles = input;
@@ -57,8 +78,14 @@ public class BAMGenomeCorrelation extends Component {
 		READ = r;
 		COLORSCALE = cs;
 	}
+
+	/**
+	 * Creates correlation matrix 
+	 * @param GUI Specifies if called by window interface or by cli
+	 * @throws IOException Invalid file or parameters
+	 */
 		
-	public void getBAMGenomeCorrelation(boolean GUI) throws IOException {
+	public void getBAMGenomeCorrelation(boolean GUI) throws IOException, OptionException {
 		System.err.println(getTimeStamp());
 		// Check BAMs first
 		if(!validateBAM()) {
@@ -108,6 +135,12 @@ public class BAMGenomeCorrelation extends Component {
 		System.err.println(getTimeStamp());
 	}
 	
+	/**
+	 * Performs reflexive pearson correlation calculations between two given genomes
+	 * @param exp1 First genome
+	 * @param exp2 Second genome
+	 * @return correlation value
+	 */
 	public double correlate(File exp1, File exp2) {
 		System.err.println("Comparing: " + exp1.getName() + "\t-\t" + exp2.getName());
 
@@ -131,13 +164,13 @@ public class BAMGenomeCorrelation extends Component {
 			//System.err.println("Analyzing: " + seq.getSequenceName());
 			
 			//Break chromosome into 100kb chunks and assign to independent nodes
-			int numwindows = (int) (seq.getSequenceLength() / 100000);
+			int numwindows = (int) (seq.getSequenceLength() / 100_000);
 			for(int x = 0; x < numwindows; x++) {
-				int start = x * 100000;
-				int stop = start + 100000;
+				int start = x * 100_000;
+				int stop = start + 100_000;
 				ChromosomeWindows.add(new CorrelationCoord(seq.getSequenceName(), start, stop));
 			}
-			int finalstart = numwindows * 100000;
+			int finalstart = numwindows * 100_000;
 			int finalstop = (seq.getSequenceLength() / BIN) * BIN;
 			ChromosomeWindows.add(new CorrelationCoord(seq.getSequenceName(), finalstart, finalstop));
 			
@@ -186,7 +219,12 @@ public class BAMGenomeCorrelation extends Component {
 		return correlation;
 	}
 	
-	private boolean validateBAM() throws IOException {
+	/**
+	 * Checks if BAI files (index files for BAM files) exist for all BAM files
+	 * @return if all the input BAM files have corresponding BAI files
+	 * @throws IOException Invalid file or parameters 
+	 */
+	private boolean validateBAM() throws IOException, OptionException {
 		//Check if BAI index file exists for all BAM files before we process any of them
 		ArrayList<String> chrName = new ArrayList<String>();
 		ArrayList<Integer> chrSize = new ArrayList<Integer>();
@@ -194,9 +232,7 @@ public class BAMGenomeCorrelation extends Component {
 			File XBAM = bamFiles.get(x);			
 			File f = new File(XBAM + ".bai");
 			if(!f.exists() || f.isDirectory()) {
-				if(GUI){ JOptionPane.showMessageDialog(null, "BAI Index File does not exist for: " + XBAM.getName()); }
-				else{ System.err.println("BAI Index File does not exist for: " + XBAM.getName()); }
-				return false;
+				throw new OptionException("BAI Index File does not exist for: " + XBAM.getName());
 			} else {
 				reader = factory.open(XBAM);
 				AbstractBAMFileIndex bai = (AbstractBAMFileIndex) reader.indexing().getIndex();
@@ -206,11 +242,9 @@ public class BAMGenomeCorrelation extends Component {
 						chrSize.add(reader.getFileHeader().getSequence(z).getSequenceLength());
 					}
 				} else if(bai.getNumberOfReferences() != chrName.size()) {
-					if(GUI){ JOptionPane.showMessageDialog(null, "Unequal number of chromosomes from previous: " + XBAM.getName()); }
-					else{ System.err.println("BAI Index File does not exist for: " + XBAM.getName()); }
 					reader.close();
 					bai.close();
-					return false;
+					throw new OptionException("Unequal number of chromosomes from previous: " + XBAM.getName());
 				} else {
 					boolean MATCH = true;
 					for (int z = 0; z < bai.getNumberOfReferences(); z++) {
@@ -218,11 +252,9 @@ public class BAMGenomeCorrelation extends Component {
 						if(!chrSize.get(z).equals(reader.getFileHeader().getSequence(z).getSequenceLength())) { MATCH = false; }
 					}
 					if(!MATCH) {
-						if(GUI){ JOptionPane.showMessageDialog(null, "File contains chromosome size/name which does not match previous: " + XBAM.getName()); }
-						else{ System.err.println("BAI Index File does not exist for: " + XBAM.getName()); }
 						reader.close();
 						bai.close();
-						return false;
+						throw new OptionException("File contains chromosome size/name which does not match previous: " + XBAM.getName());
 					}
 				}
 				bai.close();
@@ -243,8 +275,16 @@ public class BAMGenomeCorrelation extends Component {
 		return time;
 	}
 	
+	/**
+	 * Returns the correlation matrix
+	 * @return The correlation matrix
+	 */
 	public double[][] getMatrix(){ return(MATRIX); }
 	
+	/**
+	 * Returns the generated correlation heatmap
+	 * @return The generated correlation heatmap
+	 */
 	public ChartPanel getHeatMap(){ return(HEATMAP); }
 	
 }

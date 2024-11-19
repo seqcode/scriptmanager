@@ -11,7 +11,9 @@ import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.io.File;
 import java.io.IOException;
+import java.sql.Timestamp;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.Vector;
 
 import javax.swing.DefaultListModel;
@@ -34,11 +36,24 @@ import javax.swing.border.EmptyBorder;
 
 import scriptmanager.util.ExtensionFileFilter;
 import scriptmanager.util.FileSelection;
+import scriptmanager.cli.Figure_Generation.FourColorSequenceCLI;
+import scriptmanager.objects.LogItem;
+import scriptmanager.objects.ToolDescriptions;
 import scriptmanager.scripts.Figure_Generation.FourColorPlot;
 
+/**
+ * GUI for collecting inputs to be processed by
+ * {@link scriptmanager.scripts.Figure_Generation.FourColorPlot}
+ * 
+ * @author William KM Lai
+ * @see scriptmanager.scripts.Figure_Generation.FourColorPlot
+ */
 @SuppressWarnings("serial")
 public class FourColorSequenceWindow extends JFrame implements ActionListener, PropertyChangeListener {
 	private JPanel contentPane;
+	/**
+	 * FileChooser which opens to user's directory
+	 */
 	protected JFileChooser fc = new JFileChooser(new File(System.getProperty("user.dir")));
 
 	final DefaultListModel<String> expList;
@@ -57,6 +72,9 @@ public class FourColorSequenceWindow extends JFrame implements ActionListener, P
 	private JButton btnOutputDirectory;
 
 	private JProgressBar progressBar;
+	/**
+	 * Used to run the script efficiently
+	 */
 	public Task task;
 	private JLabel lblCurrentOutput;
 	private JLabel lblDefaultToLocal;
@@ -65,40 +83,68 @@ public class FourColorSequenceWindow extends JFrame implements ActionListener, P
 	private JTextField txtHeight;
 	private JTextField txtWidth;
 
+	/**
+	 * Organizes user inputs for calling script
+	 */
 	class Task extends SwingWorker<Void, Void> {
 		@Override
-		public Void doInBackground() throws IOException {
+		public Void doInBackground() {
 			try {
-				setProgress(0);
 				if (Integer.parseInt(txtHeight.getText()) < 1) {
 					JOptionPane.showMessageDialog(null, "Invalid Height Size!!! Must be larger than 0");
 				} else if (Integer.parseInt(txtWidth.getText()) < 1) {
 					JOptionPane.showMessageDialog(null, "Invalid Width Size!!! Must be larger than 0");
 				} else {
-					ArrayList<Color> COLORS = new ArrayList<Color>();
+					// Store nucleotide colors
+					ArrayList<Color> COLORS = new ArrayList<Color>(5);
 					COLORS.add(btnAColor.getForeground());
 					COLORS.add(btnTColor.getForeground());
 					COLORS.add(btnGColor.getForeground());
 					COLORS.add(btnCColor.getForeground());
 					COLORS.add(btnNColor.getForeground());
 
+					setProgress(0);
+					LogItem old_li = null;
 					for (int x = 0; x < fastaFiles.size(); x++) {
-						String OUTPUT = ExtensionFileFilter.stripExtensionIgnoreGZ(fastaFiles.get(x)) + ".png";
-						if(OUT_DIR != null) {
-							OUTPUT = OUT_DIR + File.separator + OUTPUT;
+						// Construct output filename
+						String NAME = ExtensionFileFilter.stripExtensionIgnoreGZ(fastaFiles.get(x)) + ".png";
+						File OUT_FILEPATH = new File(NAME);
+						if (OUT_DIR != null) {
+							OUT_FILEPATH = new File(OUT_DIR.getCanonicalPath() + File.separator + NAME);
 						}
-						FourColorPlot.generatePLOT(fastaFiles.get(x), new File(OUTPUT), COLORS,
-								Integer.parseInt(txtHeight.getText()), Integer.parseInt(txtWidth.getText()));
+						// Initialize LogItem
+						String command = FourColorSequenceCLI.getCLIcommand(fastaFiles.get(x), OUT_FILEPATH, COLORS, Integer.parseInt(txtHeight.getText()), Integer.parseInt(txtWidth.getText()));
+						LogItem new_li = new LogItem(command);
+						firePropertyChange("log", old_li, new_li);
+						// Execute script
+						FourColorPlot.generatePLOT(fastaFiles.get(x), OUT_FILEPATH, COLORS, Integer.parseInt(txtHeight.getText()), Integer.parseInt(txtWidth.getText()));
+						// Update log item
+						new_li.setStopTime(new Timestamp(new Date().getTime()));
+						new_li.setStatus(0);
+						old_li = new_li;
+						// Update progress
 						int percentComplete = (int) (((double) (x + 1) / fastaFiles.size()) * 100);
 						setProgress(percentComplete);
 					}
+					// Update log at completion
+					firePropertyChange("log", old_li, null);
+					// Update progress
 					setProgress(100);
 					JOptionPane.showMessageDialog(null, "Plots Generated");
-					return null;
 				}
 			} catch (NumberFormatException nfe) {
 				JOptionPane.showMessageDialog(null, "Invalid Input in Fields!!!");
+			} catch (IndexOutOfBoundsException ioobe) {
+				ioobe.printStackTrace();
+				JOptionPane.showMessageDialog(null, "Invalid Number of colors!!!");
+			} catch (IOException ioe) {
+				ioe.printStackTrace();
+				JOptionPane.showMessageDialog(null, "I/O issues: " + ioe.getMessage());
+			} catch (Exception e) {
+				e.printStackTrace();
+				JOptionPane.showMessageDialog(null, ToolDescriptions.UNEXPECTED_EXCEPTION_MESSAGE + e.getMessage());
 			}
+			setProgress(100);
 			return null;
 		}
 
@@ -108,6 +154,9 @@ public class FourColorSequenceWindow extends JFrame implements ActionListener, P
 		}
 	}
 
+	/**
+	 * Creates a new FourColorSequenceWindow
+	 */
 	public FourColorSequenceWindow() {
 		setTitle("Four Color Sequence Plot Generator");
 		setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
@@ -294,6 +343,9 @@ public class FourColorSequenceWindow extends JFrame implements ActionListener, P
 		btnGen.addActionListener(this);
 	}
 
+/**
+	 * Runs when a task is invoked, making window non-interactive and executing the task.
+	 */
 	@Override
 	public void actionPerformed(ActionEvent arg0) {
 		massXable(contentPane, false);
@@ -305,15 +357,22 @@ public class FourColorSequenceWindow extends JFrame implements ActionListener, P
 	}
 
 	/**
-	 * Invoked when task's progress property changes.
+	 * Invoked when task's progress property changes and updates the progress bar
 	 */
 	public void propertyChange(PropertyChangeEvent evt) {
 		if ("progress" == evt.getPropertyName()) {
 			int progress = (Integer) evt.getNewValue();
 			progressBar.setValue(progress);
+		} else if ("log" == evt.getPropertyName()) {
+			firePropertyChange("log", evt.getOldValue(), evt.getNewValue());
 		}
 	}
 
+	/**
+	 * Makes the content pane non-interactive If the window should be interactive data
+	 * @param con Content pane to make non-interactive
+	 * @param status If the window should be interactive
+	 */
 	public void massXable(Container con, boolean status) {
 		for (Component c : con.getComponents()) {
 			c.setEnabled(status);

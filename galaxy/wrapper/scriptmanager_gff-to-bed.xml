@@ -1,0 +1,44 @@
+<tool id="scriptmanager_gff-to-bed" name="ScriptManager: Convert GFF to BED" version="0.1.0" profile="22.01" >
+    <description>Convert GFF file to BED file.</description>
+    <macros>
+        <import>scriptmanager_macros.xml</import>
+    </macros>
+    <requirements>
+        <expand macro="requirement_openjdk" />
+    </requirements>
+    <command detect_errors="exit_code"><![CDATA[
+        java -jar $__tool_directory__/@JAR_FILENAME@ coordinate-manipulation gff-to-bed
+        #if str($gzip) == "Yes" :
+            --gzip
+        #end if
+        -o '$output'
+        '$input'
+    ]]></command>
+    <inputs>
+        <param name="input" type="data" format="gff" label="Input GFF file" /> 
+        <param name="gzip" type="boolean" checked="true" truevalue="Yes" falsevalue="No" label="Gzip output" />
+    </inputs>
+    <outputs>
+        <data name="output" format="bed" label="${tool.name} on ${on_string}"></data>
+    </outputs>
+    <tests>
+        <test expect_num_outputs="1">
+            <param name="input" value="1.gff"/>
+            <output name="output" file="1.bed" ftype="bed" />
+        </test>
+    </tests>
+    <help>
+**What it does**
+
+This tool converts a file extension from GFF to BED
+
+**Example**
+
+Input File::
+input_file.gff
+
+Converting to gff returns this::
+output_file.bed
+    </help>
+    <expand macro="citations_pearc" />
+</tool>

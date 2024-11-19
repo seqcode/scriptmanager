@@ -1,0 +1,61 @@
+<tool id="scriptmanager_pe-stat" name="ScriptManager: Paired-End Statistics" version="0.1.0" profile="22.01" >
+    <description>Generates Insert-size Histogram statistics (GEO requirement) and outputs BAM Header including alignment statistics and parameters given a sorted and indexed (BAI) paired-end BAM File.</description>
+    <macros>
+        <import>scriptmanager_macros.xml</import>
+    </macros>
+    <requirements>
+        <expand macro="requirement_openjdk" />
+        <expand macro="requirement_samtools" />
+    </requirements>
+    <command><![CDATA[
+        ln -s '${input}' localbam.bam &&
+        #if $input.is_of_type('bam'):
+            #if str( $input.metadata.bam_index ) != "None":
+                ln -s '${input.metadata.bam_index}' localbam.bam.bai &&
+            #else:
+                samtools index localbam.bam localbam.bam.bai &&
+            #end if
+        #end if
+
+        java -jar $__tool_directory__/@JAR_FILENAME@ bam-statistics pe-stat
+            -n "$min"
+            -x "$max"
+            #if str($dup_stats) == "Yes" :
+                -d
+            #end if
+            -o output
+            localbam.bam &&
+
+        mv output_PE.png '${output_png}' &&
+        mv output_InsertHistogram.out '${output_tabular}'
+        #if str($dup_stats) == "Yes" :
+            && mv output_DUP.png '${output_dup_png}' &&
+            && mv output_DuplicationSummary.out '${output_dup_tabular}'
+        #end if
+
+    ]]></command>
+    <inputs>
+        <param name="input" type="data" format="bam" label="Input BAM file"/>
+        <param name="min" type="integer" value="0" label="Histogram Min"/>
+        <param name="max" type="integer" value="1000" label="Histogram Max"/>
+        <param name="dup_stats" type="boolean" truevalue="Yes" falsevalue="No" label="Calculate duplication statistics" />
+    </inputs>
+    <outputs>
+        <data name="output_png" format="png" label=" ${tool.name} on ${on_string} in png format"/>
+        <data name="output_tabular" format="tabular" label=" ${tool.name} on ${on_string} in tab format"/>
+        <data name="output_dup_png" format="png" label=" ${tool.name} on ${on_string} in tab format">
+            <filter>dup_stats != 0</filter>
+        </data>
+        <data name="output_dup_tabular" format="tabular" label=" ${tool.name} on ${on_string} in tab format">
+            <filter>dup_stats != 0</filter>
+        </data>
+    </outputs>
+    <tests>
+    </tests>
+    <help>
+**What it does**
+
+Generates Insert-size Histogram statistics
+   </help>
+   <expand macro="citations_pearc" />
+</tool>

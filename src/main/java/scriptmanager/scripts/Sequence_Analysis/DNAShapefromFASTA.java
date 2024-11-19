@@ -1,6 +1,7 @@
 package scriptmanager.scripts.Sequence_Analysis;
 
 import java.awt.Component;
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -10,13 +11,15 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
-import java.util.Scanner;
 
 import scriptmanager.charts.CompositePlot;
+import scriptmanager.objects.Exceptions.ScriptManagerException;
+import scriptmanager.util.GZipUtilities;
 import scriptmanager.util.DNAShapeReference;
+import scriptmanager.util.ExtensionFileFilter;
 
 /**
- * This script calculates the various aspects of DNA shape across a set of FASTA
+ * Calculate and score various aspects of DNA shape across a set of FASTA
  * sequences.
  * 
  * @author William KM Lai
@@ -26,9 +29,13 @@ import scriptmanager.util.DNAShapeReference;
  * @see scriptmanager.window_interface.Sequence_Analysis.DNAShapefromFASTAWindow
  */
 public class DNAShapefromFASTA {
-	private String OUTBASENAME = null;
-	private boolean[] OUTPUT_TYPE = null;
 	private File FASTA = null;
+	private File OUTBASENAME = null;
+
+	private boolean[] OUTPUT_TYPE = null;
+	private boolean OUTPUT_COMPOSITE = false;
+	private short OUTPUT_MATRIX = 0;
+	private boolean GZIP_OUTPUT;
 
 	private PrintStream OUT_M = null;
 	private PrintStream OUT_P = null;
@@ -49,20 +56,45 @@ public class DNAShapefromFASTA {
 	Component chart_H = null;
 	Component chart_R = null;
 
+	public final static short NO_MATRIX = 0;
+	public final static short TAB = 1;
+	public final static short CDT = 2;
+
+	public DNAShapefromFASTA(File input, File out, boolean[] type, boolean outputComposite, short outputMatrix, boolean gzOutput) {
+		FASTA = input;
+		OUTBASENAME = out;
+		OUTPUT_TYPE = type;
+		OUTPUT_COMPOSITE = outputComposite;
+		OUTPUT_MATRIX = outputMatrix;
+		GZIP_OUTPUT = gzOutput;
+		PS = new PrintStream[] { null, null, null, null };
+
+		STRUCTURE = DNAShapeReference.InitializeStructure();
+	}
+
 	/**
 	 * Initialize object with script inputs for generating DNA shape reports.
 	 * 
-	 * @param fa   the FASTA-formatted file with a fixed sequence length
-	 * @param out  the output file name base (to add _&lt;shapetype&gt;.cdt suffix to)
-	 * @param type a four-element boolean list for specifying shape type to output
-	 *             (no enforcement on size)
-	 * @param ps   list of four PrintStream objects corresponding to each shape type
-	 *             (for GUI)
+	 * @param input           the FASTA-formatted sequence to calculate shape for
+	 * @param out             the output file name base (to add
+	 *                        _&lt;shapetype&gt;.cdt suffix to)
+	 * @param type            a four-element boolean list for specifying shape type
+	 *                        to output (no enforcement on size)
+	 * @param outputComposite whether to output a composite average output
+	 * @param outputMatrix    value encoding not to write output matrix data, write
+	 *                        matrix in CDT format, and write matrix in tab format
+	 * @param gzOutput        whether to output compressed file
+	 * @param ps              list of four PrintStream objects corresponding to each
+	 *                        shape type (for GUI)
+	 * @throws IOException Invalid file or parameters
 	 */
-	public DNAShapefromFASTA(File fa, String out, boolean[] type, PrintStream[] ps) {
-		FASTA = fa;
+	public DNAShapefromFASTA(File input, File out, boolean[] type, boolean outputComposite, short outputMatrix, boolean gzOutput, PrintStream[] ps) {
+		FASTA = input;
 		OUTBASENAME = out;
 		OUTPUT_TYPE = type;
+		OUTPUT_COMPOSITE = outputComposite;
+		OUTPUT_MATRIX = outputMatrix;
+		GZIP_OUTPUT = gzOutput;
 		PS = ps;
 
 		STRUCTURE = DNAShapeReference.InitializeStructure();
@@ -72,12 +104,14 @@ public class DNAShapefromFASTA {
 	 * Execute script to calculate DNA shape for all types across the input
 	 * sequence.
 	 * 
-	 * @throws IOException
-	 * @throws InterruptedException
+	 * @throws ScriptManagerException thrown when FASTA parsing encounters N-containing sequence
+	 * @throws FileNotFoundException
+	 * @throws IOException Invalid file or parameters
+	 * @throws InterruptedException Thrown when more than one script is run at the same time
 	 */
-	public void run() throws IOException, InterruptedException {
-		String NAME = FASTA.getName().split("\\.")[0];
-		String time = getTimeStamp(); // Generate TimeStamp
+	public void run() throws ScriptManagerException, FileNotFoundException, IOException, InterruptedException {
+		String NAME = ExtensionFileFilter.stripExtension(FASTA);
+		String time = new Timestamp(new Date().getTime()).toString();
 		for (int p = 0; p < PS.length; p++) {
 			if (OUTPUT_TYPE[p] && PS[p] != null) {
 				PS[p].println(time + "\n" + NAME);
@@ -85,13 +119,15 @@ public class DNAShapefromFASTA {
 		}
 		openOutputFiles();
 
-		Scanner scan = new Scanner(FASTA);
 		int counter = 0;
-		while (scan.hasNextLine()) {
-			String HEADER = scan.nextLine();
+		String line;
+		// Check if file is gzipped and instantiate appropriate BufferedReader
+		BufferedReader br = GZipUtilities.makeReader(FASTA);
+		while ((line = br.readLine()) != null) {
+			String HEADER = line;
 			if (HEADER.contains(">")) {
 				HEADER = HEADER.substring(1, HEADER.length());
-				String seq = scan.nextLine();
+				String seq = br.readLine();
 				if (!seq.contains("N")) {
 					// Populate array for each FASTA line
 					List<Double> MGW = new ArrayList<Double>();
@@ -129,109 +165,201 @@ public class DNAShapefromFASTA {
 
 					if (OUTPUT_TYPE[0]) {
 						if (counter == 0) {
-							OUT_M.print("YORF\tNAME");
-							for (int z = 0; z < MGW.size(); z++) {
-								OUT_M.print("\t" + z);
+							// Don't print matrix info if user specifies no matrix output
+							if (OUTPUT_MATRIX != DNAShapefromBED.NO_MATRIX) {
+								// print header
+								OUT_M.print("YORF");
+								if (OUTPUT_MATRIX == DNAShapefromBED.CDT) {
+									OUT_M.print("\tNAME");
+								}
+								// print domain
+								for (int z = 0; z < MGW.size(); z++) {
+									OUT_M.print("\t" + z);
+								}
+								OUT_M.println();
 							}
-							OUT_M.println();
+							// Initialize AVG storage object
 							AVG_MGW = new double[MGW.size()];
 						}
+						// print matrix data and store avg data
 						AVG_MGW = printVals(HEADER, MGW, AVG_MGW, OUT_M);
 					}
 					if (OUTPUT_TYPE[1]) {
 						if (counter == 0) {
-							OUT_P.print("YORF\tNAME");
-							for (int z = 0; z < PropT.size(); z++) {
-								OUT_P.print("\t" + z);
+							// Don't print matrix info if user specifies no matrix output
+							if (OUTPUT_MATRIX != DNAShapefromBED.NO_MATRIX) {
+								// print header
+								OUT_P.print("YORF");
+								if (OUTPUT_MATRIX == DNAShapefromBED.CDT) {
+									OUT_P.print("\tNAME");
+								}
+								// print domain
+								for (int z = 0; z < PropT.size(); z++) {
+									OUT_P.print("\t" + z);
+								}
+								OUT_P.println();
 							}
-							OUT_P.println();
+							// Initialize AVG storage object
 							AVG_PropT = new double[PropT.size()];
 						}
+						// print matrix data and store avg data
 						AVG_PropT = printVals(HEADER, PropT, AVG_PropT, OUT_P);
 					}
 					if (OUTPUT_TYPE[2]) {
 						if (counter == 0) {
-							OUT_H.print("YORF\tNAME");
-							for (int z = 0; z < HelT.size(); z++) {
-								OUT_H.print("\t" + z);
+							// Don't print matrix info if user specifies no matrix output
+							if (OUTPUT_MATRIX != DNAShapefromBED.NO_MATRIX) {
+								// print header
+								OUT_H.print("YORF");
+								if (OUTPUT_MATRIX == DNAShapefromBED.CDT) {
+									OUT_H.print("\tNAME");
+								}
+								// print domain
+								for (int z = 0; z < HelT.size(); z++) {
+									OUT_H.print("\t" + z);
+								}
+								OUT_H.println();
 							}
-							OUT_H.println();
+							// Initialize AVG storage object
 							AVG_HelT = new double[HelT.size()];
 						}
+						// print matrix data and store avg data
 						AVG_HelT = printVals(HEADER, HelT, AVG_HelT, OUT_H);
 					}
 					if (OUTPUT_TYPE[3]) {
 						if (counter == 0) {
-							OUT_R.print("YORF\tNAME");
-							for (int z = 0; z < Roll.size(); z++) {
-								OUT_R.print("\t" + z);
+							// Don't print matrix info if user specifies no matrix output
+							if (OUTPUT_MATRIX != DNAShapefromBED.NO_MATRIX) {
+								// print header
+								OUT_R.print("YORF");
+								if (OUTPUT_MATRIX == DNAShapefromBED.CDT) {
+									OUT_R.print("\tNAME");
+								}
+								// print domain
+								for (int z = 0; z < Roll.size(); z++) {
+									OUT_R.print("\t" + z);
+								}
+								OUT_R.println();
 							}
-							OUT_R.println();
+							// Initialize AVG storage object
 							AVG_Roll = new double[Roll.size()];
 						}
+						// print matrix data and store avg data
 						AVG_Roll = printVals(HEADER, Roll, AVG_Roll, OUT_R);
 					}
+					} // if seq contains 'N's
+					counter++;
+				} else {
+					throw new ScriptManagerException("Invalid FASTA sequence (" + HEADER + ")...DNAShape does not support N-containing sequences");
 				}
-				counter++;
-			} else {
-				System.out.println("ERROR: Invalid FASTA sequence\n" + HEADER);
 			}
-		}
-		scan.close();
+			br.close();
+			if (OUT_M != null) { OUT_M.close(); }
+			if (OUT_P != null) { OUT_P.close(); }
+			if (OUT_H != null) { OUT_H.close(); }
+			if (OUT_R != null) { OUT_R.close(); }
 
-		// Convert average and statistics to output tabs panes
-		if (OUTPUT_TYPE[0]) {
-			OUT_M.close();
-			double[] DOMAIN_MGW = new double[AVG_MGW.length];
-			int temp = (int) (((double) AVG_MGW.length / 2.0) + 0.5);
-			for (int z = 0; z < AVG_MGW.length; z++) {
-				DOMAIN_MGW[z] = (double) (temp - (AVG_MGW.length - z));
-				AVG_MGW[z] /= counter;
-				if (PS[0] != null) {
-					PS[0].println(DOMAIN_MGW[z] + "\t" + AVG_MGW[z]);
+			// Convert average and statistics to output tabs panes
+			if (OUTPUT_TYPE[0]) {
+				double[] DOMAIN_MGW = new double[AVG_MGW.length];
+				int temp = (int) (((double) AVG_MGW.length / 2.0) + 0.5);
+				for (int z = 0; z < AVG_MGW.length; z++) {
+					DOMAIN_MGW[z] = (double) (temp - (AVG_MGW.length - z));
+					AVG_MGW[z] /= counter;
+					if (PS[0] != null) {
+						PS[0].println(DOMAIN_MGW[z] + "\t" + AVG_MGW[z]);
+					}
+				}
+				chart_M = CompositePlot.createCompositePlot(DOMAIN_MGW, AVG_MGW, NAME + " MGW");
+				// Write output composite file
+				if (OUTPUT_COMPOSITE) {
+					PrintStream COMPOSITE = new PrintStream(new File(OUTBASENAME + "_MGW-Composite.out"));
+					for (int z = 0; z < AVG_MGW.length; z++) {
+						COMPOSITE.print("\t" + DOMAIN_MGW[z]);
+					}
+					COMPOSITE.println();
+					COMPOSITE.print(NAME + "MGW-Composite");
+					for (int z = 0; z < AVG_MGW.length; z++) {
+						COMPOSITE.print("\t" + AVG_MGW[z]);
+					}
+					COMPOSITE.println();
 				}
 			}
-			chart_M = CompositePlot.createCompositePlot(DOMAIN_MGW, AVG_MGW, NAME + " MGW");
-		}
-		if (OUTPUT_TYPE[1]) {
-			OUT_P.close();
-			double[] DOMAIN_PropT = new double[AVG_PropT.length];
-			int temp = (int) (((double) AVG_PropT.length / 2.0) + 0.5);
-			for (int z = 0; z < AVG_PropT.length; z++) {
-				DOMAIN_PropT[z] = (double) (temp - (AVG_PropT.length - z));
-				AVG_PropT[z] /= counter;
-				if (PS[1] != null) {
-					PS[1].println(DOMAIN_PropT[z] + "\t" + AVG_PropT[z]);
+			if (OUTPUT_TYPE[1]) {
+				double[] DOMAIN_PropT = new double[AVG_PropT.length];
+				int temp = (int) (((double) AVG_PropT.length / 2.0) + 0.5);
+				for (int z = 0; z < AVG_PropT.length; z++) {
+					DOMAIN_PropT[z] = (double) (temp - (AVG_PropT.length - z));
+					AVG_PropT[z] /= counter;
+					if (PS[1] != null) {
+						PS[1].println(DOMAIN_PropT[z] + "\t" + AVG_PropT[z]);
+					}
+				}
+				chart_P = CompositePlot.createCompositePlot(DOMAIN_PropT, AVG_PropT, NAME + " PropT");
+				// Write output composite file
+				if (OUTPUT_COMPOSITE) {
+					PrintStream COMPOSITE = new PrintStream(new File(OUTBASENAME + "_PropT-Composite.out"));
+					for (int z = 0; z < AVG_PropT.length; z++) {
+						COMPOSITE.print("\t" + DOMAIN_PropT[z]);
+					}
+					COMPOSITE.println();
+					COMPOSITE.print(NAME + "PropT-Composite");
+					for (int z = 0; z < AVG_PropT.length; z++) {
+						COMPOSITE.print("\t" + AVG_PropT[z]);
+					}
+					COMPOSITE.println();
 				}
 			}
-			chart_P = CompositePlot.createCompositePlot(DOMAIN_PropT, AVG_PropT, NAME + " PropT");
-		}
-		if (OUTPUT_TYPE[2]) {
-			OUT_H.close();
-			double[] DOMAIN_HelT = new double[AVG_HelT.length];
-			int temp = (int) (((double) AVG_HelT.length / 2.0) + 0.5);
-			for (int z = 0; z < AVG_HelT.length; z++) {
-				DOMAIN_HelT[z] = (double) (temp - (AVG_HelT.length - z));
-				AVG_HelT[z] /= counter;
-				if (PS[2] != null) {
-					PS[2].println(DOMAIN_HelT[z] + "\t" + AVG_HelT[z]);
+			if (OUTPUT_TYPE[2]) {
+				double[] DOMAIN_HelT = new double[AVG_HelT.length];
+				int temp = (int) (((double) AVG_HelT.length / 2.0) + 0.5);
+				for (int z = 0; z < AVG_HelT.length; z++) {
+					DOMAIN_HelT[z] = (double) (temp - (AVG_HelT.length - z));
+					AVG_HelT[z] /= counter;
+					if (PS[2] != null) {
+						PS[2].println(DOMAIN_HelT[z] + "\t" + AVG_HelT[z]);
+					}
+				}
+				chart_H = CompositePlot.createCompositePlot(DOMAIN_HelT, AVG_HelT, NAME + " HelT");
+				// Write output composite file
+				if (OUTPUT_COMPOSITE) {
+					PrintStream COMPOSITE = new PrintStream(new File(OUTBASENAME + "_HelT-Composite.out"));
+					for (int z = 0; z < AVG_HelT.length; z++) {
+						COMPOSITE.print("\t" + DOMAIN_HelT[z]);
+					}
+					COMPOSITE.println();
+					COMPOSITE.print(NAME + "HelT-Composite");
+					for (int z = 0; z < AVG_HelT.length; z++) {
+						COMPOSITE.print("\t" + AVG_HelT[z]);
+					}
+					COMPOSITE.println();
 				}
 			}
-			chart_H = CompositePlot.createCompositePlot(DOMAIN_HelT, AVG_HelT, NAME + " HelT");
-		}
-		if (OUTPUT_TYPE[3]) {
-			OUT_R.close();
-			double[] DOMAIN_Roll = new double[AVG_Roll.length];
-			int temp = (int) (((double) AVG_Roll.length / 2.0) + 0.5);
-			for (int z = 0; z < AVG_Roll.length; z++) {
-				DOMAIN_Roll[z] = (double) (temp - (AVG_Roll.length - z));
-				AVG_Roll[z] /= counter;
-				if (PS[3] != null) {
-					PS[3].println(DOMAIN_Roll[z] + "\t" + AVG_Roll[z]);
+			if (OUTPUT_TYPE[3]) {
+				double[] DOMAIN_Roll = new double[AVG_Roll.length];
+				int temp = (int) (((double) AVG_Roll.length / 2.0) + 0.5);
+				for (int z = 0; z < AVG_Roll.length; z++) {
+					DOMAIN_Roll[z] = (double) (temp - (AVG_Roll.length - z));
+					AVG_Roll[z] /= counter;
+					if (PS[3] != null) {
+						PS[3].println(DOMAIN_Roll[z] + "\t" + AVG_Roll[z]);
+					}
+				}
+				chart_R = CompositePlot.createCompositePlot(DOMAIN_Roll, AVG_Roll, NAME + " Roll");
+				// Write output composite file
+				if (OUTPUT_COMPOSITE) {
+					PrintStream COMPOSITE = new PrintStream(new File(OUTBASENAME + "_Roll-Composite.out"));
+					for (int z = 0; z < AVG_Roll.length; z++) {
+						COMPOSITE.print("\t" + DOMAIN_Roll[z]);
+					}
+					COMPOSITE.println();
+					COMPOSITE.print(NAME + "Roll-Composite");
+					for (int z = 0; z < AVG_Roll.length; z++) {
+						COMPOSITE.print("\t" + AVG_Roll[z]);
+					}
+					COMPOSITE.println();
 				}
 			}
-			chart_R = CompositePlot.createCompositePlot(DOMAIN_Roll, AVG_Roll, NAME + " Roll");
-		}
 	}
 
 	/**
@@ -294,27 +422,29 @@ public class DNAShapefromFASTA {
 
 	/**
 	 * Initialize output PrintStream objects for each DNA shape as needed.
+	 * 
+	 * @throws FileNotFoundException
+	 * @throws IOException
 	 */
-	private void openOutputFiles() {
+	private void openOutputFiles() throws FileNotFoundException, IOException {
 		if (OUTBASENAME == null) {
-			OUTBASENAME = FASTA.getName().split("\\.")[0];
+			OUTBASENAME = new File(ExtensionFileFilter.stripExtension(FASTA));
 		}
 		// Open Output File
-		try {
+		if (OUTPUT_MATRIX > 0) {
+			String SUFFIX = (OUTPUT_MATRIX==DNAShapefromBED.CDT ? ".cdt" : ".tab") + (GZIP_OUTPUT? ".gz": "");
 			if (OUTPUT_TYPE[0]) {
-				OUT_M = new PrintStream(new File(OUTBASENAME + "_MGW.cdt"));
+				OUT_M = GZipUtilities.makePrintStream(new File(OUTBASENAME + "_MGW" + SUFFIX), GZIP_OUTPUT);
 			}
 			if (OUTPUT_TYPE[1]) {
-				OUT_P = new PrintStream(new File(OUTBASENAME + "_PropT.cdt"));
+				OUT_P = GZipUtilities.makePrintStream(new File(OUTBASENAME + "_PropT" + SUFFIX), GZIP_OUTPUT);
 			}
 			if (OUTPUT_TYPE[2]) {
-				OUT_H = new PrintStream(new File(OUTBASENAME + "_HelT.cdt"));
+				OUT_H = GZipUtilities.makePrintStream(new File(OUTBASENAME + "_HelT" + SUFFIX), GZIP_OUTPUT);
 			}
 			if (OUTPUT_TYPE[3]) {
-				OUT_R = new PrintStream(new File(OUTBASENAME + "_Roll.cdt"));
+				OUT_R = GZipUtilities.makePrintStream(new File(OUTBASENAME + "_Roll" + SUFFIX), GZIP_OUTPUT);
 			}
-		} catch (FileNotFoundException e) {
-			e.printStackTrace();
 		}
 	}
 
@@ -332,23 +462,22 @@ public class DNAShapefromFASTA {
 	 * @return SCORES that have been element-wise summed with AVG
 	 */
 	private double[] printVals(String header, List<Double> SCORES, double[] AVG, PrintStream O) {
-		O.print(header + "\t" + header);
+		// print header
+		if (O != null) {
+			O.print(header);
+			if (OUTPUT_MATRIX == DNAShapefromBED.CDT) {
+				O.print("\t" + header);
+			}
+		}
 		for (int z = 0; z < SCORES.size(); z++) {
-			O.print("\t" + SCORES.get(z));
+			// print values
+			if (O != null) { O.print("\t" + SCORES.get(z)); }
+			// build avg
 			AVG[z] += SCORES.get(z);
 		}
-		O.println();
+		// print new line
+		if (O != null) { O.println(); }
+		// return avg
 		return (AVG);
-	}
-
-	/**
-	 * Get the current timestamp
-	 * 
-	 * @return current time as a String
-	 */
-	private static String getTimeStamp() {
-		Date date = new Date();
-		String time = new Timestamp(date.getTime()).toString();
-		return time;
 	}
 }

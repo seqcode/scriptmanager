@@ -8,13 +8,24 @@ import java.util.ArrayList;
 import java.util.Date;
 
 import javax.swing.JFrame;
-import javax.swing.JOptionPane;
 import javax.swing.JScrollPane;
 import javax.swing.JTabbedPane;
 
-import scriptmanager.objects.CustomExceptions.OptionException;
+import scriptmanager.cli.Figure_Generation.ThreeColorHeatMapCLI;
+import scriptmanager.objects.LogItem;
+import scriptmanager.objects.Exceptions.OptionException;
 import scriptmanager.scripts.Figure_Generation.ThreeColorHeatMap;
+import scriptmanager.util.ExtensionFileFilter;
 
+/**
+ * Output wrapper for running
+ * {@link scriptmanager.scripts.Figure_Generation.ThreeColorHeatMap} and
+ * reporting heatmap results
+ * 
+ * @author Olivia Lang
+ * @see scriptmanager.scripts.Figure_Generation.ThreeColorHeatMap
+ * @see scriptmanager.window_interface.Figure_Generation.ThreeColorHeatMapWindow
+ */
 @SuppressWarnings("serial")
 public class ThreeColorHeatMapOutput extends JFrame {
 
@@ -39,13 +50,35 @@ public class ThreeColorHeatMapOutput extends JFrame {
 	protected static double MINVAL = -10;
 	protected static boolean excludeZeros = false;
 
-	protected static boolean OUTPUTSTATUS = false;
+	protected static boolean OUTPUT_STATUS = false;
 	protected static File OUT_DIR = null;
 
 	public static double COLOR_RATIO = 1;
 
 	JTabbedPane newpane;
 
+	/**
+	 * Creates a new instance of a ThreeColorHeatMap with given attributes
+	 * @param in CDT formatted matrix file
+	 * @param c_min Color to represent minimum values
+	 * @param c_mid Color to represent mid values
+	 * @param c_max Color to represent maximum values
+	 * @param c_nan Color to represent missing values
+	 * @param startR Starting row of the CDT file (Zero indexed)
+	 * @param startC Starting column of the CDT file (Zero indexed)
+	 * @param pHeight Height of resulting heat map (# pixels)
+	 * @param pWidth Width of resulting heat map (# pixels)
+	 * @param scale Scale compression type
+	 * @param pStatusMin Minimum percentile value
+	 * @param pStatusMid Mid percentile value
+	 * @param pStatusMax Maximum percentile value
+	 * @param min_quant Minimum absolute value
+	 * @param mid_quant Mid absolute value
+	 * @param max_quant Maximum absolute value
+	 * @param exZ Exclude zero's in percentile threshold calculations
+	 * @param out_dir Output directory
+	 * @param outstatus Whether a file should be output
+	 */
 	public ThreeColorHeatMapOutput(ArrayList<File> in,
 			Color c_max, Color c_mid, Color c_min, Color c_nan,
 			int startR, int startC, int pHeight, int pWidth, String scale,
@@ -81,45 +114,47 @@ public class ThreeColorHeatMapOutput extends JFrame {
 		excludeZeros = exZ;
 
 		OUT_DIR = out_dir;
-		OUTPUTSTATUS = outstatus;
-		System.out.println(OUTPUTSTATUS);
+		OUTPUT_STATUS = outstatus;
 	}
 
-	public void run() throws IOException {
-		String postRunDialog = "";
+	/**
+	 * Runs the ThreeColorHeatmap script
+	 * 
+	 * @throws IOException Invalid file or parameters
+	 * @throws OptionException thrown when thresholds are incompatible
+	 */
+	public void run() throws IOException, OptionException {
+		LogItem old_li = null;
 		for (int x = 0; x < SAMPLE.size(); x++) {
-			File OUTPUT = new File(SAMPLE.get(x).getName().split("\\.")[0] + "_" + scaleType + ".png");
+			// Construct output filename
+			String NAME = ExtensionFileFilter.stripExtensionIgnoreGZ(SAMPLE.get(x)) + "_" + scaleType + ".png";
+			File OUT_FILEPATH = new File(NAME);
 			if (OUT_DIR != null) {
-				OUTPUT = new File(OUT_DIR.getCanonicalPath() + File.separator + OUTPUT);
+				OUT_FILEPATH = new File(OUT_DIR.getCanonicalPath() + File.separator + NAME);
 			}
+			// Initialize LogItem
+			String command = ThreeColorHeatMapCLI.getCLIcommand(SAMPLE.get(x), MINCOLOR, MIDCOLOR, MAXCOLOR, NANCOLOR,
+					startROW, startCOL, pixelHeight, pixelWidth, scaleType,
+					percentileMin, percentileMid, percentileMax,
+					MAXVAL, MIDVAL, MINVAL, excludeZeros, OUT_FILEPATH);
+			LogItem new_li = new LogItem(command);
+			if (OUTPUT_STATUS) { firePropertyChange("log", old_li, new_li); }
 			// Execute script
-			try {
-				ThreeColorHeatMap script_object = new ThreeColorHeatMap(SAMPLE.get(x),
-						MINCOLOR, MIDCOLOR, MAXCOLOR, NANCOLOR,
-						startROW, startCOL, pixelHeight, pixelWidth, scaleType,
-						percentileMin, percentileMid, percentileMax,
-						MAXVAL, MIDVAL, MINVAL, excludeZeros, OUTPUT, OUTPUTSTATUS);
-				script_object.run();
-				// Output image/error to GUI
-				newpane.addTab(OUTPUT.getName(), new JScrollPane(script_object.getImg(), JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED,
-						JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED));
-			} catch (OptionException e) {
-				postRunDialog += e.getMessage() + "\n";
-			}
-			firePropertyChange("heat", x, x + 1);
+			ThreeColorHeatMap script_object = new ThreeColorHeatMap(SAMPLE.get(x), MINCOLOR, MIDCOLOR, MAXCOLOR, NANCOLOR,
+					startROW, startCOL, pixelHeight, pixelWidth, scaleType,
+					percentileMin, percentileMid, percentileMax,
+					MAXVAL, MIDVAL, MINVAL, excludeZeros, OUT_FILEPATH, OUTPUT_STATUS);
+			script_object.run();
+			// Update log item
+			new_li.setStopTime(new Timestamp(new Date().getTime()));
+			new_li.setStatus(0);
+			old_li = new_li;
+			// Output image
+			newpane.addTab(OUT_FILEPATH.getName(), new JScrollPane(script_object.getImg(), JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED, JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED));
+			// Update progress
+			firePropertyChange("progress", x, x + 1);
 		}
-		System.out.println("Program Complete");
-		System.out.println(getTimeStamp());
-		if (!postRunDialog.equals("")) {
-			JOptionPane.showMessageDialog(null, postRunDialog);
-		}
+		// Update log at completion
+		if (OUTPUT_STATUS) { firePropertyChange("log", old_li, null); }
 	}
-
-	private static String getTimeStamp() {
-		Date date = new Date();
-		String time = new Timestamp(date.getTime()).toString();
-		return time;
-	}
-
 }
-

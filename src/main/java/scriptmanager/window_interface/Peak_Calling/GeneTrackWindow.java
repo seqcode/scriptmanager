@@ -12,6 +12,8 @@ import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.io.File;
 import java.io.IOException;
+import java.sql.Timestamp;
+import java.util.Date;
 import java.util.Vector;
 
 import javax.swing.DefaultListModel;
@@ -33,11 +35,26 @@ import javax.swing.SwingWorker;
 import javax.swing.border.EmptyBorder;
 
 import scriptmanager.util.FileSelection;
+import scriptmanager.objects.LogItem;
+import scriptmanager.objects.ToolDescriptions;
+
+import scriptmanager.cli.Peak_Calling.GeneTrackCLI;
 import scriptmanager.scripts.Peak_Calling.GeneTrack;
 
+/**
+ * (Dev) Unfinished GUI for collecting inputs to be processed by
+ * {@link scriptmanager.scripts.Peak_Calling.GeneTrack}
+ * 
+ * @author William KM Lai
+ * @see scriptmanager.scripts.Peak_Calling.GeneTrack
+ * @see scriptmanager.scripts.Peak_Calling.GeneTrack_BAM
+ */
 @SuppressWarnings("serial")
 public class GeneTrackWindow extends JFrame implements ActionListener, PropertyChangeListener {
 	private JPanel contentPane;
+	/**
+	 * FileChooser which opens to user's directory
+	 */
 	protected JFileChooser fc = new JFileChooser(new File(System.getProperty("user.dir")));	
 	
 	final DefaultListModel<String> expList;
@@ -49,6 +66,9 @@ public class GeneTrackWindow extends JFrame implements ActionListener, PropertyC
 	private JButton btnGene;
 
 	private JProgressBar progressBar;
+	/**
+	 * Used to run the script efficiently
+	 */
 	public Task task;
 	private JTextField txtSigma;
 	private JTextField txtExclusion;
@@ -62,9 +82,12 @@ public class GeneTrackWindow extends JFrame implements ActionListener, PropertyC
 	private JButton btnOutputDirectory;
 	private JLabel lblDefaultToLocal;
 	
+	/**
+	 * Organizes user inputs for calling script
+	 */
 	class Task extends SwingWorker<Void, Void> {
         @Override
-        public Void doInBackground() throws IOException, InterruptedException {
+        public Void doInBackground() {
         	try {
 				if(Integer.parseInt(txtSigma.getText()) < 1) {
 					JOptionPane.showMessageDialog(null, "Invalid Sigma!!!");
@@ -94,21 +117,39 @@ public class GeneTrackWindow extends JFrame implements ActionListener, PropertyC
 					
 					if(OUTPUT_PATH != null) { DIRECTORY = OUTPUT_PATH.getCanonicalPath() + File.separator + DIRECTORY; }
 					new File(DIRECTORY).mkdirs();
-		        	
-		        	setProgress(0);
-		        	for(int x = 0; x < IDXFiles.size(); x++) {       		
+					
+					setProgress(0);
+					LogItem old_li = null;
+					for(int x = 0; x < IDXFiles.size(); x++) {
+						// Initialize LogItem
+						String command = GeneTrackCLI.getCLIcommand(IDXFiles.get(x), SIGMA, EXCLUSION, FILTER, UP, DOWN, DIRECTORY);
+						LogItem new_li = new LogItem(command);
+						firePropertyChange("log", old_li, new_li);
+						// Execute script
 		        		GeneTrack track = new GeneTrack(IDXFiles.get(x), SIGMA, EXCLUSION, FILTER, UP, DOWN, DIRECTORY);
 		        		track.setVisible(true);
 						track.run();
-						
+						// Update LogItem
+						new_li.setStopTime(new Timestamp(new Date().getTime()));
+						new_li.setStatus(0);
+						old_li = new_li;
+						// Update progress
 						int percentComplete = (int)(((double)(x + 1) / IDXFiles.size()) * 100);
 		        		setProgress(percentComplete);
 		        	}
-		        	setProgress(100);
+					// final update
+					firePropertyChange("log", old_li, null);
+					setProgress(100);
 				}
 			} catch(NumberFormatException nfe){
 				JOptionPane.showMessageDialog(null, "Invalid Input in Fields!!!");
-			}	
+			} catch (IOException ioe) {
+				ioe.printStackTrace();
+				JOptionPane.showMessageDialog(null, "I/O issues: " + ioe.getMessage());
+			} catch (Exception e) {
+				e.printStackTrace();
+				JOptionPane.showMessageDialog(null, ToolDescriptions.UNEXPECTED_EXCEPTION_MESSAGE + e.getMessage());
+			}
         	return null;
         }
         
@@ -315,6 +356,9 @@ public class GeneTrackWindow extends JFrame implements ActionListener, PropertyC
 		    }); 
 	}
 	
+	/**
+	 * Runs when a task is invoked, making window non-interactive and executing the task.
+	 */
 	@Override
 	public void actionPerformed(ActionEvent arg0) {
 		massXable(contentPane, false);
@@ -326,15 +370,23 @@ public class GeneTrackWindow extends JFrame implements ActionListener, PropertyC
 	}
 	
 	/**
-     * Invoked when task's progress property changes.
-     */
-    public void propertyChange(PropertyChangeEvent evt) {
-        if ("progress" == evt.getPropertyName()) {
-            int progress = (Integer) evt.getNewValue();
-            progressBar.setValue(progress);
-        }
-    }
-	
+	 * Invoked when task's progress property changes.
+	 */
+	@Override
+	public void propertyChange(PropertyChangeEvent evt) {
+		if ("progress" == evt.getPropertyName()) {
+			int progress = (Integer) evt.getNewValue();
+			progressBar.setValue(progress);
+		} else if ("log" == evt.getPropertyName()) {
+			firePropertyChange("log", evt.getOldValue(), evt.getNewValue());
+		}
+	}
+
+	/**
+	 * Makes the content pane non-interactive If the window should be interactive data
+	 * @param con Content pane to make non-interactive
+	 * @param status If the window should be interactive
+	 */
 	public void massXable(Container con, boolean status) {
 		for(Component c : con.getComponents()) {
 			c.setEnabled(status);

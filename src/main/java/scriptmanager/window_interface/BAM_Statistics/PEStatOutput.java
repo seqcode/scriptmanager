@@ -5,6 +5,8 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.PrintStream;
+import java.sql.Timestamp;
+import java.util.Date;
 import java.util.Vector;
 
 import javax.swing.JFrame;
@@ -18,8 +20,21 @@ import javax.swing.SpringLayout;
 import org.jfree.chart.ChartPanel;
 
 import scriptmanager.objects.CustomOutputStream;
+import scriptmanager.objects.LogItem;
+import scriptmanager.util.ExtensionFileFilter;
+
+import scriptmanager.cli.BAM_Statistics.PEStatsCLI;
 import scriptmanager.scripts.BAM_Statistics.PEStats;
 
+/**
+ * Output wrapper for running
+ * {@link scriptmanager.scripts.BAM_Statistics.PEStats} and reporting the
+ * histograms and statistics
+ * 
+ * @author William KM Lai
+ * @see scriptmanager.scripts.BAM_Statistics.PEStats
+ * @see scriptmanager.window_interface.BAM_Statistics.PEStatOutput
+ */
 @SuppressWarnings("serial")
 public class PEStatOutput extends JFrame {
 	
@@ -74,7 +89,7 @@ public class PEStatOutput extends JFrame {
 		}
 	}
 	
-	public void run() throws IOException {
+	public void run() throws FileNotFoundException, IOException {
 		// Check if BAI index file exists for all BAM files
 		boolean[] BAMvalid = new boolean[bamFiles.size()];
 		for (int z = 0; z < bamFiles.size(); z++) {
@@ -88,19 +103,16 @@ public class PEStatOutput extends JFrame {
 				BAMvalid[z] = true;
 			}
 		}
+		LogItem old_li = null;
 		//Iterate through all BAM files in Vector
 		for(int x = 0; x < bamFiles.size(); x++) {
 			if (BAMvalid[x]) {
-				// Construct Basename
-				File OUT_BASENAME = null;
-				if(OUTPUT_STATUS){
-					try{
-						if(OUT_DIR == null) { OUT_BASENAME = new File(bamFiles.get(x).getName().split("\\.")[0]); }
-						else { OUT_BASENAME = new File( OUT_DIR.getCanonicalPath() + File.separator + bamFiles.get(x).getName().split("\\.")[0] ); }
-					}
-					catch (FileNotFoundException e) { e.printStackTrace(); }
+				// Construct output basename
+				String NAME = ExtensionFileFilter.stripExtension(bamFiles.get(x).getName());
+				File OUT_BASENAME = new File(NAME);
+				if (OUT_DIR != null) {
+					OUT_BASENAME = new File(OUT_DIR.getCanonicalPath() + File.separator + NAME);
 				}
-
 				// Initialize PrintStream and TextArea for PE stats (insert sizes)
 				PrintStream ps_insert = null;
 				JTextArea PE_STATS = new JTextArea();
@@ -109,20 +121,26 @@ public class PEStatOutput extends JFrame {
 				// Initialize PrintStream and TextArea for DUP stats
 				PrintStream ps_dup = null;
 				JTextArea DUP_STATS = new JTextArea();
-				if(DUP_STATUS) {
+				if (DUP_STATUS) {
 					DUP_STATS.setEditable(false);
 					ps_dup = new PrintStream(new CustomOutputStream( DUP_STATS ));
 				}
-
-				//Call public static method from scripts
-				Vector<ChartPanel> charts = PEStats.getPEStats( OUT_BASENAME, bamFiles.get(x), DUP_STATUS, MIN_INSERT, MAX_INSERT, ps_insert, ps_dup, false );
-
-				//Add pe stats to tabbed pane
+				// Initialize LogItem
+				String command = PEStatsCLI.getCLIcommand(bamFiles.get(x), OUT_BASENAME, DUP_STATUS, MIN_INSERT, MAX_INSERT);
+				LogItem new_li = new LogItem(command);
+				if (OUTPUT_STATUS) { firePropertyChange("log", old_li, new_li); }
+				// Execute script
+				Vector<ChartPanel> charts = PEStats.getPEStats(bamFiles.get(x), OUT_BASENAME, DUP_STATUS, MIN_INSERT, MAX_INSERT, OUTPUT_STATUS, ps_insert, ps_dup );
+				// Update log item
+				new_li.setStopTime(new Timestamp(new Date().getTime()));
+				new_li.setStatus(0);
+				old_li = new_li;
+				// Add pe stats to tabbed pane
 				PE_STATS.setCaretPosition(0);
 				JScrollPane pe_pane = new JScrollPane(PE_STATS, JScrollPane.VERTICAL_SCROLLBAR_ALWAYS, JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
 				tabbedPane_InsertStats.add(bamFiles.get(x).getName(), pe_pane);
 				tabbedPane_Histogram.add(bamFiles.get(x).getName(), charts.get(0));
-
+				// Set-up duplication statistics if flagged
 				if(DUP_STATUS) {
 					//Add duplication stats to tabbed pane
 					DUP_STATS.setCaretPosition(0);
@@ -130,12 +148,14 @@ public class PEStatOutput extends JFrame {
 					tabbedPane_DupStats.add(bamFiles.get(x).getName(), dup_pane);
 					tabbedPane_Duplication.add(bamFiles.get(x).getName(), charts.get(1));
 				}
-
-				if(ps_dup!=null) { ps_dup.close(); }
+				// Close streams
 				ps_insert.close();
-
-				firePropertyChange("bam",x, x + 1);
+				if (ps_dup!=null) { ps_dup.close(); }
+				// Update progress
+				firePropertyChange("progress",x, x + 1);
 			}
 		}
+		// Update log after final input
+		if (OUTPUT_STATUS) { firePropertyChange("log", old_li, null); }
 	}
 }

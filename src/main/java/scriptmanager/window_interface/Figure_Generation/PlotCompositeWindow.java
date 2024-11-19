@@ -14,6 +14,7 @@ import java.beans.PropertyChangeListener;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.NoSuchElementException;
 
 import javax.swing.DefaultListModel;
 import javax.swing.JButton;
@@ -33,11 +34,12 @@ import javax.swing.SwingConstants;
 import javax.swing.SwingWorker;
 import javax.swing.border.EmptyBorder;
 
+import scriptmanager.objects.ToolDescriptions;
 import scriptmanager.util.FileSelection;
 
 /**
- * PlotComposite GUI window. User inputs for calling the script are organized
- * into a user-friendly layout of fields and labels.
+ * GUI for collecting inputs to be processed by
+ * {@link scriptmanager.scripts.Figure_Generation.PlotComposite}
  * 
  * @author Olivia Lang
  * @see scriptmanager.scripts.Figure_Generation.PlotComposite
@@ -46,7 +48,10 @@ import scriptmanager.util.FileSelection;
 @SuppressWarnings("serial")
 public class PlotCompositeWindow extends JFrame implements ActionListener, PropertyChangeListener {
 	private JPanel contentPane;
-	protected JFileChooser fc = new JFileChooser(new File(System.getProperty("user.dir")));	
+	/**
+	 * FileChooser which opens to user's directory
+	 */
+	protected JFileChooser fc = new JFileChooser(new File(System.getProperty("user.dir")));
 
 	final DefaultListModel<String> expList;
 	ArrayList<File> txtFiles = new ArrayList<File>();
@@ -82,16 +87,17 @@ public class PlotCompositeWindow extends JFrame implements ActionListener, Prope
 
 	private File OUT_DIR = null;
 
+	/**
+	 * Used to run the script efficiently
+	 */
 	public Task task;
 
 	/**
-	 * Organize user inputs for calling script.
+	 * Organizes user inputs for calling script
 	 */
 	class Task extends SwingWorker<Void, Void> {
 		@Override
-		public Void doInBackground() throws IOException {
-			setProgress(0);
-			
+		public Void doInBackground() {
 			try {
 				if (txtFiles.size() < 1) {
 					JOptionPane.showMessageDialog(null, "No files loaded!!!");
@@ -100,24 +106,39 @@ public class PlotCompositeWindow extends JFrame implements ActionListener, Prope
 				} else if (Integer.parseInt(txtPixelWidth.getText()) < 1) {
 					JOptionPane.showMessageDialog(null, "Invalid pixel width!!! Must be greater than 1");
 				} else {
-					PlotCompositeOutput output = new PlotCompositeOutput(txtFiles, OUT_DIR, chckbxOutputDir.isSelected(), chckbxIncludeLegend.isSelected(), Integer.parseInt(txtPixelHeight.getText()), Integer.parseInt(txtPixelWidth.getText()));
-					output.addPropertyChangeListener("composite", new PropertyChangeListener() {
+					setProgress(0);
+					if (OUT_DIR==null) {
+						OUT_DIR = new File(System.getProperty("user.dir"));
+					}
+					PlotCompositeOutput output_obj = new PlotCompositeOutput(txtFiles, OUT_DIR, chckbxOutputDir.isSelected(), chckbxIncludeLegend.isSelected(), Integer.parseInt(txtPixelHeight.getText()), Integer.parseInt(txtPixelWidth.getText()));
+					output_obj.addPropertyChangeListener("progress", new PropertyChangeListener() {
 						public void propertyChange(PropertyChangeEvent propertyChangeEvent) {
 							int temp = (Integer) propertyChangeEvent.getNewValue();
 							int percentComplete = (int)(((double)(temp) / (txtFiles.size())) * 100);
 							setProgress(percentComplete);
 						}
 					});
-	
-					output.setVisible(true);
-					output.run();
-
-					setProgress(100);
-					return null;
+					output_obj.addPropertyChangeListener("log", new PropertyChangeListener() {
+						public void propertyChange(PropertyChangeEvent evt) {
+							firePropertyChange("log", evt.getOldValue(), evt.getNewValue());
+						}
+					});
+					output_obj.setVisible(true);
+					output_obj.run();
 				}
-			} catch(NumberFormatException nfe){
+			} catch (NumberFormatException nfe){
 				JOptionPane.showMessageDialog(null, "Invalid Input in Fields!!!");
+			} catch (NoSuchElementException nsee){
+				nsee.printStackTrace();
+				JOptionPane.showMessageDialog(null, "Check that your input files are properly formatted!");
+			} catch (IOException ioe) {
+				ioe.printStackTrace();
+				JOptionPane.showMessageDialog(null, "I/O issues: " + ioe.getMessage());
+			} catch (Exception e) {
+				e.printStackTrace();
+				JOptionPane.showMessageDialog(null, ToolDescriptions.UNEXPECTED_EXCEPTION_MESSAGE + e.getMessage());
 			}
+			setProgress(100);
 			return null;
 		}
 
@@ -145,7 +166,7 @@ public class PlotCompositeWindow extends JFrame implements ActionListener, Prope
 		sl_contentPane.putConstraint(SpringLayout.WEST, scrollPane, 10, SpringLayout.WEST, contentPane);
 		sl_contentPane.putConstraint(SpringLayout.EAST, scrollPane, -10, SpringLayout.EAST, contentPane);
 		contentPane.add(scrollPane);
-		
+
 		expList = new DefaultListModel<String>();
 		final JList<String> listExp = new JList<String>(expList);
 		listExp.setSelectionMode(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
@@ -287,6 +308,9 @@ public class PlotCompositeWindow extends JFrame implements ActionListener, Prope
 		txtPixelWidth.setEnabled(activate);
 	}
 
+	/**
+	 * Runs when a task is invoked, making window non-interactive and executing the task.
+	 */
 	@Override
 	public void actionPerformed(ActionEvent arg0) {
 		massXable(contentPane, false);
@@ -298,15 +322,23 @@ public class PlotCompositeWindow extends JFrame implements ActionListener, Prope
 	}
 
 	/**
-	 * Invoked when task's progress property changes.
+	 * Invoked when task's progress property changes and updates the progress bar
 	 */
+	@Override
 	public void propertyChange(PropertyChangeEvent evt) {
 		if ("progress" == evt.getPropertyName()) {
 			int progress = (Integer) evt.getNewValue();
 			progressBar.setValue(progress);
+		} else if ("log" == evt.getPropertyName()) {
+			firePropertyChange("log", evt.getOldValue(), evt.getNewValue());
 		}
 	}
 
+	/**
+	 * Makes the content pane non-interactive If the window should be interactive data
+	 * @param con Content pane to make non-interactive
+	 * @param status If the window should be interactive
+	 */
 	public void massXable(Container con, boolean status) {
 		for(Component c : con.getComponents()) {
 			c.setEnabled(status);

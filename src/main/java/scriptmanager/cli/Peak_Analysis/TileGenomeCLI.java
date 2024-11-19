@@ -10,12 +10,14 @@ import java.io.File;
 import java.io.IOException;
 
 import scriptmanager.objects.ToolDescriptions;
-import scriptmanager.util.ExtensionFileFilter;
 import scriptmanager.scripts.Peak_Analysis.TileGenome;
 
 /**
-	Peak_AnalysisCLI/TileGenomeCLI
-*/
+ * Command line interface for
+ * {@link scriptmanager.scripts.Peak_Analysis.TileGenome}
+ * 
+ * @author Olivia Lang
+ */
 @Command(name = "tile-genome", mixinStandardHelpOptions = true,
 	description = ToolDescriptions.tile_genome_description,
 	version = "ScriptManager "+ ToolDescriptions.VERSION,
@@ -29,11 +31,17 @@ public class TileGenomeCLI implements Callable<Integer> {
 	
 	@Option(names = {"-o", "--output"}, description = "Specify output directory (default = current working directory), file name will be genome_tiles_<genomeName>_<window>bp.<ext>")
 	private File output = null;
+	@Option(names = {"-z", "--gzip"}, description = "gzip output (default=false)")
+	private boolean gzOutput = false;
 	@Option(names = {"-f", "--gff"}, description = "file format output as GFF (default format as BED)")
 	private boolean formatIsBed = true;
 	@Option(names = {"-w", "--window"}, description = "window size in bp (default=200)")
 	private int window = 200;
 	
+	/**
+	 * Runs when this subcommand is called, running script in respective script package with user defined arguments
+	 * @throws IOException Invalid file or parameters
+	 */
 	@Override
 	public Integer call() throws Exception {
 		System.err.println( ">TileGenomeCLI.call()" );
@@ -44,7 +52,7 @@ public class TileGenomeCLI implements Callable<Integer> {
 			System.exit(1);
 		}
 		
-		TileGenome.execute(genomeName, window, formatIsBed, output);
+		TileGenome.execute(genomeName, output, formatIsBed, window, gzOutput);
 		
 		System.err.println( "Genomic Tiling Complete." );
 		return(0);
@@ -53,19 +61,13 @@ public class TileGenomeCLI implements Callable<Integer> {
 	private String validateInput() throws IOException {
 		String r = "";
 		
-		String ext = "gff";
-		if(formatIsBed){ ext = "bed"; }
 		//set default output filename
-		if(output==null){
-			output = new File(genomeName + "_" + window + "bp." + ext);
+		if (output==null) {
+			output = new File(genomeName + "_" + window + "bp"
+					+ (formatIsBed ? ".bed" : ".gff")
+					+ (gzOutput ? ".gz" : ""));
 		//check output filename is valid
-		}else{
-			//check ext
-			try{
-				if(!ext.equals(ExtensionFileFilter.getExtension(output))){
-					r += "(!)Use \"." + ext.toUpperCase() + "\" extension for output filename. Try: " + ExtensionFileFilter.stripExtension(output) + "." + ext + "\n";
-				}
-			} catch( NullPointerException e){ r += "(!)Output filename must have extension: use \"." + ext.toUpperCase() + "\" extension for output filename. Try: " + output + "." + ext + "\n"; }
+		} else {
 			//check directory
 			if(output.getParent()==null){
 	// 			System.err.println("default to current directory");
@@ -80,5 +82,25 @@ public class TileGenomeCLI implements Callable<Integer> {
 		}
 		
 		return(r);
+	}
+
+	/**
+	 * Reconstruct CLI command
+	 * 
+	 * @param genomeName  the genome build to tile coordinates from
+	 * @param output      the text file of the tiled coordinates
+	 * @param formatIsBed the format of the coordinate output (BED or GFF)
+	 * @param window      the size of the tiles sampled
+	 * @param gzOutput    whether or not to gzip output
+	 * @return command line to execute with formatted inputs
+	 */
+	public static String getCLIcommand(String genomeName, File output, boolean formatIsBed, int window, boolean gzOutput) {
+		String command = "java -jar $SCRIPTMANAGER peak-analysis tile-genome";
+		command += " " + genomeName;
+		command += " -o " + output.getAbsolutePath();
+		command += gzOutput ? " -z " : "";
+		command += formatIsBed ? "" : " --gff";
+		command += " -w " + window;
+		return command;
 	}
 }

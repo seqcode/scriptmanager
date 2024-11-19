@@ -2,10 +2,8 @@ package scriptmanager.util;
 
 import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -13,7 +11,6 @@ import java.util.Map;
 import java.util.Scanner;
 import java.util.Set;
 import java.util.Vector;
-import java.util.zip.GZIPInputStream;
 
 /**
  * This class was created to parse and validate CDT files and counting the
@@ -32,10 +29,15 @@ public class CDTUtilities {
 	private String invalidMessage;
 
 	/**
+	 * Creates a new CDTUtilities object
+	 */
+	public CDTUtilities(){}
+
+	/**
 	 * Parse CDT-formatted file for consistent column sizes and a row count
 	 * 
 	 * @param CDT a CDT-formatted file to validate
-	 * @throws IOException
+	 * @throws IOException Invalid file or parameters
 	 */
 	public void parseCDT(File CDT) throws IOException {
 		SIZE = -999;
@@ -43,12 +45,7 @@ public class CDTUtilities {
 		invalidMessage = "";
 		
 		// Check if file is gzipped and instantiate appropriate BufferedReader
-		BufferedReader br;
-		if(GZipUtilities.isGZipped(CDT)) {
-			br = new BufferedReader(new InputStreamReader(new GZIPInputStream(new FileInputStream(CDT)), "UTF-8"));
-		} else {
-			br = new BufferedReader(new InputStreamReader(new FileInputStream(CDT), "UTF-8"));
-		}
+		BufferedReader br = GZipUtilities.makeReader(CDT);
 		// Initialize line variable to loop through
 		String line = br.readLine();
 		int currentRow = 1;
@@ -69,13 +66,30 @@ public class CDTUtilities {
 		br.close();
 	}
 	
+	/**
+	 * Returns if the rows of a CDT all have the same number of columns
+	 * @return True if all rows match, false if otherwise
+	 */
 	public boolean isValid(){ return consistentSize; }
 	
+	/**
+	 * Returns the number of columns in a CDT
+	 * @return The number of columns in a CDT
+	 */
 	public int getSize(){ return SIZE; }
 	
+	/**
+	 * Returns an error message referencing the first invalid row
+	 * @return An error message referencing the first invalid row
+	 */
 	public String getInvalidMessage(){ return invalidMessage; }
 	
-	
+	/**
+	 * Loads a given CDT file into a Vector&lt;double[]&gt;
+	 * @param input File to be loaded
+	 * @return A Vector&lt;double[]&gt; representing the CDT file
+	 * @throws FileNotFoundException Script could not find valid input file
+	 */
 	public static Vector<double[]> loadCDT(File input) throws FileNotFoundException {
 		Vector<double[]> matrix = new Vector<double[]>();
 		Scanner scan = new Scanner(input);

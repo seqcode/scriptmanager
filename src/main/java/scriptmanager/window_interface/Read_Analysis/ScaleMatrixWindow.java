@@ -5,25 +5,21 @@ import java.awt.Component;
 import java.awt.Container;
 import java.awt.Cursor;
 import java.awt.Font;
-import java.awt.Toolkit;
-import java.awt.datatransfer.Clipboard;
-import java.awt.datatransfer.DataFlavor;
-import java.awt.datatransfer.StringSelection;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.ItemEvent;
 import java.awt.event.ItemListener;
-import java.awt.event.KeyEvent;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.io.File;
 import java.io.IOException;
+import java.sql.Timestamp;
 import java.util.ArrayList;
-import java.util.StringTokenizer;
+import java.util.Date;
 
 import javax.swing.ButtonGroup;
 import javax.swing.JButton;
-import javax.swing.JComponent;
+import javax.swing.JCheckBox;
 import javax.swing.JFileChooser;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
@@ -34,20 +30,35 @@ import javax.swing.JRadioButton;
 import javax.swing.JScrollPane;
 import javax.swing.JTable;
 import javax.swing.JTextField;
-import javax.swing.KeyStroke;
 import javax.swing.SpringLayout;
 import javax.swing.SwingConstants;
 import javax.swing.SwingWorker;
 import javax.swing.border.EmptyBorder;
 import javax.swing.table.DefaultTableModel;
 
+import scriptmanager.objects.LogItem;
+import scriptmanager.objects.PasteableTable;
+import scriptmanager.objects.ToolDescriptions;
 import scriptmanager.util.ExtensionFileFilter;
 import scriptmanager.util.FileSelection;
+
+import scriptmanager.cli.Read_Analysis.ScaleMatrixCLI;
 import scriptmanager.scripts.Read_Analysis.ScaleMatrix;
 
+/**
+ * GUI for collecting inputs to be processed by
+ * {@link scriptmanager.scripts.Read_Analysis.ScaleMatrix}
+ * 
+ * @author William KM Lai
+ * @see scriptmanager.scripts.Read_Analysis.ScalingFactor
+ * @see scriptmanager.window_interface.Read_Analysis.ScalingFactorOutput
+ */
 @SuppressWarnings("serial")
 public class ScaleMatrixWindow extends JFrame implements ActionListener, PropertyChangeListener {
 	private JPanel contentPane;
+	/**
+	 * FileChooser which opens to user's directory
+	 */
 	protected JFileChooser fc = new JFileChooser(new File(System.getProperty("user.dir")));
 
 	ArrayList<File> TABFiles = new ArrayList<File>();
@@ -57,6 +68,7 @@ public class ScaleMatrixWindow extends JFrame implements ActionListener, Propert
 	private JButton btnRemoveBam;
 	private JButton btnCalculate;
 	private JButton btnOutput;
+	private JCheckBox chckbxGzipOutput;
 	private JLabel lblDefaultToLocal;
 	private JLabel lblCurrent;
 	private JProgressBar progressBar;
@@ -71,10 +83,13 @@ public class ScaleMatrixWindow extends JFrame implements ActionListener, Propert
 
 	private DefaultTableModel expTable;
 
+	/**
+	 * Used to run the script efficiently
+	 */
 	public Task task;
 
 	/**
-	 * Organize user inputs for calling script.
+	 * Organizes user inputs for calling script
 	 */
 	class Task extends SwingWorker<Void, Void> {
 		@Override
@@ -89,49 +104,81 @@ public class ScaleMatrixWindow extends JFrame implements ActionListener, Propert
 				} else {
 					// Check that all scaling numbers are valid
 					boolean ALLNUM = true;
-					for (int x = 0; x < TABFiles.size(); x++) {
+					if (rdbtnUniformScaling.isSelected()) {
+						System.out.println("Uniform scaling factor check...");
 						try {
-							Double.parseDouble(expTable.getValueAt(x, 1).toString());
+							Double.parseDouble(txtUniform.getText());
 						} catch (NumberFormatException e) {
-							JOptionPane.showMessageDialog(null,
-									TABFiles.get(x).getName() + " possesses an invalid scaling factor!!!");
+							JOptionPane.showMessageDialog(null, "Uniform scaling value an invalid scaling factor (" + txtUniform.getText() + ") !!!");
 							ALLNUM = false;
 						}
+					} else {
+						System.out.println("File-sspecific scaling factor check...");
+						for (int x = 0; x < TABFiles.size(); x++) {
+							System.out.println(x);
+							try {
+								Double.parseDouble(expTable.getValueAt(x, 1).toString());
+							} catch (NumberFormatException e) {
+								JOptionPane.showMessageDialog(null, TABFiles.get(x).getName() + " possesses an invalid scaling factor (" + expTable.getValueAt(x, 1) + ") !!!");
+								ALLNUM = false;
+							}
+						}
 					}
-
+					// Loop through matrix files with valid scaling factors
 					if (ALLNUM) {
 						setProgress(0);
 						double SCALE = 0;
 						if (rdbtnUniformScaling.isSelected()) {
 							SCALE = Double.parseDouble(txtUniform.getText());
 						}
-
+						LogItem old_li = null;
 						for (int x = 0; x < TABFiles.size(); x++) {
+							// Pull input file
+							File XTAB = TABFiles.get(x);
+							// Construct output filename
+							String NAME = ExtensionFileFilter.stripExtensionIgnoreGZ(XTAB) + "_SCALE."
+									+ ExtensionFileFilter.getExtensionIgnoreGZ(XTAB)
+									+ (chckbxGzipOutput.isSelected() ? ".gz" : "");
+							File OUT_FILEPATH = new File(NAME);
+							if (OUT_DIR != null) {
+								OUT_FILEPATH = new File(OUT_DIR.getCanonicalPath() + File.separator + NAME);
+							}
+							// Determine out scaling factor
 							if (rdbtnFilespecifcScaling.isSelected()) {
 								SCALE = Double.parseDouble(expTable.getValueAt(x, 1).toString());
 							}
-
-							File XTAB = TABFiles.get(x);
-							String OUTPUT = ExtensionFileFilter.stripExtension(XTAB) + "_SCALE."
-									+ ExtensionFileFilter.getExtension(XTAB);
-							if (OUT_DIR != null) {
-								OUTPUT = OUT_DIR + File.separator + OUTPUT;
-							}
-
-							ScaleMatrix scale = new ScaleMatrix(XTAB, new File(OUTPUT), SCALE,
-									Integer.parseInt(txtRow.getText()), Integer.parseInt(txtCol.getText()));
-							scale.run();
-
+							// Initialize LogItem
+							String command = ScaleMatrixCLI.getCLIcommand(XTAB, OUT_FILEPATH, SCALE, Integer.parseInt(txtRow.getText()), Integer.parseInt(txtCol.getText()), chckbxGzipOutput.isSelected());
+							LogItem new_li = new LogItem(command);
+							firePropertyChange("log", old_li, new_li);
+							// Execute script
+							ScaleMatrix script_obj = new ScaleMatrix(XTAB, OUT_FILEPATH, SCALE, Integer.parseInt(txtRow.getText()), Integer.parseInt(txtCol.getText()), chckbxGzipOutput.isSelected());
+							script_obj.run();
+							// Update log item
+							new_li.setStopTime(new Timestamp(new Date().getTime()));
+							new_li.setStatus(0);
+							old_li = new_li;
+							// Update progress
 							int percentComplete = (int) (((double) (x + 1) / TABFiles.size()) * 100);
 							setProgress(percentComplete);
 						}
+						// Update log after final input
+						firePropertyChange("log", old_li, null);
+						// Update progress
 						setProgress(100);
 						JOptionPane.showMessageDialog(null, "All Matrices Scaled");
 					}
 				}
 			} catch (NumberFormatException e) {
 				JOptionPane.showMessageDialog(null, "Invalid Scaling Factor!!! Must be number");
+			} catch (IOException ioe) {
+				ioe.printStackTrace();
+				JOptionPane.showMessageDialog(null, "I/O issues: " + ioe.getMessage());
+			} catch (Exception e) {
+				e.printStackTrace();
+				JOptionPane.showMessageDialog(null, ToolDescriptions.UNEXPECTED_EXCEPTION_MESSAGE + e.getMessage());
 			}
+			setProgress(100);
 			return null;
 		}
 
@@ -172,13 +219,12 @@ public class ScaleMatrixWindow extends JFrame implements ActionListener, Propert
 			}
 		};
 		JTable tableScale = new JTable(expTable);
-		// Allow for the selection of multiple OR individual cells across either rows or
-		// columns
+		// Allow for the selection of multiple OR individual cells across either rows or columns
 		tableScale.setCellSelectionEnabled(true);
 		tableScale.setColumnSelectionAllowed(true);
 		tableScale.setRowSelectionAllowed(true);
 		@SuppressWarnings("unused")
-		ExcelAdapter myAd = new ExcelAdapter(tableScale);
+		PasteableTable myAd = new PasteableTable(tableScale);
 
 		JScrollPane scrollPane = new JScrollPane(tableScale);
 		sl_contentPane.putConstraint(SpringLayout.WEST, scrollPane, 10, SpringLayout.WEST, contentPane);
@@ -258,6 +304,11 @@ public class ScaleMatrixWindow extends JFrame implements ActionListener, Propert
 		});
 		contentPane.add(btnOutput);
 
+		chckbxGzipOutput = new JCheckBox("Output GZip");
+		sl_contentPane.putConstraint(SpringLayout.NORTH, chckbxGzipOutput, 0, SpringLayout.NORTH, btnCalculate);
+		sl_contentPane.putConstraint(SpringLayout.WEST, chckbxGzipOutput, 30, SpringLayout.WEST, contentPane);
+		contentPane.add(chckbxGzipOutput);
+
 		rdbtnFilespecifcScaling = new JRadioButton("File-specifc Scaling");
 		sl_contentPane.putConstraint(SpringLayout.NORTH, rdbtnFilespecifcScaling, 8, SpringLayout.SOUTH, scrollPane);
 		sl_contentPane.putConstraint(SpringLayout.EAST, rdbtnFilespecifcScaling, -66, SpringLayout.EAST, contentPane);
@@ -291,6 +342,13 @@ public class ScaleMatrixWindow extends JFrame implements ActionListener, Propert
 		txtUniform.setText("1");
 		contentPane.add(txtUniform);
 		txtUniform.setColumns(10);
+		txtUniform.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				for (int x = 0; x < expTable.getRowCount(); x++) {
+					expTable.setValueAt(txtUniform.getText(), x, 1);
+				}
+        	}
+		});
 
 		JLabel lblRow = new JLabel("Start at Row:");
 		sl_contentPane.putConstraint(SpringLayout.NORTH, lblRow, 10, SpringLayout.SOUTH, lblUniformScalingFactor);
@@ -346,6 +404,9 @@ public class ScaleMatrixWindow extends JFrame implements ActionListener, Propert
 		lblCurrent.setEnabled(activate);
 	}
 
+	/**
+	 * Runs when a task is invoked, making window non-interactive and executing the task.
+	 */
 	@Override
 	public void actionPerformed(ActionEvent arg0) {
 		massXable(contentPane, false);
@@ -359,13 +420,21 @@ public class ScaleMatrixWindow extends JFrame implements ActionListener, Propert
 	/**
 	 * Invoked when task's progress property changes.
 	 */
+	@Override
 	public void propertyChange(PropertyChangeEvent evt) {
 		if ("progress" == evt.getPropertyName()) {
 			int progress = (Integer) evt.getNewValue();
 			progressBar.setValue(progress);
+		} else if ("log" == evt.getPropertyName()) {
+			firePropertyChange("log", evt.getOldValue(), evt.getNewValue());
 		}
 	}
 
+	/**
+	 * Makes the content pane non-interactive If the window should be interactive data
+	 * @param con Content pane to make non-interactive
+	 * @param status If the window should be interactive
+	 */
 	public void massXable(Container con, boolean status) {
 		for (Component c : con.getComponents()) {
 			c.setEnabled(status);
@@ -380,113 +449,6 @@ public class ScaleMatrixWindow extends JFrame implements ActionListener, Propert
 			} else {
 				lblUniformScalingFactor.setEnabled(false);
 				txtUniform.setEnabled(false);
-			}
-		}
-	}
-
-	/**
-	 * Adapted from:
-	 * https://www.javaworld.com/article/2077579/learn-java/java-tip-77--enable-copy-and-paste-functionality-between-swing-s-jtables-and-excel.html
-	 * ExcelAdapter enables Copy-Paste Clipboard functionality on JTables. The
-	 * clipboard data format used by the adapter is compatible with the clipboard
-	 * format used by Excel. This provides for clipboard interoperability between
-	 * enabled JTables and Excel.
-	 */
-	public class ExcelAdapter implements ActionListener {
-		private String rowstring, value;
-		private Clipboard system;
-		private StringSelection stsel;
-		private JTable jTable1;
-
-		/**
-		 * The Excel Adapter is constructed with a JTable on which it enables Copy-Paste
-		 * and acts as a Clipboard listener.
-		 */
-		public ExcelAdapter(JTable myJTable) {
-			jTable1 = myJTable;
-			KeyStroke copy = KeyStroke.getKeyStroke(KeyEvent.VK_C, ActionEvent.CTRL_MASK, false);
-			// Identifying the copy KeyStroke user can modify this to copy on some other Key
-			// combination.
-			KeyStroke paste = KeyStroke.getKeyStroke(KeyEvent.VK_V, ActionEvent.CTRL_MASK, false);
-			// Identifying the Paste KeyStroke user can modify this to copy on some other
-			// Key combination.
-			jTable1.registerKeyboardAction(this, "Copy", copy, JComponent.WHEN_FOCUSED);
-			jTable1.registerKeyboardAction(this, "Paste", paste, JComponent.WHEN_FOCUSED);
-			system = Toolkit.getDefaultToolkit().getSystemClipboard();
-		}
-
-		/**
-		 * Public Accessor methods for the Table on which this adapter acts.
-		 */
-		public JTable getJTable() {
-			return jTable1;
-		}
-
-		public void setJTable(JTable jTable1) {
-			this.jTable1 = jTable1;
-		}
-
-		/**
-		 * This method is activated on the Keystrokes we are listening to in this
-		 * implementation. Here it listens for Copy and Paste ActionCommands. Selections
-		 * comprising non-adjacent cells result in invalid selection and then copy
-		 * action cannot be performed. Paste is done by aligning the upper left corner
-		 * of the selection with the 1st element in the current selection of the JTable.
-		 */
-		public void actionPerformed(ActionEvent e) {
-			if (e.getActionCommand().compareTo("Copy") == 0) {
-				StringBuffer sbf = new StringBuffer();
-				// Check to ensure we have selected only a contiguous block of cells
-				int numcols = jTable1.getSelectedColumnCount();
-				int numrows = jTable1.getSelectedRowCount();
-				int[] rowsselected = jTable1.getSelectedRows();
-				int[] colsselected = jTable1.getSelectedColumns();
-				if (!((numrows - 1 == rowsselected[rowsselected.length - 1] - rowsselected[0]
-						&& numrows == rowsselected.length)
-						&& (numcols - 1 == colsselected[colsselected.length - 1] - colsselected[0]
-								&& numcols == colsselected.length))) {
-					JOptionPane.showMessageDialog(null, "Invalid Copy Selection", "Invalid Copy Selection",
-							JOptionPane.ERROR_MESSAGE);
-					return;
-				}
-				for (int i = 0; i < numrows; i++) {
-					for (int j = 0; j < numcols; j++) {
-						sbf.append(jTable1.getValueAt(rowsselected[i], colsselected[j]));
-						if (j < numcols - 1) {
-							sbf.append("\t");
-						}
-					}
-					sbf.append("\n");
-				}
-				stsel = new StringSelection(sbf.toString());
-				system = Toolkit.getDefaultToolkit().getSystemClipboard();
-				system.setContents(stsel, stsel);
-			}
-
-			if (e.getActionCommand().compareTo("Paste") == 0) {
-				// System.out.println("Trying to Paste");
-				int startRow = (jTable1.getSelectedRows())[0];
-				int startCol = (jTable1.getSelectedColumns())[0];
-				try {
-					String trstring = (String) (system.getContents(this).getTransferData(DataFlavor.stringFlavor));
-					// System.out.println("String is:"+trstring);
-					StringTokenizer st1 = new StringTokenizer(trstring, "\n");
-					for (int i = 0; st1.hasMoreTokens(); i++) {
-						rowstring = st1.nextToken();
-						StringTokenizer st2 = new StringTokenizer(rowstring, "\t");
-						for (int j = 0; st2.hasMoreTokens(); j++) {
-							value = (String) st2.nextToken();
-							if (startRow + i < jTable1.getRowCount() && startCol + j < jTable1.getColumnCount()
-									&& jTable1.isCellEditable(startRow + i, startCol + j)) {
-								jTable1.setValueAt(value, startRow + i, startCol + j);
-							}
-							// System.out.println("Putting "+ value+"at
-							// row="+startRow+i+"column="+startCol+j);
-						}
-					}
-				} catch (Exception ex) {
-					ex.printStackTrace();
-				}
 			}
 		}
 	}

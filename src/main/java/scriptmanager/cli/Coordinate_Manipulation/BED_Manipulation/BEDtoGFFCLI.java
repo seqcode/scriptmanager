@@ -14,11 +14,10 @@ import scriptmanager.util.ExtensionFileFilter;
 import scriptmanager.scripts.Coordinate_Manipulation.BED_Manipulation.BEDtoGFF;
 
 /**
- * Command line interface class for converting BED-formatted coordinates to
- * GFF-format by calling a script implemented in the scripts package.
+ * Command line interface for
+ * {@link scriptmanager.scripts.Coordinate_Manipulation.BED_Manipulation.BEDtoGFF}
  * 
  * @author Olivia Lang
- * @see scriptmanager.scripts.Coordinate_Manipulation.BED_Manipulation.BEDtoGFF
  */
 @Command(name = "bed-to-gff", mixinStandardHelpOptions = true,
 	description = ToolDescriptions.bed_to_gff_description,
@@ -27,7 +26,11 @@ import scriptmanager.scripts.Coordinate_Manipulation.BED_Manipulation.BEDtoGFF;
 	exitCodeOnInvalidInput = 1,
 	exitCodeOnExecutionException = 1)
 public class BEDtoGFFCLI implements Callable<Integer> {
-	
+	/**
+	 * Creates a new BEDtoGFFCLI object
+	 */
+	public BEDtoGFFCLI(){}
+
 	@Parameters( index = "0", description = "the BED file to convert")
 	private File bedFile;
 	
@@ -38,6 +41,10 @@ public class BEDtoGFFCLI implements Callable<Integer> {
 	@Option(names = {"-z", "--gzip"}, description = "gzip output (default=false)")
 	private boolean gzOutput = false;
 	
+	/**
+	 * Runs when this subcommand is called, running script in respective script package with user defined arguments
+	 * @throws IOException Invalid file or parameters
+	 */
 	@Override
 	public Integer call() throws Exception {
 		System.err.println( ">BEDtoGFFCLI.call()" );
@@ -48,7 +55,7 @@ public class BEDtoGFFCLI implements Callable<Integer> {
 			System.exit(1);
 		}
 		
-		BEDtoGFF.convertBEDtoGFF(output, bedFile, gzOutput);
+		BEDtoGFF.convertBEDtoGFF(bedFile, output, gzOutput);
 		
 		System.err.println("Conversion Complete");
 		return(0);
@@ -64,7 +71,7 @@ public class BEDtoGFFCLI implements Callable<Integer> {
 		}
 		//set default output filename
 		if(output==null && !stdout){
-			String NAME = ExtensionFileFilter.stripExtension(bedFile) + ".gff";
+			String NAME = ExtensionFileFilter.stripExtensionIgnoreGZ(bedFile) + ".gff";
 			NAME += gzOutput ? ".gz" : "";
 			output = new File(NAME);
 		//check stdout and output not both selected
@@ -81,5 +88,20 @@ public class BEDtoGFFCLI implements Callable<Integer> {
 		}
 		
 		return(r);
+	}
+
+	/**
+	 * Returns the CLI command for replicating results with Script Manager
+	 * @param BED Bed file to be converted
+	 * @param OUTPUT Output GFF file
+	 * @param gzOutput   whether or not to gzip output
+	 * @return The CLI command for replicating results
+	 */
+	public static String getCLIcommand(File BED, File OUTPUT, boolean gzOutput) {
+		String command = "java -jar $SCRIPTMANAGER coordinate-manipulation bed-to-gff";
+		command += " " + BED.getAbsolutePath();
+		command += " -o " + OUTPUT;
+		command += gzOutput ? " -z " : "";
+		return(command);
 	}
 }

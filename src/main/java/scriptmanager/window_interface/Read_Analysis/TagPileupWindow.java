@@ -46,22 +46,29 @@ import javax.swing.SwingWorker;
 import javax.swing.border.EmptyBorder;
 import javax.swing.border.TitledBorder;
 
+import htsjdk.samtools.SAMException;
+
 import scriptmanager.objects.CompositeCartoon;
 import scriptmanager.objects.PileupParameters;
 import scriptmanager.objects.ReadFragmentCartoon;
+import scriptmanager.objects.ToolDescriptions;
+import scriptmanager.objects.Exceptions.OptionException;
 import scriptmanager.util.ExtensionFileFilter;
 import scriptmanager.util.FileSelection;
+
 /**
- * Graphical interface window for piling up aligned tags around reference
- * coordinates by calling a script implemented in the scripts package.
+ * GUI for collecting inputs to be processed by
+ * {@link scriptmanager.scripts.Read_Analysis.TagPileup}
  * 
  * @author William KM Lai
- * @see scriptmanager.scripts.Read_Analysis.TagPileup
  * @see scriptmanager.window_interface.Read_Analysis.TagPileupOutput
  */
 @SuppressWarnings("serial")
 public class TagPileupWindow extends JFrame implements ActionListener, PropertyChangeListener {
 	private JPanel contentPane;
+	/**
+	 * FileChooser which opens to user's directory
+	 */
 	protected JFileChooser fc = new JFileChooser(new File(System.getProperty("user.dir")));
 
 	final DefaultListModel<String> expList;
@@ -81,7 +88,7 @@ public class TagPileupWindow extends JFrame implements ActionListener, PropertyC
 	private JButton btnRemoveBlacklistfilter;
 	private JComboBox<String> cbox_ReadAspect;
 	private JComboBox<String> cbox_ReadOutput;
-	private JToggleButton tglSeperate;
+	private JToggleButton tglSeparate;
 	private JToggleButton tglCombined;
 
 	private JComboBox<String> cbox_Transform;
@@ -119,48 +126,53 @@ public class TagPileupWindow extends JFrame implements ActionListener, PropertyC
 	private CompositeCartoon compositeCartoon;
 
 	// Names of fields indexed by PileupParameters constants
-	private String[] readAspectOptions = {"5' End", "3' End", "Midpoint (Require PE)", "Full Fragment (Require PE)"};
+	private String[] readAspectOptions = {"5' End", "3' End", "Midpoint", "Full Fragment"};
 	private String[] readOutputOptions = {"Read 1", "Read 2", "All Reads"};
 	private String[] transformationOptions = {"None", "Sliding Window", "Gaussian Smooth"};
 
 	JProgressBar progressBar;
+	/**
+	 * Used to run the script efficiently
+	 */
 	public Task task;
 
 	/**
-	 * Organize user inputs for calling script.
+	 * Organizes user inputs for calling script
 	 */
 	class Task extends SwingWorker<Void, Void> {
 		@Override
-		public Void doInBackground() throws IOException, InterruptedException {
+		public Void doInBackground() {
 			try {
 				if (Integer.parseInt(txtBin.getText()) < 1) {
 					JOptionPane.showMessageDialog(null, "Invalid Bin Size!!! Must be larger than 0 bp");
+				} else if (Integer.parseInt(txtTagExtend.getText()) < 0) {
+					JOptionPane.showMessageDialog(null, "Invalid Tag Extend length!!! Must be non-negative bp length" + "\n\n" + "Consider adjusting the shift bp value if you are interested in negative extensions.", "Validate Input", JOptionPane.ERROR_MESSAGE);
 				} else if (cbox_Transform.getSelectedIndex()==PileupParameters.WINDOW && Integer.parseInt(txtSmooth.getText()) < 1) {
-					JOptionPane.showMessageDialog(null, "Invalid Smoothing Window Size!!! Must be larger than 0 bp");
+					JOptionPane.showMessageDialog(null, "Invalid Smoothing Window Size!!! Must be larger than 0 bp", "Validate Input", JOptionPane.ERROR_MESSAGE);
 				} else if (cbox_Transform.getSelectedIndex()==PileupParameters.WINDOW && Integer.parseInt(txtSmooth.getText()) % 2 == 0) {
-					JOptionPane.showMessageDialog(null, "Invalid Smoothing Window Size!!! Must be odd for symmetrical smoothing (so that the window is centered properly).");
+					JOptionPane.showMessageDialog(null, "Invalid Smoothing Window Size!!! Must be odd for symmetrical smoothing (so that the window is centered properly).", "Validate Options", JOptionPane.ERROR_MESSAGE);
 				} else if (cbox_Transform.getSelectedIndex()==PileupParameters.GAUSSIAN && Integer.parseInt(txtStdSize.getText()) < 1) {
-					JOptionPane.showMessageDialog(null, "Invalid Standard Deviation Size!!! Must be larger than 0 bp");
+					JOptionPane.showMessageDialog(null, "Invalid Standard Deviation Size!!! Must be larger than 0 bp", "Validate Input", JOptionPane.ERROR_MESSAGE);
 				} else if (cbox_Transform.getSelectedIndex()==PileupParameters.GAUSSIAN && Integer.parseInt(txtNumStd.getText()) < 1) {
-					JOptionPane.showMessageDialog(null, "Invalid Number of Standard Deviations!!! Must be larger than 0");
+					JOptionPane.showMessageDialog(null, "Invalid Number of Standard Deviations!!! Must be larger than 0", "Validate Input", JOptionPane.ERROR_MESSAGE);
 				} else if (Integer.parseInt(txtCPU.getText()) < 1) {
-					JOptionPane.showMessageDialog(null, "Invalid Number of CPU's!!! Must use at least 1");
+					JOptionPane.showMessageDialog(null, "Invalid Number of CPU's!!! Must use at least 1", "Validate Input", JOptionPane.ERROR_MESSAGE);
 				} else if (chckbxFilterByMin.isSelected() && Integer.parseInt(txtMin.getText()) < 0) {
-					JOptionPane.showMessageDialog(null, "Invalid Minimum Insert Size!!! Must be greater than or equal to 0 bp");
+					JOptionPane.showMessageDialog(null, "Invalid Minimum Insert Size!!! Must be greater than or equal to 0 bp", "Validate Input", JOptionPane.ERROR_MESSAGE);
 				} else if (chckbxFilterByMax.isSelected() && Integer.parseInt(txtMax.getText()) < 0) {
-					JOptionPane.showMessageDialog(null, "Invalid Maximum Insert Size!!! Must be greater than or equal to 0 bp");
+					JOptionPane.showMessageDialog(null, "Invalid Maximum Insert Size!!! Must be greater than or equal to 0 bp", "Validate Input", JOptionPane.ERROR_MESSAGE);
 				} else if (chckbxFilterByMin.isSelected() && chckbxFilterByMax.isSelected() && Integer.parseInt(txtMax.getText()) < Integer.parseInt(txtMin.getText())) {
-					JOptionPane.showMessageDialog(null, "Invalid Maximum & Minimum Insert Sizes!!! Maximum must be larger/equal to Minimum!");
+					JOptionPane.showMessageDialog(null, "Invalid Maximum & Minimum Insert Sizes!!! Maximum must be larger/equal to Minimum!", "Validate Input", JOptionPane.ERROR_MESSAGE);
 				} else if (BEDFiles.size() < 1) {
-					JOptionPane.showMessageDialog(null, "No BED Files Loaded!!!");
+					JOptionPane.showMessageDialog(null, "No BED Files Loaded!!!", "Validate Input", JOptionPane.ERROR_MESSAGE);
 				} else if (BAMFiles.size() < 1) {
-					JOptionPane.showMessageDialog(null, "No BAM Files Loaded!!!");
+					JOptionPane.showMessageDialog(null, "No BAM Files Loaded!!!", "Validate Input", JOptionPane.ERROR_MESSAGE);
 				} else {
 					setProgress(0);
 					// Load up parameters for the pileup into single object
 					PileupParameters param = new PileupParameters();
 					ArrayList<Color> colors = new ArrayList<Color>();
-					if (tglSeperate.isSelected()) {
+					if (tglSeparate.isSelected()) {
 						param.setStrand(0);
 						colors.add(btnSenseColor.getForeground());
 						colors.add(btnAntiColor.getForeground());
@@ -218,29 +230,38 @@ public class TagPileupWindow extends JFrame implements ActionListener, PropertyC
 					param.setTagExtend(Integer.parseInt(txtTagExtend.getText()));
 					param.setCPU(Integer.parseInt(txtCPU.getText()));
 
-					//debug gui by printing params
-//					param.printAll();
-
-					TagPileupOutput pile = new TagPileupOutput(BEDFiles, BAMFiles, param, colors);
-
-					pile.addPropertyChangeListener("tag", new PropertyChangeListener() {
+					// Execute script
+					TagPileupOutput output_obj = new TagPileupOutput(BEDFiles, BAMFiles, param, colors);
+					output_obj.addPropertyChangeListener("progress", new PropertyChangeListener() {
 						public void propertyChange(PropertyChangeEvent propertyChangeEvent) {
 							int temp = (Integer) propertyChangeEvent.getNewValue();
 							int percentComplete = (int) (((double) (temp) / (BAMFiles.size() * BEDFiles.size())) * 100);
 							setProgress(percentComplete);
 						}
 					});
-
-
-					pile.setVisible(true);
-					pile.run();
-
-					setProgress(100);
-					return null;
+					output_obj.addPropertyChangeListener("log", new PropertyChangeListener() {
+						public void propertyChange(PropertyChangeEvent evt) {
+							firePropertyChange("log", evt.getOldValue(), evt.getNewValue());
+						}
+					});
+					output_obj.setVisible(true);
+					output_obj.run();
 				}
 			} catch (NumberFormatException nfe) {
-				JOptionPane.showMessageDialog(null, "Invalid Input in Fields!!!");
+				JOptionPane.showMessageDialog(null, "Invalid Input in Fields!!!", "Validate Input", JOptionPane.ERROR_MESSAGE);
+			} catch (SAMException se) {
+				JOptionPane.showMessageDialog(null, se.getMessage(), "Validate Input", JOptionPane.ERROR_MESSAGE);
+			} catch (OptionException oe) {
+				oe.printStackTrace();
+				JOptionPane.showMessageDialog(null, oe.getMessage(), "Validate Input", JOptionPane.ERROR_MESSAGE);
+			} catch (IOException ioe) {
+				ioe.printStackTrace();
+				JOptionPane.showMessageDialog(null, "I/O issues: " + ioe.getMessage());
+			} catch (Exception e) {
+				e.printStackTrace();
+				JOptionPane.showMessageDialog(null, ToolDescriptions.UNEXPECTED_EXCEPTION_MESSAGE + e.getMessage());
 			}
+			setProgress(100);
 			return null;
 		}
 
@@ -253,7 +274,7 @@ public class TagPileupWindow extends JFrame implements ActionListener, PropertyC
 	/**
 	 * Instantiate window with graphical interface design.
 	 * 
-	 * @throws IOException
+	 * @throws IOException Invalid file or parameters
 	 */
 	public TagPileupWindow() throws IOException {
 		setTitle("Tag Pileup");
@@ -328,7 +349,7 @@ public class TagPileupWindow extends JFrame implements ActionListener, PropertyC
 		sl_contentPane.putConstraint(SpringLayout.NORTH, scrollPane_BAM, 10, SpringLayout.SOUTH, btnLoadBamFiles);
 		sl_contentPane.putConstraint(SpringLayout.WEST, scrollPane_BAM, 10, SpringLayout.WEST, contentPane);
 		sl_contentPane.putConstraint(SpringLayout.SOUTH, scrollPane_BAM, 380, SpringLayout.NORTH, contentPane);
-		sl_contentPane.putConstraint(SpringLayout.EAST, scrollPane_BAM, -525, SpringLayout.EAST, contentPane);
+		sl_contentPane.putConstraint(SpringLayout.EAST, scrollPane_BAM, 0, SpringLayout.EAST, scrollPane_BED);
 		contentPane.add(scrollPane_BAM);
 
 		expList = new DefaultListModel<String>();
@@ -552,7 +573,7 @@ public class TagPileupWindow extends JFrame implements ActionListener, PropertyC
 		sl_ReadManipulation.putConstraint(SpringLayout.NORTH, txtTagExtend, -1, SpringLayout.NORTH, lblTagExtend);
 		sl_ReadManipulation.putConstraint(SpringLayout.WEST, txtTagExtend, 120, SpringLayout.WEST, lblTagExtend);
 		sl_ReadManipulation.putConstraint(SpringLayout.EAST, txtTagExtend, -6, SpringLayout.EAST, pnlReadManipulation);
-		txtTagExtend.setText("1");
+		txtTagExtend.setText("0");
 		txtTagExtend.setHorizontalAlignment(SwingConstants.CENTER);
 		txtTagExtend.setColumns(10);
 		pnlReadManipulation.add(txtTagExtend);
@@ -560,14 +581,14 @@ public class TagPileupWindow extends JFrame implements ActionListener, PropertyC
 
 		// Stand Options
 		int SCALE = 170;
-		tglSeperate = new JToggleButton("Seperate");
-		sl_contentPane.putConstraint(SpringLayout.NORTH, tglSeperate, 10, SpringLayout.SOUTH, pnlFilterReads);
-		sl_contentPane.putConstraint(SpringLayout.WEST, tglSeperate, 10, SpringLayout.EAST, scrollPane_BED);
-		sl_contentPane.putConstraint(SpringLayout.EAST, tglSeperate, 10 + SCALE*2, SpringLayout.EAST, scrollPane_BED);
-		tglSeperate.setSelected(true);
-		tglSeperate.addItemListener(new ItemListener() {
+		tglSeparate = new JToggleButton("Separate");
+		sl_contentPane.putConstraint(SpringLayout.NORTH, tglSeparate, 10, SpringLayout.SOUTH, pnlFilterReads);
+		sl_contentPane.putConstraint(SpringLayout.WEST, tglSeparate, 10, SpringLayout.EAST, scrollPane_BED);
+		sl_contentPane.putConstraint(SpringLayout.EAST, tglSeparate, 10 + SCALE*2, SpringLayout.EAST, scrollPane_BED);
+		tglSeparate.setSelected(true);
+		tglSeparate.addItemListener(new ItemListener() {
 			public void itemStateChanged(ItemEvent e) {
-				if (tglSeperate.isSelected()) {
+				if (tglSeparate.isSelected()) {
 					btnSenseColor.setEnabled(true);
 					btnAntiColor.setEnabled(true);
 					btnCombinedColor.setEnabled(false);
@@ -579,12 +600,12 @@ public class TagPileupWindow extends JFrame implements ActionListener, PropertyC
 				}
 			}
 		});
-		contentPane.add(tglSeperate);
+		contentPane.add(tglSeparate);
 
 		tglCombined = new JToggleButton("Combined");
-		sl_contentPane.putConstraint(SpringLayout.NORTH, tglCombined, 0, SpringLayout.NORTH, tglSeperate);
-		sl_contentPane.putConstraint(SpringLayout.WEST, tglCombined, 0, SpringLayout.EAST, tglSeperate);
-		sl_contentPane.putConstraint(SpringLayout.EAST, tglCombined, SCALE, SpringLayout.EAST, tglSeperate);
+		sl_contentPane.putConstraint(SpringLayout.NORTH, tglCombined, 0, SpringLayout.NORTH, tglSeparate);
+		sl_contentPane.putConstraint(SpringLayout.WEST, tglCombined, 0, SpringLayout.EAST, tglSeparate);
+		sl_contentPane.putConstraint(SpringLayout.EAST, tglCombined, SCALE, SpringLayout.EAST, tglSeparate);
 		tglCombined.addItemListener(new ItemListener() {
 			public void itemStateChanged(ItemEvent e) {
 				if (tglCombined.isSelected()) {
@@ -601,13 +622,13 @@ public class TagPileupWindow extends JFrame implements ActionListener, PropertyC
 		contentPane.add(tglCombined);
 
 		ButtonGroup toggleStrand = new ButtonGroup();
-		toggleStrand.add(tglSeperate);
+		toggleStrand.add(tglSeparate);
 		toggleStrand.add(tglCombined);
 
 		btnSenseColor = new JButton("Sense Color");
-		sl_contentPane.putConstraint(SpringLayout.NORTH, btnSenseColor, 0, SpringLayout.SOUTH, tglSeperate);
-		sl_contentPane.putConstraint(SpringLayout.WEST, btnSenseColor, 0, SpringLayout.WEST, tglSeperate);
-		sl_contentPane.putConstraint(SpringLayout.EAST, btnSenseColor, SCALE, SpringLayout.WEST, tglSeperate);
+		sl_contentPane.putConstraint(SpringLayout.NORTH, btnSenseColor, 0, SpringLayout.SOUTH, tglSeparate);
+		sl_contentPane.putConstraint(SpringLayout.WEST, btnSenseColor, 0, SpringLayout.WEST, tglSeparate);
+		sl_contentPane.putConstraint(SpringLayout.EAST, btnSenseColor, SCALE, SpringLayout.WEST, tglSeparate);
 		btnSenseColor.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent arg0) {
 				Color newColor = JColorChooser.showDialog(btnSenseColor, "Select an Output Color", btnSenseColor.getForeground());
@@ -624,7 +645,7 @@ public class TagPileupWindow extends JFrame implements ActionListener, PropertyC
 		btnAntiColor = new JButton("Anti Color");
 		sl_contentPane.putConstraint(SpringLayout.NORTH, btnAntiColor, 0, SpringLayout.NORTH, btnSenseColor);
 		sl_contentPane.putConstraint(SpringLayout.WEST, btnAntiColor, 0, SpringLayout.EAST, btnSenseColor);
-		sl_contentPane.putConstraint(SpringLayout.EAST, btnAntiColor, 0, SpringLayout.EAST, tglSeperate);
+		sl_contentPane.putConstraint(SpringLayout.EAST, btnAntiColor, 0, SpringLayout.EAST, tglSeparate);
 		btnAntiColor.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
 				Color newColor = JColorChooser.showDialog(btnAntiColor, "Select an Output Color", btnAntiColor.getForeground());
@@ -840,7 +861,7 @@ public class TagPileupWindow extends JFrame implements ActionListener, PropertyC
 		output.add(tglCdt);
 		tglCdt.setSelected(true);
 
-		chckbxOutputGzip = new JCheckBox("Output GZIP");
+		chckbxOutputGzip = new JCheckBox("Output GZip");
 		sl_OutputOptions.putConstraint(SpringLayout.NORTH, chckbxOutputGzip, 0, SpringLayout.NORTH, chckbxOutputData);
 		sl_OutputOptions.putConstraint(SpringLayout.WEST, chckbxOutputGzip, 6, SpringLayout.EAST, tglTab);
 		pnlOutputOptions.add(chckbxOutputGzip);
@@ -902,20 +923,17 @@ public class TagPileupWindow extends JFrame implements ActionListener, PropertyC
 
 		btnOutputDirectory.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
-				OUT_DIR = FileSelection.getOutputDir(fc);
-				if (OUT_DIR != null) {
-					lblDefaultToLocal.setText(OUT_DIR.getAbsolutePath());
+				File temp = FileSelection.getOutputDir(fc);
+				if(temp != null) {
+					OUT_DIR = temp;
+					lblDefaultToLocal.setToolTipText(OUT_DIR.getAbsolutePath());
 					try {
 						lblDefaultToLocal.setText("..." + ExtensionFileFilter.getSubstringEnd(OUT_DIR, 35));
-					} catch (IOException e1) {
+					} catch (IOException ioe) {
 						System.err.println("Output directory may not be loaded!");
-						e1.printStackTrace();
+						ioe.printStackTrace();
 					}
-				} else {
-					OUT_DIR = new File(System.getProperty("user.dir"));
-					lblDefaultToLocal.setText("Default to Local Directory");
 				}
-				lblDefaultToLocal.setToolTipText(OUT_DIR.getAbsolutePath());
 			}
 		});
 
@@ -961,8 +979,8 @@ public class TagPileupWindow extends JFrame implements ActionListener, PropertyC
 
 		txtCPU = new JTextField();
 		sl_contentPane.putConstraint(SpringLayout.NORTH, txtCPU, -1, SpringLayout.NORTH, lblCpusToUse);
-		sl_contentPane.putConstraint(SpringLayout.WEST, txtCPU, 10, SpringLayout.EAST, lblCpusToUse);
-		sl_contentPane.putConstraint(SpringLayout.WEST, txtCPU, 70, SpringLayout.EAST, lblCpusToUse);
+		sl_contentPane.putConstraint(SpringLayout.WEST, txtCPU, 100, SpringLayout.WEST, lblCpusToUse);
+		sl_contentPane.putConstraint(SpringLayout.EAST, txtCPU, 120, SpringLayout.EAST, lblCpusToUse);
 		txtCPU.setHorizontalAlignment(SwingConstants.CENTER);
 		txtCPU.setText("1");
 		txtCPU.setColumns(10);
@@ -994,7 +1012,7 @@ public class TagPileupWindow extends JFrame implements ActionListener, PropertyC
 	 */
 	public void allowReadChoice(boolean activate) {
 		cbox_ReadOutput.setEnabled(activate);
-		tglSeperate.setEnabled(activate);
+		tglSeparate.setEnabled(activate);
 	}
 
 	/**
@@ -1043,6 +1061,9 @@ public class TagPileupWindow extends JFrame implements ActionListener, PropertyC
 		readCartoon.redrawArrows(aspect, read);
 	}
 
+	/**
+	 * Runs when a task is invoked, making window non-interactive and executing the task.
+	 */
 	@Override
 	public void actionPerformed(ActionEvent arg0) {
 		massXable(contentPane, false);
@@ -1053,6 +1074,11 @@ public class TagPileupWindow extends JFrame implements ActionListener, PropertyC
 		task.execute();
 	}
 
+	/**
+	 * Makes the content pane non-interactive If the window should be interactive data
+	 * @param con Content pane to make non-interactive
+	 * @param status If the window should be interactive
+	 */
 	public void massXable(Container con, boolean status) {
 		Component[] components = con.getComponents();
 		for (Component component : components) {
@@ -1075,7 +1101,7 @@ public class TagPileupWindow extends JFrame implements ActionListener, PropertyC
 			if (!chckbxFilterByMax.isSelected()) {
 				txtMax.setEnabled(false);
 			}
-			if (tglSeperate.isSelected()) {
+			if (tglSeparate.isSelected()) {
 				btnSenseColor.setEnabled(true);
 				btnAntiColor.setEnabled(true);
 				btnCombinedColor.setEnabled(false);
@@ -1128,10 +1154,13 @@ public class TagPileupWindow extends JFrame implements ActionListener, PropertyC
 	/**
 	 * Invoked when task's progress property changes.
 	 */
+	@Override
 	public void propertyChange(PropertyChangeEvent evt) {
 		if ("progress" == evt.getPropertyName()) {
 			int progress = (Integer) evt.getNewValue();
 			progressBar.setValue(progress);
+		} else if ("log" == evt.getPropertyName()) {
+			firePropertyChange("log", evt.getOldValue(), evt.getNewValue());
 		}
 	}
 }

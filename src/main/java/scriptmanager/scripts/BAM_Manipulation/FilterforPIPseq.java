@@ -23,6 +23,14 @@ import scriptmanager.cli.BAM_Manipulation.FilterforPIPseqCLI;
 import scriptmanager.objects.ToolDescriptions;
 import scriptmanager.util.FASTAUtilities;
 
+/**
+ * Filter a BAM file for reads with a specific upstream genomic sequence
+ * 
+ * @author William KM Lai
+ * @see scriptmanager.window_interface.BAM_Manipulation.FilterforPIPseqWindow
+ * @see scriptmanager.window_interface.BAM_Manipulation.FilterforPIPseqOutput
+ * @see scriptmanager.cli.BAM_Manipulation.FilterforPIPseqCLI
+ */
 public class FilterforPIPseq {
 	File bamFile = null;
 	File genome = null;
@@ -31,6 +39,15 @@ public class FilterforPIPseq {
 
 	private PrintStream PS = null;
 
+	/**
+	 * Creates a new instance of a FilterforPIPseq script
+	 * @param in BAM file to filter
+	 * @param gen Reference genome file
+	 * @param out Output BAM file
+	 * @param s Sequence to filter for
+	 * @param ps PrinstStream to output results
+	 * @throws IOException Invalid file or parameters
+	 */
 	public FilterforPIPseq(File in, File gen, File out, String s, PrintStream ps) throws IOException {
 		bamFile = in;
 		genome = gen;
@@ -45,6 +62,11 @@ public class FilterforPIPseq {
 		}
 	}
 
+	/**
+	 * Writes reads which contain the specified sequence to the output file
+	 * @throws IOException Invalid file or parameters
+	 * @throws InterruptedException Thrown when more than one script is run at the same time
+	 */
 	public void run() throws IOException, InterruptedException {
 		IndexedFastaSequenceFile QUERY = new IndexedFastaSequenceFile(genome);
 

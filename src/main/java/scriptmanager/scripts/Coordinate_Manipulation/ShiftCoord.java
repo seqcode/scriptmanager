@@ -1,22 +1,16 @@
 package scriptmanager.scripts.Coordinate_Manipulation;
 
-import java.io.BufferedOutputStream;
 import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.io.PrintStream;
 import java.util.Arrays;
-import java.util.zip.GZIPInputStream;
-import java.util.zip.GZIPOutputStream;
 
 import scriptmanager.util.GZipUtilities;
 
 /**
- * This class contains scripts for shifting coordinate intervals (BED/GFF) by a user-defined direction and distance.
- *
+ * Shift coordinate intervals (BED/GFF) by a user-defined direction and distance.
+ * 
  * @author Olivia Lang
  * @see scriptmanager.cli.Coordinate_Manipulation.ShiftCoordCLI
  * @see scriptmanager.window_interface.Coordinate_Manipulation.ShiftIntervalWindow
@@ -26,30 +20,21 @@ public class ShiftCoord {
 	/**
 	 * Shift BED-formatted intervals by a user-defined direction and distance. Includes Gzip support.
 	 *
-	 * @param out_filepath Filepath to save shifted BED-formatted files. If null, outputs to STDOUT.
 	 * @param input Filepath to starting BED-formatted coordinates we want to shift. Supports automatic detection and handling of GZipped BED-formatted files. Must have at least 3 tab-delimited columns per BED specifications.
+	 * @param out_filepath Filepath to save shifted BED-formatted files. If null, outputs to STDOUT.
 	 * @param SHIFT Integer value indicating number and direction of nucleotides to shift the entire intervals (negative values are upstream shifts while positive values are downstream shifts)
 	 * @param stranded If this is true, then the stranded-ness of features is taken into account for the directionality of the shift. Otherwise all upstream shifts move intervals to the left and all downstream shifts move to the right with respect to the reference.
 	 * @param gzOutput If this is true, the output file will be gzipped.
-	 * @throws IOException
+	 * @throws IOException Invalid file or parameters
 	 */
-	public static void shiftBEDInterval(File out_filepath, File input, int SHIFT, boolean stranded, boolean gzOutput) throws IOException {
+	public static void shiftBEDInterval(File input, File out_filepath, int SHIFT, boolean stranded, boolean gzOutput) throws IOException {
 		// Initialize output writer
 		PrintStream OUT = System.out;
 		if (out_filepath != null) {
-			if (gzOutput) {
-				OUT = new PrintStream(new BufferedOutputStream(new GZIPOutputStream(new FileOutputStream(out_filepath))));
-			} else {
-				OUT = new PrintStream(new BufferedOutputStream(new FileOutputStream(out_filepath)));
-			}
+			OUT = GZipUtilities.makePrintStream(out_filepath, gzOutput);
 		}
 		// Check if file is gzipped and instantiate appropriate BufferedReader
-		BufferedReader br;
-		if(GZipUtilities.isGZipped(input)) {
-			br = new BufferedReader(new InputStreamReader(new GZIPInputStream(new FileInputStream(input)), "UTF-8"));
-		} else {
-			br = new BufferedReader(new InputStreamReader(new FileInputStream(input), "UTF-8"));
-		}
+		BufferedReader br = GZipUtilities.makeReader(input);
 		// Initialize line variable to loop through
 		String line = br.readLine();
 		while (line != null) {
@@ -102,25 +87,16 @@ public class ShiftCoord {
 	 * @param SHIFT Integer value indicating number and direction of nucleotides to shift the entire intervals (negative values are upstream shifts while positive values are downstream shifts)
 	 * @param stranded If this is true, then the stranded-ness of features is taken into account for the directionality of the shift. Otherwise all upstream shifts move intervals to the left and all downstream shifts move to the right with respect to the reference.
 	 * @param gzOutput If this is true, the output file will be gzipped.
-	 * @throws IOException
+	 * @throws IOException Invalid file or parameters
 	 */
 	public static void shiftGFFInterval(File out_filepath, File input, int SHIFT, boolean stranded, boolean gzOutput) throws IOException {
 		// Initialize output writer
 		PrintStream OUT = System.out;
 		if (out_filepath != null) {
-			if (gzOutput) {
-				OUT = new PrintStream(new BufferedOutputStream(new GZIPOutputStream(new FileOutputStream(out_filepath))));
-			} else {
-				OUT = new PrintStream(new BufferedOutputStream(new FileOutputStream(out_filepath)));
-			}
+			OUT  = GZipUtilities.makePrintStream(out_filepath, gzOutput);
 		}
 		// Check if file is gzipped and instantiate appropriate BufferedReader
-		BufferedReader br;
-		if(GZipUtilities.isGZipped(input)) {
-			br = new BufferedReader(new InputStreamReader(new GZIPInputStream(new FileInputStream(input)), "UTF-8"));
-		} else {
-			br = new BufferedReader(new InputStreamReader(new FileInputStream(input), "UTF-8"));
-		}
+		BufferedReader br = GZipUtilities.makeReader(input);
 		// Initialize line variable to loop through
 		String line = br.readLine();
 		while (line != null) {

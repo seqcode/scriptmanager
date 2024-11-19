@@ -15,10 +15,10 @@ import scriptmanager.util.ExtensionFileFilter;
 import scriptmanager.scripts.Coordinate_Manipulation.BED_Manipulation.ExpandBED;
 
 /**
- * Command line interface class for the size expansion of BED coordinate interval files by calling the method implemented in the scripts package.
+ * Command line interface for
+ * {@link scriptmanager.scripts.Coordinate_Manipulation.BED_Manipulation.ExpandBED}
  * 
  * @author Olivia Lang
- * @see scriptmanager.scripts.Coordinate_Manipulation.BED_Manipulation.ExpandBED
  */
 @Command(name = "expand-bed", mixinStandardHelpOptions = true,
 	description = ToolDescriptions.expand_bed_description,
@@ -27,7 +27,11 @@ import scriptmanager.scripts.Coordinate_Manipulation.BED_Manipulation.ExpandBED;
 	exitCodeOnInvalidInput = 1,
 	exitCodeOnExecutionException = 1)
 public class ExpandBEDCLI implements Callable<Integer> {
-
+	/**
+	 * Creates a new ExpandBEDCLI object
+	 */
+	public ExpandBEDCLI(){}
+	
 	@Parameters( index = "0", description = "the BED file to expand on")
 	private File bedFile;
 
@@ -50,6 +54,10 @@ public class ExpandBEDCLI implements Callable<Integer> {
 	private boolean byCenter = true;
 	private int SIZE = 250;
 
+	/**
+	 * Runs when this subcommand is called, running script in respective script package with user defined arguments
+	 * @throws IOException Invalid file or parameters
+	 */
 	@Override
 	public Integer call() throws Exception {
 		System.err.println( ">ExpandBEDCLI.call()" );
@@ -60,7 +68,7 @@ public class ExpandBEDCLI implements Callable<Integer> {
 			System.exit(1);
 		}
 
-		ExpandBED.expandBEDBorders(output, bedFile, SIZE, byCenter, gzOutput);
+		ExpandBED.expandBEDBorders(bedFile, output, SIZE, byCenter, gzOutput);
 
 		System.err.println("Expansion Complete");
 		return(0);
@@ -103,7 +111,6 @@ public class ExpandBEDCLI implements Callable<Integer> {
 			if (!stdout) {
 				String NAME = ExtensionFileFilter.stripExtension(bedFile);
 				NAME += byCenter ? "_" + Integer.toString(SIZE) + "bp.bed" : "_border_" + Integer.toString(SIZE) + "bp.bed";
-				NAME += gzOutput ? ".gz" : "";
 				output = new File(NAME);
 			//check stdout and output not both selected
 			} else {
@@ -119,5 +126,13 @@ public class ExpandBEDCLI implements Callable<Integer> {
 		}
 
 		return(r);
+	}
+	public static String getCLIcommand(File input, File output, int size, boolean byCenter, boolean gzOutput) {
+		String command = "java -jar $SCRIPTMANAGER coordinate-manipulation expand-bed";
+		command += " " + input.getAbsolutePath();
+		command += " -o " + output.getAbsolutePath();
+		command += gzOutput ? " -z " : "";
+		command += byCenter ? " -c " + size : " -b " + size;
+		return command;
 	}
 }

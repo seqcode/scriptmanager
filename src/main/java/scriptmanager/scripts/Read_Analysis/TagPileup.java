@@ -29,6 +29,15 @@ import scriptmanager.objects.CoordinateObjects.BEDCoord;
 import scriptmanager.scripts.Read_Analysis.PileupScripts.PileupExtract;
 import scriptmanager.util.ArrayUtilities;
 
+/**
+ * Pileup tags or user-defined encodings around a set of reference points
+ * 
+ * @author William KM Lai
+ * @see scriptmanager.scripts.Read_Analysis.PileupScripts.PileupExtract
+ * @see scriptmanager.cli.Read_Analysis.TagPileupCLI
+ * @see scriptmanager.window_interface.Read_Analysis.TagPileupOutput
+ * @see scriptmanager.window_interface.Read_Analysis.TagPileupWindow
+ */
 public class TagPileup {
 	File BED = null;
 	File BAM = null;
@@ -47,6 +56,16 @@ public class TagPileup {
 
 	String outMatrixBasename;
 
+	/**
+	 * Creates a new instance of the TagPileup script
+	 * 
+	 * @param be              BED file to be used in Pileup
+	 * @param ba              BAM file to be used in Pileup
+	 * @param param           Set of parameters for Pileup analysis (specified by
+	 *                        user with GUI)
+	 * @param outputwindow_ps Output to be displayed to user
+	 * @param outMat          Base name of the output matrix
+	 */
 	public TagPileup(File be, File ba, PileupParameters param, PrintStream outputwindow_ps, String outMat) {
 		BED = be;
 		BAM = ba;
@@ -55,6 +74,11 @@ public class TagPileup {
 		outMatrixBasename = outMat;
 	}
 
+	/**
+	 * Runs the TagPileup script
+	 * 
+	 * @throws IOException Invalid file or parameters
+	 */
 	public void run() throws IOException {
 		// Set-up Matrix output writers
 		int STRAND = PARAM.getStrand();
@@ -64,11 +88,11 @@ public class TagPileup {
 				String NAME0;
 				String NAME1;
 				if (outMatrixBasename == null) {
-					NAME0 = PARAM.getOutputDirectory() + File.separator + generateFileName(BED.getName(), BAM.getName(), 0);
-					NAME1 = PARAM.getOutputDirectory() + File.separator + generateFileName(BED.getName(), BAM.getName(), 1);
+					NAME0 = PARAM.getOutputDirectory() + File.separator + PARAM.generateFileName(BED.getName(), BAM.getName(), 0);
+					NAME1 = PARAM.getOutputDirectory() + File.separator + PARAM.generateFileName(BED.getName(), BAM.getName(), 1);
 				} else {
-					NAME0 = generateFileName(outMatrixBasename, 0);
-					NAME1 = generateFileName(outMatrixBasename, 1);
+					NAME0 = PARAM.generateFileName(outMatrixBasename, 0);
+					NAME1 = PARAM.generateFileName(outMatrixBasename, 1);
 				}
 				// Build streams
 				if (PARAM.getOutputGZIP()) {
@@ -82,9 +106,9 @@ public class TagPileup {
 				// Set FileName
 				String NAME2;
 				if (outMatrixBasename == null) {
-					NAME2 = PARAM.getOutputDirectory() + File.separator + generateFileName(BED.getName(), BAM.getName(), 2);
+					NAME2 = PARAM.getOutputDirectory() + File.separator + PARAM.generateFileName(BED.getName(), BAM.getName(), 2);
 				} else {
-					NAME2 = generateFileName(outMatrixBasename, 2);
+					NAME2 = PARAM.generateFileName(outMatrixBasename, 2);
 				}
 				if (PARAM.getOutputGZIP()) {
 					OUT_S1 = new OutputStreamWriter(new GZIPOutputStream(new FileOutputStream(NAME2)), "UTF-8");
@@ -251,18 +275,18 @@ public class TagPileup {
 			}
 			COMPOSITE.println();
 			if (STRAND == 0) {
-				COMPOSITE.print(generateFileName(BED.getName(), BAM.getName(), 0));
+				COMPOSITE.print(PARAM.generateFileName(BED.getName(), BAM.getName(), 0));
 				for (int a = 0; a < AVG_S1.length; a++) {
 					COMPOSITE.print("\t" + AVG_S1[a]);
 				}
 				COMPOSITE.println();
-				COMPOSITE.print(generateFileName(BED.getName(), BAM.getName(), 1));
+				COMPOSITE.print(PARAM.generateFileName(BED.getName(), BAM.getName(), 1));
 				for (int a = 0; a < AVG_S2.length; a++) {
 					COMPOSITE.print("\t" + AVG_S2[a]);
 				}
 				COMPOSITE.println();
 			} else {
-				COMPOSITE.print(generateFileName(BED.getName(), BAM.getName(), 2));
+				COMPOSITE.print(PARAM.generateFileName(BED.getName(), BAM.getName(), 2));
 				for (int a = 0; a < AVG_S1.length; a++) {
 					COMPOSITE.print("\t" + AVG_S1[a]);
 				}
@@ -271,7 +295,11 @@ public class TagPileup {
 		}
 	}
 
-	// Get size of largest array for composite generation
+	/**
+	 * Gets size of largest array for composite figure generation
+	 * @param sites Sites to find the largest array in
+	 * @return The largest array
+	 */
 	public static int getMaxBEDSize(Vector<BEDCoord> sites) {
 		int maxSize = 0;
 		for (int x = 0; x < sites.size(); x++) {
@@ -283,7 +311,13 @@ public class TagPileup {
 		return maxSize;
 	}
 
-	// Validate BED coordinates exist within BAM file and satisfy BED format
+	/**
+	 * Validate BED coordinates exist within BAM file and satisfy BED format
+	 * @param COORD BED coordinates to validate
+	 * @param BAM BAM file to reference
+	 * @return Whether input files are valid
+	 * @throws IOException Invalid file or parameters
+	 */
 	public Vector<BEDCoord> validateBED(Vector<BEDCoord> COORD, File BAM) throws IOException {
 		Vector<BEDCoord> FINAL = new Vector<BEDCoord>();
 		ArrayList<Integer> indexFail = new ArrayList<Integer>();
@@ -323,58 +357,19 @@ public class TagPileup {
 		return FINAL;
 	}
 
-	public String generateFileName(String bed, String bam, int strandnum) {
-		String[] bedname = bed.split("\\.");
-		String[] bamname = bam.split("\\.");
-
-		String read = "5read1";
-		if (PARAM.getAspect() == PileupParameters.FIVE && PARAM.getRead() == PileupParameters.READ2) {
-			read = "5read2";
-		} else if (PARAM.getAspect() == PileupParameters.FIVE && PARAM.getRead() == PileupParameters.ALLREADS) {
-			read = "5readc";
-		} else if (PARAM.getAspect() == PileupParameters.THREE && PARAM.getRead() == PileupParameters.READ1) {
-			read = "3read1";
-		} else if (PARAM.getAspect() == PileupParameters.THREE && PARAM.getRead() == PileupParameters.READ2) {
-			read = "3read2";
-		} else if (PARAM.getAspect() == PileupParameters.THREE && PARAM.getRead() == PileupParameters.ALLREADS) {
-			read = "3readc";
-		} else if (PARAM.getAspect() == PileupParameters.MIDPOINT) {
-			read = "midpoint";
-		} else if (PARAM.getAspect() == PileupParameters.FRAGMENT) {
-			read = "fragment";
-		}
-
-		return (generateFileName(bedname[0] + "_" + bamname[0] + "_" + read, strandnum));
-	}
-
-	public String generateFileName(String basename, int strandnum) {
-		String strand = "sense";
-		if (strandnum == 1) {
-			strand = "anti";
-		} else if (strandnum == 2) {
-			strand = "combined";
-		}
-
-		String filename = basename + "_" + strand;
-		if (PARAM.getOutputType() == 1) {
-			filename += ".tab";
-		} else {
-			filename += ".cdt";
-		}
-
-		if (PARAM.getOutputGZIP()) {
-			filename += ".gz";
-		}
-
-		return filename;
-	}
-
 	private static String getTimeStamp() {
 		Date date = new Date();
 		String time = new Timestamp(date.getTime()).toString();
 		return time;
 	}
 
+	/**
+	 * Loads BED coordinates from an input file into a Vector&lt;BEDCoord&gt;
+	 * @param INPUT Input BED file
+	 * @return Vector of type BEDCoord representing input file
+	 * @throws UnsupportedEncodingException
+	 * @throws IOException Invalid file or parameters
+	 */
 	public Vector<BEDCoord> loadCoord(File INPUT) throws UnsupportedEncodingException, IOException {
 		Vector<BEDCoord> COORD = new Vector<BEDCoord>();
 		BufferedReader br;

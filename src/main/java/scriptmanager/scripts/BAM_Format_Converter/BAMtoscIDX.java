@@ -6,6 +6,7 @@ import htsjdk.samtools.SAMSequenceRecord;
 import htsjdk.samtools.SamReader;
 import htsjdk.samtools.SamReaderFactory;
 import htsjdk.samtools.util.CloseableIterator;
+import scriptmanager.util.GZipUtilities;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -15,15 +16,25 @@ import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.Date;
 
+/**
+ * Convert BAM file to scIDX file
+ * 
+ * @author William KM Lai
+ * @see scriptmanager.cli.BAM_Format_Converter.BAMtoscIDXCLI
+ * @see scriptmanager.window_interface.BAM_Format_Converter.BAMtoscIDXOutput
+ * @see scriptmanager.window_interface.BAM_Format_Converter.BAMtoscIDXWindow
+ */
 public class BAMtoscIDX {
 	private File BAM = null;
 	private File OUTFILE = null;
 	private PrintStream OUT = null;
+	private boolean OUTPUT_GZIP;
 	private PrintStream PS = null;
 
 	private int STRAND = 0;
 	private String READ = "READ1";
 	private static int PAIR = 1;
+	private int SHIFT = 0;
 	private static int MIN_INSERT = -9999;
 	private static int MAX_INSERT = -9999;
 
@@ -36,7 +47,21 @@ public class BAMtoscIDX {
 
 	private int CHROMSTOP = -999;
 
-	public BAMtoscIDX(File b, File o, int s, int pair_status, int min_size, int max_size, PrintStream ps) {
+	/**
+	 * Creates a new instance of a BAMtoscIDX script with a single BAM file
+	 * 
+	 * @param b           BAM file
+	 * @param o           output scIDX file
+	 * @param s           Specifies which reads to output
+	 * @param pair_status Specifies if proper pairs are required (0 = not required,
+	 *                    !0 = required)
+	 * @param min_size    minimum acceptable insert size
+	 * @param max_size    maximum acceptable insert size
+	 * @param shift       shift tags in bp
+	 * @param ps          PrintStream to output results
+	 * @param gzOutput    whether or not to gzip output
+	 */
+	public BAMtoscIDX(File b, File o, int s, int pair_status, int min_size, int max_size, int shift, PrintStream ps, boolean gzOutput) {
 		BAM = b;
 		OUTFILE = o;
 		PS = ps;
@@ -44,6 +69,7 @@ public class BAMtoscIDX {
 		PAIR = pair_status;
 		MIN_INSERT = min_size;
 		MAX_INSERT = max_size;
+		SHIFT = shift;
 		if (STRAND == 0) {
 			READ = "READ1";
 		} else if (STRAND == 1) {
@@ -53,13 +79,19 @@ public class BAMtoscIDX {
 		} else if (STRAND == 3) {
 			READ = "MIDPOINT";
 		}
+		OUTPUT_GZIP = gzOutput;
 	}
 
+	/**
+	 * Runs the {@link BAMtoscIDX#processREADS()} and {@link BAMtoscIDX#processMIDPOINT()} method and checks that inputs are valid
+	 * @throws IOException Invalid file or parameters
+	 * @throws InterruptedException Thrown when more than one script is run at the same time
+	 */
 	public void run() throws IOException, InterruptedException {
 		// Set-up Output PrintStream
 		if (OUTFILE != null) {
 			try {
-				OUT = new PrintStream(OUTFILE);
+				OUT = GZipUtilities.makePrintStream(OUTFILE, OUTPUT_GZIP);
 			} catch (FileNotFoundException e) {
 				e.printStackTrace();
 			}
@@ -100,6 +132,14 @@ public class BAMtoscIDX {
 				printPS("Maximum insert size required to output: " + MAX_INSERT);
 			}
 
+			printPS("Tag shift: " + SHIFT);
+
+			if (OUTPUT_GZIP){
+				printPS("Output GZip: yes");
+			} else {
+				printPS("Output GZip: no");
+			}
+
 			// Print Header
 			printOUT("#" + getTimeStamp() + ";" + BAM.getName() + ";" + READ);
 			// Here add a line as CLI command "receipt" to show command to regenerate this
@@ -127,13 +167,17 @@ public class BAMtoscIDX {
 		printPS(getTimeStamp());
 	}
 
+	/**
+	 * Adds valid reads to scIDX output file
+	 * @param sr SAMRecord to output
+	 */
 	public void addTag(SAMRecord sr) {
 		// Get the start of the record
-		int recordStart = sr.getUnclippedStart();// .getAlignmentStart();
+		int recordStart = sr.getUnclippedStart() + SHIFT;// .getAlignmentStart();
 		// Accounts for reverse tag reporting 3' end of tag and converting BED to
 		// IDX/GFF format
 		if (sr.getReadNegativeStrandFlag()) {
-			recordStart = sr.getUnclippedEnd();
+			recordStart = sr.getUnclippedEnd() - SHIFT;
 		} // .getAlignmentEnd(); }
 
 		// Make sure we only add tags that have valid starts
@@ -178,6 +222,10 @@ public class BAMtoscIDX {
 		}
 	}
 
+	/**
+	 * Marks the midpoint of a read
+	 * @param sr The read to be marked
+	 */
 	public void addMidTag(SAMRecord sr) {
 		// int recordMid = sr.getUnclippedStart() + (sr.getInferredInsertSize() / 2);
 		// if(sr.getReadNegativeStrandFlag()) { recordMid = sr.getUnclippedEnd() +
@@ -189,7 +237,10 @@ public class BAMtoscIDX {
 			recordStart = sr.getMateAlignmentStart() - 1;
 			recordStop = sr.getUnclippedEnd();
 		}
+		// calculate midpoint
 		int recordMid = (recordStart + recordStop) / 2;
+		// strand-aware tag shift
+		recordMid += (sr.getReadNegativeStrandFlag() ? - SHIFT : SHIFT);
 
 		// Make sure we only add tags that have valid midpoints
 		if (recordMid > 0 && recordMid <= CHROMSTOP) {
@@ -218,6 +269,10 @@ public class BAMtoscIDX {
 
 	}
 
+	/**
+	 * Removes up to 9000 bp's from the start of a chromosome string, outputting them to a file, to save memory
+	 * @param chrom Chromosome to be reduced
+	 */
 	public void dumpExcess(String chrom) {
 		int trim = 9000;
 		while (trim > 0) {
@@ -231,6 +286,10 @@ public class BAMtoscIDX {
 		}
 	}
 
+	/**
+	 * Removes at least 600 bp's from a chromsome string, outputting them to a file, to save memory
+	 * @param chrom Chromosome to be reduced
+	 */
 	public void dumpMidExcess(String chrom) {
 		int trim = (MAX_INSERT * 10) - (MAX_INSERT * 2);
 		if (MAX_INSERT * 10 < 1000) {
@@ -248,6 +307,9 @@ public class BAMtoscIDX {
 		}
 	}
 
+	/**
+	 * Makes sure reads are valid before calling {@link BAMtoscIDX#addTag(SAMRecord sr)} 
+	 */
 	public void processREADS() {
 		inputSam = SamReaderFactory.makeDefault().open(BAM);// factory.open(BAM);
 		AbstractBAMFileIndex bai = (AbstractBAMFileIndex) inputSam.indexing().getIndex();
@@ -340,6 +402,9 @@ public class BAMtoscIDX {
 		bai.close();
 	}
 
+	/**
+	 * Processes reads if 'Midpoint Record' was selected and validates them before calling {@link BAMtoscIDX#addTag(SAMRecord sr)}
+	 */
 	public void processMIDPOINT() {
 		inputSam = SamReaderFactory.makeDefault().open(BAM);// factory.open(BAM);
 		AbstractBAMFileIndex bai = (AbstractBAMFileIndex) inputSam.indexing().getIndex();

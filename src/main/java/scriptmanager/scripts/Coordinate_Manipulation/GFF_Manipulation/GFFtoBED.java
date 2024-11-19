@@ -1,23 +1,34 @@
 package scriptmanager.scripts.Coordinate_Manipulation.GFF_Manipulation;
 
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.util.Arrays;
-import java.util.Scanner;
 
+import scriptmanager.util.GZipUtilities;
+
+/**
+ * Convert a GFF-formatted coordinate file to the BED-format
+ * 
+ * @author William KM Lai
+ * @see scriptmanager.scripts.Coordinate_Manipulation.GFF_Manipulation.GFFtoBED
+ * @see scriptmanager.window_interface.Coordinate_Manipulation.GFF_Manipulation.GFFtoBEDWindow
+ */
 public class GFFtoBED {
-	public static void convertGFFtoBED(File out_filepath, File input) throws IOException {
+	public static void convertGFFtoBED(File input, File out_filepath, boolean gzOutput) throws IOException {
 		// GFF: chr22 TeleGene enhancer 10000000 10001000 500 + . touch1
 		// BED: chr12 605113 605120 region_0 0 +
 
-		Scanner scan = new Scanner(input);
 		PrintStream OUT = System.out;
 		if (out_filepath != null)
-			OUT = new PrintStream(out_filepath);
+			OUT = GZipUtilities.makePrintStream(out_filepath, gzOutput);
 
-		while (scan.hasNextLine()) {
-			String[] temp = scan.nextLine().split("\t");
+		BufferedReader br = GZipUtilities.makeReader(input);
+		// Initialize line variable to loop through
+		String line = br.readLine();
+		while (line != null) {
+			String[] temp = line.split("\t");
 			if (temp[0].toLowerCase().contains("track") || temp[0].startsWith("#")) {
 				OUT.println(String.join("\t", temp));
 			} else {
@@ -38,8 +49,9 @@ public class GFFtoBED {
 					System.out.println("Invalid Coordinate in File!!!\n" + Arrays.toString(temp));
 				}
 			}
+			line = br.readLine();
 		}
-		scan.close();
+		br.close();
 		OUT.close();
 	}
 }

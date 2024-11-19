@@ -1,0 +1,67 @@
+<tool id="scriptmanager_aggregate-data" name="ScriptManager: Aggregate Data"
+    version="0.1.0+galaxy0" python_template_version="3.5" profile="21.05">
+    <description> Aggregate Data </description>
+    <macros>
+        <import>scriptmanager_macros.xml</import>
+    </macros>
+    <requirements>
+        <expand macro="requirement_openjdk" />
+    </requirements>
+    <command detect_errors="exit_code"><![CDATA[
+        java -jar $__tool_directory__/@JAR_FILENAME@ read-analysis aggregate-data
+        
+        #if str($output_file_name.bool) == "Yes" :
+            -o "$output_file_name.directory"
+        #end if
+
+        #if str($merge) == "Yes" :
+            -m
+        #end if
+        
+        -r "$start_row"
+        -l "$start_column"
+    
+        --"$method"
+        
+        "$input"
+    ]]></command>
+    <inputs>
+        <param name="input" type="data" format="tabular" label="Input composite data file"/>
+        
+        <conditional name="output_file_name">
+        <param type="boolean" name="bool" truevalue="Yes" falsevalue="No" label="Output File Name" >
+        </param>
+            <when value="Yes">
+                <param type="text" name="directory" value="" label="File Name" />
+            </when>
+            <when value="No">
+            </when>
+        </conditional>
+        
+        <param type="boolean" name="merge" truevalue="Yes" falsevalue="No" label="Merge to One File" />
+
+        <param type="integer" name="start_row" value="1" label="Start Row" />
+        <param type="integer" name="start_column" value="2" label="Start Column" />
+        
+        <param type="select" name="method" label="Aggregation Method">
+            <option value="sum" selected="True" >Sum</option>
+            <option value="avg" >Average</option>
+            <option value="med" >Median</option>
+            <option value="mod" >Mode</option>
+            <option value="min" >Minimum</option>
+            <option value="max" >Maximum</option>
+            <option value="var" >Positional Variance</option>
+        </param>
+    
+    </inputs>
+            
+    <outputs>
+        <data name="output" format="tabular" label="${tool.name} on ${on_string}"/>
+    </outputs>
+    <help>
+        
+    **What it does**
+    Compile data from tab-delimited file into a matrix according to user-specified
+    metric.
+    </help>
+</tool>

@@ -28,6 +28,11 @@ import org.jfree.data.xy.XYSeriesCollection;
  */
 public class CompositePlot {
 
+	/** 
+	* Creates a new CompositePlot object
+	*/
+	public CompositePlot(){}
+
 	/**
 	 * Create a two-line plot (sense and antisense composites) with a title and
 	 * custom colors. There are no checks on input array lengths (line plot

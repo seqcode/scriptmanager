@@ -18,11 +18,10 @@ import scriptmanager.util.ExtensionFileFilter;
 import scriptmanager.scripts.Figure_Generation.FourColorPlot;
 
 /**
- * Command line interface class for calling the script to creating four color
- * sequence plots.
+ * Command line interface for
+ * {@link scriptmanager.scripts.Figure_Generation.FourColorPlot}
  * 
  * @author Olivia Lang
- * @see scriptmanager.scripts.Figure_Generation.FourColorPlot
  */
 @Command(name = "four-color", mixinStandardHelpOptions = true,
 	description = ToolDescriptions.four_color_description,
@@ -35,17 +34,19 @@ public class FourColorSequenceCLI implements Callable<Integer> {
 	@Parameters(index = "0", description = "input FASTA file of sequences to plot")
 	private File fastaFile;
 
-	@Option(names = { "-o",
-			"--output" }, description = "specify output filename, please use PNG extension\n(default=FASTA filename with \"_4color.png\" appended to the name in working directory of ScriptManager")
+	@Option(names = { "-o", "--output" }, description = "specify output filename, please use PNG extension\n(default=FASTA filename with \"_4color.png\" appended to the name in working directory of ScriptManager")
 	private File output = null;
-	@Option(names = { "-c",
-			"--colors" }, arity = "4..5", description = "For custom colors: List colors to use for ATGC[N], in that order. Type hexadecimal string to represent colors, e.g. FF0000 is hexadecimal for red.\n(default=A-red,T-green,G-yellow,C-blue,N-gray, if only 4 colors specified, N will be set to gray)\n See <http://www.javascripter.net/faq/rgbtohex.htm> for some color options with their corresponding hex strings.")
+	@Option(names = { "-c", "--colors" }, arity = "4..5", description = "For custom colors: List colors to use for ATGC[N], in that order. Type hexadecimal string to represent colors, e.g. FF0000 is hexadecimal for red.\n(default=A-red,T-green,G-yellow,C-blue,N-gray, if only 4 colors specified, N will be set to gray)\n See <http://www.javascripter.net/faq/rgbtohex.htm> for some color options with their corresponding hex strings.")
 	private ArrayList<String> colors = null;
 	@Option(names = { "-x", "--pixel-width" }, description = "pixel width (default=1)")
 	private int pixelWidth = 1;
 	@Option(names = { "-y", "--pixel-height" }, description = "pixel height (default=1)")
 	private int pixelHeight = 1;
 
+	/**
+	 * Runs when this subcommand is called, running script in respective script package with user defined arguments
+	 * @throws IOException Invalid file or parameters
+	 */
 	@Override
 	public Integer call() throws Exception {
 		System.err.println(">FourColorSequenceCLI.call()");
@@ -70,7 +71,7 @@ public class FourColorSequenceCLI implements Callable<Integer> {
 		}
 		// Set N-color to gray if only 4 colors provided as input
 		if (colors == null || colors.size() == 4) {
-			ATCG_COLORS.add(4, Color.GRAY); // default C-color
+			ATCG_COLORS.add(4, Color.GRAY); // default N-color
 		}
 
 		// Generate Heatmap
@@ -128,5 +129,28 @@ public class FourColorSequenceCLI implements Callable<Integer> {
 		}
 
 		return (r);
+	}
+
+	/**
+	 * Reconstruct CLI command
+	 * 
+	 * @param input  the FASTA file to generate sequence plot from
+	 * @param output the PNG image of the sequence plot
+	 * @param COLORS the list of colors encoding the various nucleotides (A,T,G,C,N)
+	 * @param h      the height of each pixel
+	 * @param w      the width of each pixel
+	 * @return command line to execute with formatted inputs
+	 */
+	public static String getCLIcommand(File input, File output, ArrayList<Color> COLORS, int h, int w) throws IndexOutOfBoundsException {
+		String command = "java -jar $SCRIPTMANAGER figure-generation four-color";
+		command += " -o " + output.getAbsolutePath();
+		command += " -c";
+		for (int x=0; x<5; x++) {
+			command += " " + Integer.toHexString(COLORS.get(x).getRGB()).substring(2);
+		}
+		command += " -y " + h;
+		command += " -x " + w;
+		command += " " + input.getAbsolutePath();
+		return (command);
 	}
 }

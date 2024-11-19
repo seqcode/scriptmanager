@@ -1,0 +1,60 @@
+<tool id="scriptmanager_sort-gff" name="ScriptManager: Sort GFF by CDT" version="0.1.0" profile="22.01" >
+    <description> Sort GFF file by CDT file statistics. </description>
+    <macros>
+        <import>scriptmanager_macros.xml</import>
+    </macros>
+    <requirements>
+        <expand macro="requirement_openjdk" />
+    </requirements>
+
+    <command detect_errors="exit_code"><![CDATA[
+        ln -s '$input1' file.gff &&
+        ln -s '$input2' file.cdt &&
+        ln -s '$output1' output.gff &&
+        ln -s '$output2' output.cdt &&
+        java -jar $__tool_directory__/@JAR_FILENAME@ coordinate-manipulation sort-gff
+
+        #if str($sort_options.sort) == "center" :
+            -c "$sort_options.size_expansion"
+        #else if str($sort_options.sort) == "index" :
+            -x "$sort_options.index_start" "$sort_options.index_stop"
+        #end if
+
+        -o output
+
+        file.gff
+        file.cdt
+    ]]></command>
+    <inputs>
+        <param type="data" name="input1" format="gff" label="Input GFF File"/>
+        <param type="data" name="input2"  label="Input CDT File"/>
+
+        <conditional name="sort_options">
+            <param name="sort" type="select" label="Select sort option">
+                <option value="center" selected="True" >Sort by center</option>
+                <option value="index" >Sort by Index</option>
+            </param>
+
+            <when value="center">
+                <param name="size_expansion" type="integer" value="100" label="Size of expansion (bins)">
+                </param>
+            </when>
+
+            <when value="index">
+                <param name="index_start" type="integer" value="0" label="Index start" />
+                <param name="index_stop" type="integer" value="0" label="Index stop" />
+            </when>
+        </conditional>
+
+    </inputs>
+    <outputs>
+        <data name="output1" format="gff" label="${tool.name} on ${on_string} in GFF format" />
+        <data name="output2" format="cdt" label="${tool.name} on ${on_string} in CDT format" />
+    </outputs>
+    <help>
+**What it does**
+
+Sort a CDT file and its corresponding GFF file by the total score in the CDT file across the specified interval.
+    </help>
+    <expand macro="citations_pearc" />
+</tool>

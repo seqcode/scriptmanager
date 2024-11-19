@@ -16,7 +16,11 @@ import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
 
 import scriptmanager.objects.Peak;
-
+/**
+ * (Dev) Pair called peaks (designed for ChIP-exo analysis)
+ * 
+ * @author William KM Lai
+ */
 @SuppressWarnings("serial")
 public class PeakPair extends JFrame {
 	private JTextArea textArea;
@@ -61,6 +65,10 @@ public class PeakPair extends JFrame {
 		
 	}
 	
+	/**
+	 * Creates output window and runs 
+	 * @throws IOException Invalid file or parameters
+	 */
 	public void run() throws IOException {
 
 		System.out.println(getTimeStamp());

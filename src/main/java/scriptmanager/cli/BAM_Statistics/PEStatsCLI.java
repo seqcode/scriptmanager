@@ -13,8 +13,11 @@ import scriptmanager.util.ExtensionFileFilter;
 import scriptmanager.scripts.BAM_Statistics.PEStats;
 
 /**
-	BAM_StatisticsCLI/PEStatsCLI
-*/
+ * Command line interface for
+ * {@link scriptmanager.scripts.BAM_Statistics.PEStats}
+ * 
+ * @author Olivia Lang
+ */
 @Command(name = "pe-stat", mixinStandardHelpOptions = true,
 	description = ToolDescriptions.pe_stat_description,
 	version = "ScriptManager "+ ToolDescriptions.VERSION,
@@ -33,11 +36,13 @@ public class PEStatsCLI implements Callable<Integer> {
 	private int MIN_INSERT = 0;
 	@Option(names = {"-x", "--max"}, description = "histogram range maximum (1000 default)")
 	private int MAX_INSERT = 1000;
-	@Option(names = {"-s", "--summary"}, description = "write summary of insert histogram by chromosome (default false)")
-	private boolean sum = false;
 	@Option(names = {"-d", "--duplication-stats"}, description = "calculate duplication statistics if this flag is used (default false)")
 	private boolean dup = false;
 	
+	/**
+	 * Runs when this subcommand is called, running script in respective script package with user defined arguments
+	 * @throws IOException Invalid file or parameters
+	 */
 	@Override
 	public Integer call() throws Exception {
 		System.err.println( ">PEStatsCLI.call()" );
@@ -47,8 +52,8 @@ public class PEStatsCLI implements Callable<Integer> {
 			System.err.println("Invalid input. Check usage using '-h' or '--help'");
 			System.exit(1);
 		}
-		
-		PEStats.getPEStats( outputBasename, bamFile, dup, MIN_INSERT, MAX_INSERT, null, null, sum);
+
+		PEStats.getPEStats(bamFile, outputBasename, dup, MIN_INSERT, MAX_INSERT );
 		
 		System.err.println("Calculations Complete");
 		return(0);
@@ -62,10 +67,6 @@ public class PEStatsCLI implements Callable<Integer> {
 			r += "(!)BAM file does not exist: " + bamFile.getName() + "\n";
 			return(r);
 		}
-		//check input extensions
-		if(!"bam".equals(ExtensionFileFilter.getExtension(bamFile))){
-			r += "(!)Is this a BAM file? Check extension: " + bamFile.getName() + "\n";
-		}
 		//check BAI exists
 		File f = new File(bamFile+".bai");
 		if(!f.exists() || f.isDirectory()){
@@ -77,7 +78,6 @@ public class PEStatsCLI implements Callable<Integer> {
 			outputBasename = new File(ExtensionFileFilter.stripExtension(bamFile));
 		//check output filename is valid
 		}else{
-			//no check ext
 			//check directory
 			if(outputBasename.getParent()==null){
 // 				System.err.println("default to current directory");
@@ -93,4 +93,26 @@ public class PEStatsCLI implements Callable<Integer> {
 		
 		return(r);
 	}
+
+	/**
+	 * Reconstruct CLI command
+	 * 
+	 * @param bamFile        BAM file to get statistics on
+	 * @param outputBasename basename of output files (without extensions)
+	 * @param DUP_STATUS     specifies if duplication statistics and chart should be
+	 *                       generated
+	 * @param MIN_INSERT     maximum histogram range
+	 * @param MAX_INSERT     minimum histogram range
+	 * @return command line to execute with formatted inputs
+	 */
+	public static String getCLIcommand(File bamFile, File outputBasename, boolean dup, int min, int max) {
+		String command = "java -jar $SCRIPTMANAGER bam-statistics pe-stat";
+		command += " " + bamFile.getAbsolutePath();
+		command += " -o " + (outputBasename != null ? outputBasename.getAbsolutePath() : "./");
+		command += " -n " + min;
+		command += " -x " + max;
+		command += dup ? " -d " : "";
+		return command;
+	}
+
 }

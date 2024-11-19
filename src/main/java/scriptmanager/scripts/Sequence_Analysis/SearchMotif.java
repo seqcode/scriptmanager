@@ -1,12 +1,8 @@
 package scriptmanager.scripts.Sequence_Analysis;
 
-import java.io.BufferedOutputStream;
 import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.io.PrintStream;
 import java.sql.Timestamp;
 import java.util.ArrayList;
@@ -14,14 +10,12 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.zip.GZIPInputStream;
-import java.util.zip.GZIPOutputStream;
 
 import scriptmanager.util.GZipUtilities;
 
 /**
- * This script creates a BED coordinate file of every instance of the
- * user-provided IUPAC motif in a user-provided genomic sequence.
+ * Create a BED coordinate file of every instance of the user-provided IUPAC
+ * motif in a user-provided genomic sequence.
  * 
  * @author William KM Lai
  * @see scriptmanager.cli.Sequence_Analysis.SearchMotifCLI
@@ -95,8 +89,8 @@ public class SearchMotif {
 	 * Execute script to search a genome for motifs. Print the header of each
 	 * sequence (i.e. "chromosome" name) as they are procesed.
 	 * 
-	 * @throws IOException
-	 * @throws InterruptedException
+	 * @throws IOException Invalid file or parameters
+	 * @throws InterruptedException Thrown when more than one script is run at the same time
 	 */
 	public void run() throws IOException, InterruptedException {
 		PS.println("Searching motif: " + motif + " in " + input.getName());
@@ -129,21 +123,11 @@ public class SearchMotif {
 		// Initialize output writer
 		PrintStream OUT = System.out;
 		if (out_filepath != null) {
-			if (gzOutput) {
-				OUT = new PrintStream(
-						new BufferedOutputStream(new GZIPOutputStream(new FileOutputStream(out_filepath))));
-			} else {
-				OUT = new PrintStream(new BufferedOutputStream(new FileOutputStream(out_filepath)));
-			}
+			OUT = GZipUtilities.makePrintStream(out_filepath, gzOutput);
 		}
 
 		// Check if file is gzipped and instantiate appropriate BufferedReader
-		BufferedReader br;
-		if (GZipUtilities.isGZipped(input)) {
-			br = new BufferedReader(new InputStreamReader(new GZIPInputStream(new FileInputStream(input)), "UTF-8"));
-		} else {
-			br = new BufferedReader(new InputStreamReader(new FileInputStream(input), "UTF-8"));
-		}
+		BufferedReader br = GZipUtilities.makeReader(input);
 		// Initialize line variable to loop through
 		String line = br.readLine();
 		while (line != null) {

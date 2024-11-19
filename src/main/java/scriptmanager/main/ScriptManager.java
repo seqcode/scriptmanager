@@ -3,6 +3,7 @@ package scriptmanager.main;
 import picocli.CommandLine;
 import picocli.CommandLine.Command;
 
+import java.awt.HeadlessException;
 import java.util.concurrent.Callable;
 
 import scriptmanager.objects.ToolDescriptions;
@@ -18,6 +19,7 @@ import scriptmanager.cli.BAM_Manipulation.FilterforPIPseqCLI;
 import scriptmanager.cli.BAM_Manipulation.MergeBAMCLI;
 import scriptmanager.cli.BAM_Manipulation.SortBAMCLI;
 
+import scriptmanager.cli.BAM_Statistics.CrossCorrelationCLI;
 import scriptmanager.cli.BAM_Statistics.BAMGenomeCorrelationCLI;
 import scriptmanager.cli.BAM_Statistics.PEStatsCLI;
 import scriptmanager.cli.BAM_Statistics.SEStatsCLI;
@@ -40,13 +42,17 @@ import scriptmanager.cli.Figure_Generation.MergeHeatMapCLI;
 import scriptmanager.cli.Figure_Generation.LabelHeatMapCLI;
 
 import scriptmanager.cli.File_Utilities.MD5ChecksumCLI;
+import scriptmanager.cli.File_Utilities.CompressFileCLI;
 import scriptmanager.cli.File_Utilities.ConvertBEDChrNamesCLI;
 import scriptmanager.cli.File_Utilities.ConvertGFFChrNamesCLI;
+import scriptmanager.cli.File_Utilities.DecompressGZFileCLI;
 
 import scriptmanager.cli.Peak_Analysis.BEDPeakAligntoRefCLI;
 import scriptmanager.cli.Peak_Analysis.FilterBEDbyProximityCLI;
+import scriptmanager.cli.Peak_Analysis.FRiXCalculatorCLI;
 import scriptmanager.cli.Peak_Analysis.RandomCoordinateCLI;
 import scriptmanager.cli.Peak_Analysis.SignalDuplicationCLI;
+import scriptmanager.cli.Peak_Analysis.SortByDistCLI;
 import scriptmanager.cli.Peak_Analysis.TileGenomeCLI;
 
 import scriptmanager.cli.Peak_Calling.GeneTrackCLI;
@@ -57,6 +63,7 @@ import scriptmanager.cli.Read_Analysis.ScaleMatrixCLI;
 import scriptmanager.cli.Read_Analysis.ScalingFactorCLI;
 //import cli.Read_Analysis.SimilarityMatrixCLI;
 import scriptmanager.cli.Read_Analysis.TagPileupCLI;
+import scriptmanager.cli.Read_Analysis.TransposeMatrixCLI;
 
 import scriptmanager.cli.Sequence_Analysis.DNAShapefromBEDCLI;
 import scriptmanager.cli.Sequence_Analysis.DNAShapefromFASTACLI;
@@ -64,6 +71,12 @@ import scriptmanager.cli.Sequence_Analysis.FASTAExtractCLI;
 import scriptmanager.cli.Sequence_Analysis.RandomizeFASTACLI;
 import scriptmanager.cli.Sequence_Analysis.SearchMotifCLI;
 
+
+/**
+ * Provides command line access to ScriptManager sub-commands
+ * 
+ * @author William KM Lai
+ */
 @Command(name = "script-manager",
 		subcommands = {
 			BAM_Format_ConverterCLI.class,
@@ -85,11 +98,28 @@ import scriptmanager.cli.Sequence_Analysis.SearchMotifCLI;
 public class ScriptManager implements Callable<Integer> {
 
 	@Override
-	public Integer call(){
-		System.out.println( "Use '-h' or '--help' for command-line usage guide" );
-		ScriptManagerGUI gui = new ScriptManagerGUI();
-		gui.launchApplication();
-		return(0);
+	public Integer call() {
+		try {
+			ScriptManagerGUI gui = new ScriptManagerGUI();
+			System.out.println( "Use '-h' or '--help' for command-line usage guide" );
+			gui.launchApplication();
+			return(0);
+		} catch (HeadlessException he) {
+			he.printStackTrace();
+			System.out.println("\n"
+					+ "(ERROR!) Caught \"java.awt.HeadlessException\""
+					+ "\n\n"
+					+ "====What does this mean?====\n"
+					+ "This usually means you attempted to access ScriptManager's GUI on a machine that does not have a graphical interface."
+					+ "\n\n"
+					+ "Please confirm you are working on a system that supports graphical interfaces and if it does not, you can...\n"
+					+ "  1. set up X11 forwarding or\n"
+					+ "  2. switch to using the command line interface (CLI):\n"
+					+ "    - https://pughlab.mbg.cornell.edu/scriptmanager-docs/docs/Guides/Getting-Started/command-line"
+					+ "\n\n"
+			);
+		}
+		return(1);
 	}
 
 	public static void main(String[] args) {
@@ -141,11 +171,12 @@ class BAM_ManipulationCLI extends SubcommandCLI {}
 
 @Command(name = "bam-statistics",
 		subcommands = {
+			CrossCorrelationCLI.class,
 			BAMGenomeCorrelationCLI.class,
 			PEStatsCLI.class,
 			SEStatsCLI.class
 		},
-		description = "Includes tools like BAMGenomeCorrelationCLI, PEStatsCLI, and SEStatsCLI.")
+		description = "Includes tools like SEStatsCLI, PEStatsCLI, BAMGenomeCorrelationCLI, and CrossCorrelationCLI.")
 class BAM_StatisticsCLI extends SubcommandCLI {}
 
 
@@ -180,7 +211,9 @@ class Figure_GenerationCLI extends SubcommandCLI {}
 		subcommands = {
 			MD5ChecksumCLI.class,
 			ConvertBEDChrNamesCLI.class,
-			ConvertGFFChrNamesCLI.class
+			ConvertGFFChrNamesCLI.class,
+			CompressFileCLI.class,
+			DecompressGZFileCLI.class
 		},
 		description = "Includes the tool MD5Checksum.")
 class File_UtilitiesCLI extends SubcommandCLI {}
@@ -192,7 +225,9 @@ class File_UtilitiesCLI extends SubcommandCLI {}
 			FilterBEDbyProximityCLI.class,
 			RandomCoordinateCLI.class,
 			SignalDuplicationCLI.class,
-			TileGenomeCLI.class
+			TileGenomeCLI.class,
+			SortByDistCLI.class,
+			FRiXCalculatorCLI.class
 		},
 		description = "Includes tools like BEDPeakAligntoRefCLI, FilterBEDbyProximityCLI, RandomCoordinateCLI, SignalDuplicationCLI, and TileGenomeCLI.")
 class Peak_AnalysisCLI extends SubcommandCLI {}
@@ -213,9 +248,10 @@ class Peak_CallingCLI extends SubcommandCLI {}
 			ScaleMatrixCLI.class,
 			ScalingFactorCLI.class,
 // 			SimilarityMatrixCLI.class,
-			TagPileupCLI.class
+			TagPileupCLI.class,
+			TransposeMatrixCLI.class
 		},
-		description = "Includes tools like AggregateDataCLI, ScaleMatrixCLI, ScalingFactorCLI, SimilarityMatrixCLI, and TagPileupCLI.")
+		description = "Includes tools like AggregateDataCLI, ScaleMatrixCLI, ScalingFactorCLI, SimilarityMatrixCLI, TagPileupCLI and TransposeMatrix.")
 class Read_AnalysisCLI extends SubcommandCLI {}
 
 

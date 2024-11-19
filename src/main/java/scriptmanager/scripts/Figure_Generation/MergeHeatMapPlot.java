@@ -11,8 +11,8 @@ import java.io.IOException;
 
 
 /**
- * The script class to merge two PNG files (typically sense &amp; anti heatmaps
- * output by scripts.Figure_Generation.TwoColorHeatMap).
+ * Merge two PNG files (typically sense &amp; anti heatmaps output by
+ * {@link scriptmanager.scripts.Figure_Generation.TwoColorHeatMap}.
  *
  * @author William KM Lai
  * @see scriptmanager.cli.Figure_Generation.MergeHeatMapCLI
@@ -25,15 +25,12 @@ public class MergeHeatMapPlot {
 	 * Method for merging two same-sized PNG files into a new PNG using a
 	 * pixel-by-pixel color averaging strategy.
 	 *
-	 * @param INPUT1
-	 *            The first of two same-sized PNGs
-	 * @param INPUT2
-	 *            The second of two same-sized PNGs
-	 * @param OUTPUT
-	 *            The filepath to save the averaged PNG (same pixel dimensions
-	 *            as input PNG files)
-	 * @return
-	 * @throws IOException
+	 * @param INPUT1 first of two same-sized PNGs
+	 * @param INPUT2 second of two same-sized PNGs
+	 * @param OUTPUT filepath to save the averaged PNG (same pixel dimensions as
+	 *               input PNG files)
+	 * @return the combined heatmap
+	 * @throws IOException Invalid file or parameters
 	 */
 	public static JLabel mergePNG(File INPUT1, File INPUT2, File OUTPUT) throws IOException {
 		JLabel picLabel = null;

@@ -14,9 +14,12 @@ import java.beans.PropertyChangeListener;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.sql.Timestamp;
+import java.util.Date;
 
 import javax.swing.ButtonGroup;
 import javax.swing.JButton;
+import javax.swing.JCheckBox;
 import javax.swing.JFileChooser;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
@@ -30,13 +33,27 @@ import javax.swing.SwingConstants;
 import javax.swing.SwingWorker;
 import javax.swing.border.EmptyBorder;
 
+import scriptmanager.cli.Coordinate_Manipulation.GFF_Manipulation.SortGFFCLI;
+import scriptmanager.objects.LogItem;
+import scriptmanager.objects.ToolDescriptions;
 import scriptmanager.util.CDTUtilities;
+import scriptmanager.util.ExtensionFileFilter;
 import scriptmanager.util.FileSelection;
 import scriptmanager.scripts.Coordinate_Manipulation.GFF_Manipulation.SortGFF;
 
+/**
+ * GUI for collecting inputs to be processed by
+ * {@link scriptmanager.scripts.Coordinate_Manipulation.GFF_Manipulation.SortGFF}
+ * 
+ * @author William KM Lai
+ * @see scriptmanager.scripts.Coordinate_Manipulation.GFF_Manipulation.SortGFF
+ */
 @SuppressWarnings("serial")
 public class SortGFFWindow extends JFrame implements ActionListener, PropertyChangeListener {
 	private JPanel contentPane;
+	/**
+	 * FileChooser which opens to user's directory
+	 */
 	protected JFileChooser fc = new JFileChooser(new File(System.getProperty("user.dir")));
 
 	private static File OUT_DIR = null;
@@ -52,8 +69,12 @@ public class SortGFFWindow extends JFrame implements ActionListener, PropertyCha
 	private JButton btnLoadCdtFile;
 	private JButton btnOutput;
 	private JButton btnConvert;
+	private JCheckBox chckbxGzipOutput;
 
 	private JProgressBar progressBar;
+	/**
+	 * Used to run the script efficiently
+	 */
 	public Task task;
 	private JLabel lblCurrent;
 	private JLabel lblDefaultToLocal;
@@ -73,9 +94,12 @@ public class SortGFFWindow extends JFrame implements ActionListener, PropertyCha
 	private JLabel lblIndexStart;
 	private JLabel lblIndexStop;
 
+	/**
+	 * Organizes user inputs for calling script
+	 */
 	class Task extends SwingWorker<Void, Void> {
 		@Override
-		public Void doInBackground() throws IOException {
+		public Void doInBackground() {
 			try {
 				if (rdbtnSortbyCenter.isSelected() && Integer.parseInt(txtMid.getText()) > CDT_SIZE) {
 					JOptionPane.showMessageDialog(null, "Sort Size is larger than CDT File!!!");
@@ -92,18 +116,35 @@ public class SortGFFWindow extends JFrame implements ActionListener, PropertyCha
 						STOP_INDEX = Integer.parseInt(txtStop.getText());
 					}
 
-					String OUTPUT = txtOutput.getText();
+					String OUTPUT = ExtensionFileFilter.stripExtensionIgnoreGZ(GFF_File);
 					if (OUT_DIR != null) {
 						OUTPUT = OUT_DIR.getCanonicalPath() + File.separator + OUTPUT;
 					}
 
 					setProgress(0);
-					SortGFF.sortGFFbyCDT(OUTPUT, GFF_File, CDT_File, START_INDEX, STOP_INDEX);
+					LogItem old_li = null;
+					// Initialize LogItem
+					String command = SortGFFCLI.getCLIcommand(GFF_File, CDT_File, new File(OUTPUT), START_INDEX, STOP_INDEX, chckbxGzipOutput.isSelected());
+					LogItem new_li = new LogItem(command);
+					firePropertyChange("log", old_li, new_li);
+					// Execute script
+					SortGFF.sortGFFbyCDT(GFF_File, CDT_File, new File(OUTPUT), START_INDEX, STOP_INDEX, chckbxGzipOutput.isSelected());
+					// Update log item
+					new_li.setStopTime(new Timestamp(new Date().getTime()));
+					new_li.setStatus(0);
+					old_li = new_li;
+					firePropertyChange("log", old_li, null);
 					setProgress(100);
 					JOptionPane.showMessageDialog(null, "Sort Complete");
 				}
 			} catch (NumberFormatException nfe) {
 				JOptionPane.showMessageDialog(null, "Invalid Input in Fields!!!");
+			} catch (IOException ioe) {
+				ioe.printStackTrace();
+				JOptionPane.showMessageDialog(null, "I/O issues: " + ioe.getMessage());
+			} catch (Exception e) {
+				e.printStackTrace();
+				JOptionPane.showMessageDialog(null, ToolDescriptions.UNEXPECTED_EXCEPTION_MESSAGE + e.getMessage());
 			}
 			return null;
 		}
@@ -152,9 +193,8 @@ public class SortGFFWindow extends JFrame implements ActionListener, PropertyCha
 		contentPane.add(lblDefaultToLocal);
 
 		btnOutput = new JButton("Output Directory");
-		sl_contentPane.putConstraint(SpringLayout.WEST, btnOutput, 150, SpringLayout.WEST, contentPane);
+		sl_contentPane.putConstraint(SpringLayout.WEST, btnOutput, 10, SpringLayout.WEST, contentPane);
 		sl_contentPane.putConstraint(SpringLayout.SOUTH, btnOutput, -6, SpringLayout.NORTH, lblDefaultToLocal);
-		sl_contentPane.putConstraint(SpringLayout.EAST, btnOutput, -150, SpringLayout.EAST, contentPane);
 		btnOutput.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
 				OUT_DIR = FileSelection.getOutputDir(fc);
@@ -164,6 +204,27 @@ public class SortGFFWindow extends JFrame implements ActionListener, PropertyCha
 			}
 		});
 		contentPane.add(btnOutput);
+
+		chckbxGzipOutput = new JCheckBox("Output GZip");
+		sl_contentPane.putConstraint(SpringLayout.NORTH, chckbxGzipOutput, 0, SpringLayout.NORTH, btnOutput);
+		sl_contentPane.putConstraint(SpringLayout.EAST, chckbxGzipOutput, -10, SpringLayout.EAST, contentPane);
+		contentPane.add(chckbxGzipOutput);
+
+		chckbxGzipOutput.addItemListener(new ItemListener() {
+			public void itemStateChanged(ItemEvent e) {
+				String NAME = txtOutput.getText();
+				if (chckbxGzipOutput.isSelected()) {
+					if (!NAME.endsWith(".gz")) {
+						txtOutput.setText(NAME + ".gz");
+					}
+				} else {
+					if (NAME.endsWith(".gz")) {
+						NAME = ExtensionFileFilter.stripExtension(NAME);
+						txtOutput.setText(NAME);
+					}
+				}
+			}
+		});
 
 		rdbtnSortbyCenter = new JRadioButton("Sort by Center");
 		sl_contentPane.putConstraint(SpringLayout.NORTH, rdbtnSortbyCenter, 129, SpringLayout.NORTH, contentPane);
@@ -189,7 +250,7 @@ public class SortGFFWindow extends JFrame implements ActionListener, PropertyCha
 		sl_contentPane.putConstraint(SpringLayout.WEST, txtMid, 6, SpringLayout.EAST, lblSizeOfExpansion);
 		sl_contentPane.putConstraint(SpringLayout.EAST, txtMid, 59, SpringLayout.EAST, lblSizeOfExpansion);
 		sl_contentPane.putConstraint(SpringLayout.NORTH, lblSizeOfExpansion, 4, SpringLayout.NORTH, rdbtnSortbyCenter);
-		sl_contentPane.putConstraint(SpringLayout.WEST, lblSizeOfExpansion, 0, SpringLayout.WEST, btnOutput);
+		sl_contentPane.putConstraint(SpringLayout.WEST, lblSizeOfExpansion, 150, SpringLayout.WEST, contentPane);
 		contentPane.add(lblSizeOfExpansion);
 
 		txtOutput = new JTextField();
@@ -237,7 +298,7 @@ public class SortGFFWindow extends JFrame implements ActionListener, PropertyCha
 		lblIndexStart.setEnabled(false);
 		sl_contentPane.putConstraint(SpringLayout.WEST, txtStart, 6, SpringLayout.EAST, lblIndexStart);
 		sl_contentPane.putConstraint(SpringLayout.NORTH, lblIndexStart, 4, SpringLayout.NORTH, rdbtnSortbyIndex);
-		sl_contentPane.putConstraint(SpringLayout.WEST, lblIndexStart, 0, SpringLayout.WEST, btnOutput);
+		sl_contentPane.putConstraint(SpringLayout.WEST, lblIndexStart, 150, SpringLayout.WEST, contentPane);
 		contentPane.add(lblIndexStart);
 
 		lblIndexStop = new JLabel("Index Stop:");
@@ -281,12 +342,19 @@ public class SortGFFWindow extends JFrame implements ActionListener, PropertyCha
 		sl_contentPane.putConstraint(SpringLayout.NORTH, btnLoadGFFFile, 10, SpringLayout.NORTH, contentPane);
 		btnLoadGFFFile.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
-				File newGFFFile = FileSelection.getFile(fc, "gff");
+				File newGFFFile = FileSelection.getFile(fc, "gff", true);
 				if (newGFFFile != null) {
 					GFF_File = newGFFFile;
 					lblGFFFile.setText(GFF_File.getName());
 					txtOutput.setEnabled(true);
-					String sortName = (GFF_File.getName()).substring(0, GFF_File.getName().length() - 4) + "_SORT";
+					// Set default output filename
+					String sortName = "";
+					try {
+						sortName = ExtensionFileFilter.stripExtensionIgnoreGZ(GFF_File) + "_SORT.gff";
+						sortName += chckbxGzipOutput.isSelected() ? ".gz" : "";
+					} catch (IOException ioe) {
+						JOptionPane.showMessageDialog(null, "Invalid GFF");
+					}
 					txtOutput.setText(sortName);
 				}
 			}
@@ -300,7 +368,7 @@ public class SortGFFWindow extends JFrame implements ActionListener, PropertyCha
 		sl_contentPane.putConstraint(SpringLayout.WEST, btnLoadCdtFile, 0, SpringLayout.WEST, rdbtnSortbyCenter);
 		btnLoadCdtFile.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
-				File newCDTFile = FileSelection.getFile(fc, "cdt");
+				File newCDTFile = FileSelection.getFile(fc, "cdt", true);
 				if (newCDTFile != null) {
 					try {
 						CDT_File = newCDTFile;
@@ -332,6 +400,9 @@ public class SortGFFWindow extends JFrame implements ActionListener, PropertyCha
 		contentPane.add(btnLoadCdtFile);
 	}
 
+	/**
+	 * Runs when a task is invoked, making window non-interactive and executing the task.
+	 */
 	@Override
 	public void actionPerformed(ActionEvent arg0) {
 		massXable(contentPane, false);
@@ -343,15 +414,23 @@ public class SortGFFWindow extends JFrame implements ActionListener, PropertyCha
 	}
 
 	/**
-	 * Invoked when task's progress property changes.
+	 * Invoked when task's progress property changes and updates the progress bar
 	 */
+	@Override
 	public void propertyChange(PropertyChangeEvent evt) {
 		if ("progress" == evt.getPropertyName()) {
 			int progress = (Integer) evt.getNewValue();
 			progressBar.setValue(progress);
+		} else if ("log" == evt.getPropertyName()) {
+			firePropertyChange("log", evt.getOldValue(), evt.getNewValue());
 		}
 	}
 
+	/**
+	 * Makes the content pane non-interactive If the window should be interactive data
+	 * @param con Content pane to make non-interactive
+	 * @param status If the window should be interactive
+	 */
 	public void massXable(Container con, boolean status) {
 		for (Component c : con.getComponents()) {
 			c.setEnabled(status);

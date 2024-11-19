@@ -4,15 +4,15 @@ import java.io.File;
 import java.io.IOException;
 import java.io.PrintStream;
 
-import javax.swing.JOptionPane;
-
 import scriptmanager.objects.CoordinateObjects.BEDCoord;
 import scriptmanager.objects.CoordinateObjects.GFFCoord;
 import scriptmanager.objects.CoordinateObjects.GenericCoord;
+import scriptmanager.objects.Exceptions.OptionException;
+import scriptmanager.util.GZipUtilities;
 import scriptmanager.util.GenomeSizeReference;
 
 /**
- * Class with static method for creating a coordinate file of random sites across a genome.
+ * Randomly sample sites across a genome.
  * 
  * @author William KM Lai
  * @see scriptmanager.util.GenomeSizeReference
@@ -30,33 +30,26 @@ public class RandomCoordinate {
 	 * 
 	 * @param GENOME     the String encoding the genome build to tile (matches
 	 *                   util.GenomeSizeReference)
-	 * @param numSites   the number of random coordinate sites to sample
-	 * @param windowSize the base-pair length of each coordinate interval
-	 * @param BEDout     coordinate file format of output where BED-format is used
-	 *                   if true and GFF-format used if false
-	 * @param OUTPUT     the file to write the coordinate tile output to (if null, a
+	 * @param output     the file to write the coordinate tile output to (if null, a
 	 *                   default filename is determined using
 	 *                   &lt;GENOME&gt;_&lt;numSites&gt;SITES_&lt;windowSize&gt;bp.&lt;ext&gt;)
-	 * @throws IOException
+	 * @param BEDout     coordinate file format of output where BED-format is used
+	 *                   if true and GFF-format used if false
+	 * @param numSites   the number of random coordinate sites to sample
+	 * @param windowSize the base-pair length of each coordinate interval
+	 * @param gzOutput   whether or not to gzip output
+	 * @throws OptionException thrown when window size is larger than a chromosome/contig in GENOME
+	 * @throws IOException Invalid file or parameters
 	 * @throws IllegalArgumentException
 	 */
-	public static void execute(String GENOME, int numSites, int windowSize, boolean BEDout, File OUTPUT) throws IOException, IllegalArgumentException {
+	public static void execute(String GENOME, File output, boolean BEDout, int numSites, int windowSize, boolean gzOutput) throws IOException, IllegalArgumentException, OptionException {
 		GenomeSizeReference coord = new GenomeSizeReference(GENOME);
-	    if(!coord.isSmaller(windowSize)) {
-	    	System.err.println("Window size is too large for selected genome!!!\n");
-	    	JOptionPane.showMessageDialog(null, "Invalid Window Size Entered!!!");
-	    } else {
-	    	String EXTENSION = ".gff";
-			if (BEDout) {
-				EXTENSION = ".bed";
-			}
-		    String randomName = GENOME + "_" + numSites + "SITES_" + windowSize + "bp" + EXTENSION;
-		    PrintStream OUT = null;
-			if (OUTPUT == null) {
-				OUT = new PrintStream(randomName);
-			} else {
-				OUT = new PrintStream(OUTPUT);
-			}
+		if (!coord.isSmaller(windowSize)) {
+			throw new OptionException("Invalid Window Size Entered - window size is too large for selected genome!!!");
+		} else {
+			PrintStream OUT = null;
+			OUT = GZipUtilities.makePrintStream(output, gzOutput);
+			// Iterate each random sample
 		    for(int x = 0; x < numSites; x++) {
 		    	GenericCoord temp = coord.generateRandomCoord(windowSize);
 		    	if(BEDout) {
@@ -66,8 +59,8 @@ public class RandomCoordinate {
 		    		GFFCoord outcoord = new GFFCoord(temp.getChrom(), temp.getStart(), temp.getStop(), temp.getDir(), temp.getName());
 		    		OUT.println(outcoord.toString());
 		    	}
-		    }	    
+		    }
 			OUT.close();
-	    }
+		}
 	}
 }

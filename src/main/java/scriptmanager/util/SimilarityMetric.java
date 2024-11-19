@@ -2,25 +2,53 @@ package scriptmanager.util;
 
 import java.text.DecimalFormat;
 
+/**
+ * Calculates the correlation coefficient for two matrices based on different
+ * methods
+ * 
+ * @author William KM Lai
+ * @see scriptmanager.scripts.Read_Analysis.SimilarityMatrix
+ */
 public class SimilarityMetric {
 	String metrictype = "";
 	
+	/**
+	 * Creates a new SimilarityMetric wich uses the Pearson method
+	 */
 	public SimilarityMetric() {
 		metrictype = "pearson";
 	}
 	
+	/**
+	 * Creates a new SimilarityMetric with a given method
+	 * @param type Method to use (pearson, reflective, spearman, euclidean, or manhattan)
+	 */
 	public SimilarityMetric(String type) {
 		metrictype = type;
 	}
 	
+	/**
+	 * Sets the method used to calcualte the correlation coefficient
+	 * @param type The method used to be used for calculating the correlation coefficient
+	 */
 	public void setType(String type) {
 		metrictype = type;
 	}
 	
+	/**
+	 * Returns the method used to calculate the correlation coefficient
+	 * @return type The method used to calculate the correlation coefficient
+	 */
 	public String getType() {
 		return metrictype;
 	}
 		
+	/**
+	 * Returns the value for two cell of the similarity matrix given two rows
+	 * @param x Row one
+	 * @param y Row two
+	 * @return The value for two cells of the similarity matrix
+	 */
 	public double getScore(double[] x, double[] y) {
 		double[] arrayx = x;
 		double[] arrayy = y;
@@ -39,6 +67,12 @@ public class SimilarityMetric {
 		return 0;
 	}
 	
+	/**
+	 * Calculates a value using the Pearson method given two rows of a matrix
+	 * @param arrayx Row one
+	 * @param arrayy Row two
+	 * @return The value for two cells of a similarity matrix
+	 */
 	public double Pearson(double[] arrayx, double[] arrayy) {
 		double xmean = 0, ymean = 0;
 		int arraycount = 0;
@@ -70,6 +104,12 @@ public class SimilarityMetric {
 		return correlation;
 	}
 	
+	/**
+	 * Calculates a value using the Euclidean method given two rows of a matrix
+	 * @param arrayx Row one
+	 * @param arrayy Row two
+	 * @return The value for two cells of a similarity matrix
+	 */
 	private double Euclidean(double[] arrayx, double[] arrayy) {
 		double distance = 0;
 		for(int i = 0; i < arrayx.length; i++) {
@@ -78,6 +118,12 @@ public class SimilarityMetric {
 		return Math.sqrt(distance);
 	}
 	
+	/**
+	 * Calculates a value using the Manhattan method given two rows of a matrix
+	 * @param arrayx Row one
+	 * @param arrayy Row two
+	 * @return The value for two cells of a similarity matrix
+	 */
 	private double Manhattan(double[] arrayx, double[] arrayy) {
 		double distance = 0;
 		for(int i = 0; i < arrayx.length; i++) {
@@ -86,12 +132,23 @@ public class SimilarityMetric {
 		return distance;
 	}
 	
+	/**
+	 * Calculates a value using the Spearman method given two rows of a matrix
+	 * @param arrayx Row one
+	 * @param arrayy Row two
+	 * @return The value for two cells of a similarity matrix
+	 */
 	private double Spearman(double[] arrayx, double[] arrayy) {
 		double[] rankX = SpearRank(arrayx);
 		double[] rankY = SpearRank(arrayy);
 		return Pearson(rankX, rankY);
 	}
 	
+	/**
+	 * Calculates the SpearRans[] for a given row
+	 * @param x Row to analyze
+	 * @return The SpearRank values for the given row
+	 */
 	private double[] SpearRank(double[] x) {
 		double[] newx = new double[x.length];
 		int j, k, t, tmpi;
@@ -169,6 +226,9 @@ public class SimilarityMetric {
 		return newx;
 	}
 	
+	/**
+	 * Returns the type of metric used for correlation calculations
+	 */
 	public String toString() {
 		return metrictype;
 	}

@@ -10,12 +10,14 @@ import java.io.File;
 import java.io.IOException;
 
 import scriptmanager.objects.ToolDescriptions;
-import scriptmanager.util.ExtensionFileFilter;
 import scriptmanager.scripts.Peak_Analysis.RandomCoordinate;
 
 /**
-	Peak_AnalysisCLI/RandomCoordinateCLI
-*/
+ * Command line interface for
+ * {@link scriptmanager.scripts.Peak_Analysis.RandomCoordinate}
+ * 
+ * @author Olivia Lang
+ */
 @Command(name = "rand-coord", mixinStandardHelpOptions = true,
 	description = ToolDescriptions.rand_coord_description,
 	version = "ScriptManager "+ ToolDescriptions.VERSION,
@@ -26,9 +28,11 @@ public class RandomCoordinateCLI implements Callable<Integer> {
 	
 	@Parameters( index = "0", description = "reference genome [sacCer3|sacCer3_cegr|hg38|hg38_contigs|hg19|hg19_contigs|mm10]")
 	private String genomeName;
-	
+
 	@Option(names = {"-o", "--output"}, description = "Specify output directory (default = current working directory), file name will be random_coordinates_<genomeName>_<window>bp.<ext>")
 	private File output = null;
+	@Option(names = {"-z", "--gzip"}, description = "gzip output (default=false)")
+	private boolean gzOutput = false;
 	@Option(names = {"-f", "--gff"}, description = "file format output as GFF (default format as BED)")
 	private boolean formatIsBed = true;
 	@Option(names = {"-n", "--num-sites"}, description = "number of sites (default=1000)")
@@ -36,6 +40,10 @@ public class RandomCoordinateCLI implements Callable<Integer> {
 	@Option(names = {"-w", "--window"}, description = "window size in bp (default=200)")
 	private int window = 200;
 	
+	/**
+	 * Runs when this subcommand is called, running script in respective script package with user defined arguments
+	 * @throws IOException Invalid file or parameters
+	 */
 	@Override
 	public Integer call() throws Exception {
 		System.err.println( ">RandomCoordinateCLI.call()" );
@@ -46,7 +54,7 @@ public class RandomCoordinateCLI implements Callable<Integer> {
 			System.exit(1);
 		}
 		
-		RandomCoordinate.execute(genomeName, numSites, window, formatIsBed, output); 
+		RandomCoordinate.execute(genomeName, output, formatIsBed, numSites, window, gzOutput); 
 		
 		System.err.println( "Random Coordinate Generation Complete." );
 		return(0);
@@ -55,19 +63,13 @@ public class RandomCoordinateCLI implements Callable<Integer> {
 	private String validateInput() throws IOException {
 		String r = "";
 		
-		String ext = "gff";
-		if(formatIsBed){ ext = "bed"; }
 		//set default output filename
 		if(output==null){
-			output = new File("random_coordinates_" + genomeName + "_" + numSites + "sites_" + window + "bp." + ext);
+			output = new File("random_coordinates_" + genomeName + "_" + numSites + "sites_" + window + "bp"
+					+ (formatIsBed ? ".bed" : ".gff")
+					+ (gzOutput ? ".gz" : ""));
 		//check output filename is valid
 		}else{
-			//check ext
-			try{
-				if(!ext.equals(ExtensionFileFilter.getExtension(output))){
-					r += "(!)Use \"." + ext.toUpperCase() + "\" extension for output filename. Try: " + ExtensionFileFilter.stripExtension(output) + "." + ext + "\n";
-				}
-			} catch( NullPointerException e){ r += "(!)Output filename must have extension: use \"." + ext.toUpperCase() + "\" extension for output filename. Try: " + output + "." + ext + "\n"; }
 			//check directory
 			if(output.getParent()==null){
 	// 			System.err.println("default to current directory");
@@ -86,5 +88,27 @@ public class RandomCoordinateCLI implements Callable<Integer> {
 		}
 		
 		return(r);
+	}
+
+	/**
+	 * Reconstruct CLI command
+	 * 
+	 * @param genomeName the genome build to randomly sample genomic coordinates from
+	 * @param output the text file of the sampled coordinates
+	 * @param formatIsBed the format of the coordinate output (BED or GFF)
+	 * @param numSites the number of sites to sample
+	 * @param window the size of the coordinates sampled
+	 * @param gzOutput   whether or not to gzip output
+	 * @return command line to execute with formatted inputs
+	 */
+	public static String getCLIcommand(String genomeName, File output, boolean formatIsBed, int numSites, int window, boolean gzOutput) {
+		String command = "java -jar $SCRIPTMANAGER peak-analysis rand-coord";
+		command += " " + genomeName;
+		command += " -o " + output.getAbsolutePath();
+		command += gzOutput ? " -z " : "";
+		command += formatIsBed ? "" : " --gff";
+		command += " -n " + numSites;
+		command += " -w " + window;
+		return command;
 	}
 }

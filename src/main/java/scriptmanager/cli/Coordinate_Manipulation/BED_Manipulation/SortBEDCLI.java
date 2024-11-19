@@ -16,10 +16,10 @@ import scriptmanager.util.ExtensionFileFilter;
 import scriptmanager.scripts.Coordinate_Manipulation.BED_Manipulation.SortBED;
 
 /**
- * Command line interface class for sorting BED coordinate interval files by CDT matrix occupancies by calling the method implemented in the scripts package.
+ * Command line interface for
+ * {@link scriptmanager.scripts.Coordinate_Manipulation.BED_Manipulation.SortBED}
  * 
  * @author Olivia Lang
- * @see scriptmanager.scripts.Coordinate_Manipulation.BED_Manipulation.SortBED
  */
 @Command(name = "sort-bed", mixinStandardHelpOptions = true,
 	description = ToolDescriptions.sort_bed_description,
@@ -35,7 +35,7 @@ public class SortBEDCLI implements Callable<Integer> {
 	private File cdtFile;
 
 	@Option(names = {"-o", "--output"}, description = "specify output file basename with no .cdt/.bed/.jtv extension (default=<bedFile>_SORT")
-	private String outputBasename = null;
+	private File outputBasename = null;
 	@Option(names = {"-c", "--center"}, description = "sort by center on the input size of expansion in bins (default=100)")
 	private int center = -999;
 	@Option(names = {"-z", "--gzip"}, description = "gzip output (default=false)")
@@ -47,6 +47,10 @@ public class SortBEDCLI implements Callable<Integer> {
 	private int CDT_SIZE = -999;
 	private boolean byCenter = false;
 
+	/**
+	 * Runs when this subcommand is called, running script in respective script package with user defined arguments
+	 * @throws IOException Invalid file or parameters
+	 */
 	@Override
 	public Integer call() throws Exception {
 		System.err.println( ">SortBEDCLI.call()" );
@@ -62,7 +66,7 @@ public class SortBEDCLI implements Callable<Integer> {
 			index[1] = (CDT_SIZE / 2) + (center / 2);
 		}
 
-		SortBED.sortBEDbyCDT(outputBasename, bedFile, cdtFile, index[0], index[1], gzOutput);
+		SortBED.sortBEDbyCDT(bedFile, cdtFile, outputBasename, index[0], index[1], gzOutput);
 
 		System.err.println("Sort Complete");
 		return(0);
@@ -89,16 +93,15 @@ public class SortBEDCLI implements Callable<Integer> {
 
 		//set default output filename
 		if(outputBasename==null){
-			outputBasename = ExtensionFileFilter.stripExtension(bedFile) + "_SORT";
+			outputBasename = new File(ExtensionFileFilter.stripExtensionIgnoreGZ(bedFile) + "_SORT");
 		//check output filename is valid
 		}else{
 			//no extension check
 			//check directory
-			File BASEFILE = new File(outputBasename);
-			if(BASEFILE.getParent()==null){
+			if(outputBasename.getParent()==null){
 // 				System.err.println("default to current directory");
-			} else if(!new File(BASEFILE.getParent()).exists()){
-				r += "(!)Check output directory exists: " + BASEFILE.getParent() + "\n";
+			} else if(!new File(outputBasename.getParent()).exists()){
+				r += "(!)Check output directory exists: " + outputBasename.getParent() + "\n";
 			}
 		}
 
@@ -118,5 +121,15 @@ public class SortBEDCLI implements Callable<Integer> {
 		}
 
 		return(r);
+	}
+
+	public static String getCLIcommand(File input, File CDT, File OUTPUT, int startidx, int stopidx, boolean gzOutput) {
+		String command = "java -jar $SCRIPTMANAGER coordinate-manipulation sort-bed";
+		command += " " + input.getAbsolutePath();
+		command += " " + CDT.getAbsolutePath();
+		command += " -x " + startidx + " " + stopidx;
+		command += " -o " + OUTPUT.getAbsolutePath();
+		command += gzOutput ? " -z" : "";
+		return command;
 	}
 }

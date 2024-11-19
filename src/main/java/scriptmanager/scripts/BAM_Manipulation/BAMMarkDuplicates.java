@@ -6,24 +6,24 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 
-import javax.swing.JFrame;
-import javax.swing.JOptionPane;
+import htsjdk.samtools.SAMException;
 
-@SuppressWarnings("serial")
-public class BAMMarkDuplicates extends JFrame {
-	File bamFile = null;
-	boolean removeDuplicates = true;
-	File output = null;
-	File metrics = null;
-	
-	public BAMMarkDuplicates(File in, boolean remove, File out, File met) {
-		bamFile = in;
-		removeDuplicates = remove;
-		output = out;
-		metrics = met;
-	}
-	
-	public void run() throws IOException {
+/**
+ * Picard wrapper for MarkDuplicates
+ * 
+ * @author Erik Pavloski
+ * @see scriptmanager.window_interface.BAM_Manipulation.BAMMarkDupWindow
+ */
+public class BAMMarkDuplicates {
+	/**
+	 * Runs MarkDuplicates picard tool
+	 * @param in BAM file to be marked
+	 * @param remove Removes duplicates instead of marking them if true
+	 * @param out Output BAM file
+	 * @param met .metrics file for outputting stats
+	 * @throws IOException Invalid file or parameters If BAM file doesn't have corresponding .BAI Index file
+	 */
+	public static void mark(File bamFile, boolean removeDuplicates, File output, File metrics) throws IOException {
 		//Check if BAI index file exists
 		File f = new File(bamFile + ".bai");
 		if(f.exists() && !f.isDirectory()) {
@@ -36,7 +36,7 @@ public class BAMMarkDuplicates extends JFrame {
             else { args.add("REMOVE_DUPLICATES=false"); }
             markDuplicates.instanceMain(args.toArray(new String[args.size()]));
 		} else {
-			JOptionPane.showMessageDialog(null, "BAI Index File does not exist for: " + bamFile.getName() + "\n");
+			throw new SAMException("BAI Index File does not exist for: " + bamFile.getName() + "\n");
 		}
 	}
 }

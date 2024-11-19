@@ -14,8 +14,11 @@ import scriptmanager.util.ExtensionFileFilter;
 import scriptmanager.scripts.Peak_Analysis.BEDPeakAligntoRef;
 	
 /**
-	Peak_AnalysisCLI/BEDPeakAligntoRefCLI
-*/
+ * Command line interface for
+ * {@link scriptmanager.scripts.Peak_Analysis.BEDPeakAligntoRef}
+ * 
+ * @author Olivia Lang
+ */
 @Command(name = "peak-align-ref", mixinStandardHelpOptions = true,
 	description = ToolDescriptions.peak_align_ref_description,
 	version = "ScriptManager "+ ToolDescriptions.VERSION,
@@ -23,15 +26,27 @@ import scriptmanager.scripts.Peak_Analysis.BEDPeakAligntoRef;
 	exitCodeOnInvalidInput = 1,
 	exitCodeOnExecutionException = 1)
 public class BEDPeakAligntoRefCLI implements Callable<Integer> {
+	/**
+	 * Creates a new BEDPeakAligntoRefCLI object
+	 */
+	public BEDPeakAligntoRefCLI(){}
 	
 	@Parameters( index = "0", description = "The BED peak file")
 	private File peakBED;
 	@Parameters( index = "1", description = "The BED reference file")
 	private File refBED = null;
 	
-	@Option(names = {"-o", "--output"}, description = "Specify output file (default = <peakBED>_<refBED>_Output.cdt)")
+	@Option(names = {"-o", "--output"}, description = "Specify output file (default = <peakBED>_<refBED>_PeakAlign_<separate/combined>.cdt)")
 	private File output = null;
+	@Option(names = {"-s", "--separate"}, description = "separate by strand-matching (default=false)")
+	private boolean separate = false;
+	@Option(names = {"-z", "--gzip"}, description = "gzip output (default=false)")
+	private boolean gzOutput = false;
 	
+	/**
+	 * Runs when this subcommand is called, running script in respective script package with user defined arguments
+	 * @throws IOException Invalid file or parameters
+	 */
 	@Override
 	public Integer call() throws Exception {
 		System.err.println( ">BEDPeakAligntoRefCLI.call()" );
@@ -41,9 +56,8 @@ public class BEDPeakAligntoRefCLI implements Callable<Integer> {
 			System.err.println("Invalid input. Check usage using '-h' or '--help'");
 			System.exit(1);
 		}
-		
-		BEDPeakAligntoRef script_obj = new BEDPeakAligntoRef(refBED, peakBED, output, null);
-		script_obj.run();
+		// Execute script
+		BEDPeakAligntoRef.execute(refBED, peakBED, output, separate, null, gzOutput);
 		
 		System.err.println( "Peak Align Complete." );	
 		return(0);
@@ -60,24 +74,11 @@ public class BEDPeakAligntoRefCLI implements Callable<Integer> {
 			r += "(!)BED-ref file does not exist: " + refBED.getName() + "\n";
 		}
 		if(!r.equals("")){ return(r); }
-		//check input extensions
-		if(!"bed".equals(ExtensionFileFilter.getExtension(peakBED))){
-			r += "(!)Is this a BED file? Check extension: " + peakBED.getName() + "\n";
-		}
-		if(!"bed".equals(ExtensionFileFilter.getExtension(refBED))){
-			r += "(!)Is this a BED file? Check extension: " + refBED.getName() + "\n";
-		}
 		//set default output filename
 		if(output==null){
-			output = new File(ExtensionFileFilter.stripExtension(peakBED) + "_" + ExtensionFileFilter.stripExtension(refBED) + "_Output.cdt");
+			output = new File(ExtensionFileFilter.stripExtension(peakBED) + "_" + ExtensionFileFilter.stripExtension(refBED) + "_PeakAlign");
 		//check output filename is valid
 		}else{
-			//check ext
-			try{
-				if(!"cdt".equals(ExtensionFileFilter.getExtension(output))){
-					r += "(!)Use CDT extension for output filename. Try: " + ExtensionFileFilter.stripExtension(output) + ".cdt\n";
-				}
-			} catch( NullPointerException e){ r += "(!)Output filename must have extension: use CDT extension for output filename. Try: " + output + ".cdt\n"; }
 			//check directory
 			if(output.getParent()==null){
 // 				System.err.println("default to current directory");
@@ -87,5 +88,25 @@ public class BEDPeakAligntoRefCLI implements Callable<Integer> {
 		}
 		
 		return(r);
+	}
+
+	/**
+	 * Reconstruct CLI command
+	 * 
+	 * @param refBED   the reference BED windows to align to
+	 * @param peakBED  the BED coordinate signal to mark the reference windows with
+	 * @param output   the aligned output matrix file
+	 * @param separate whether or not to separate outputs by strand-matching
+	 * @param gzOutput whether or not to gzip output
+	 * @return command line to execute with formatted inputs
+	 */
+	public static String getCLIcommand(File refBED, File peakBED, File output, boolean separate, boolean gzOutput) {
+		String command = "java -jar $SCRIPTMANAGER peak-analysis peak-align-ref";
+		command += " " + peakBED.getAbsolutePath();
+		command += " " + refBED.getAbsolutePath();
+		command += " -o " + output.getAbsolutePath();
+		command += gzOutput ? " -z " : "";
+		command += separate ? " -s " : "";
+		return command;
 	}
 }

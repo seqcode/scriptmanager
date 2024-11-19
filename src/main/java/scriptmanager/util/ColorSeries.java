@@ -12,6 +12,11 @@ import java.util.ArrayList;
 public class ColorSeries {
 
 	/**
+	 * Creates a new ColorSeries object
+	 */
+	public ColorSeries(){}
+
+	/**
 	 * Initialize an ArrayList of Color objects using the ChIP-exo red and blue.
 	 * 
 	 * @return list of the two colors in the following order: {blue(0x0000FF),

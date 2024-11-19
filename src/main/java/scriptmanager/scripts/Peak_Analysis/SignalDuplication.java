@@ -33,25 +33,37 @@ import javax.swing.JTabbedPane;
 
 import scriptmanager.charts.LineChart;
 
+/**
+ * (Dev) Calculate duplication statistics at user-specified regions
+ * 
+ * @author William KM Lai
+ */
 @SuppressWarnings("serial")
 public class SignalDuplication extends JFrame {
 	Vector<File> bamFiles = null;
 	ArrayList<GFFCoord> COORD = null;
 	ArrayList<GFFCoord> GENOME = null;
-	
+
 	File input = null;
 	private double WINDOW = 0;
-	
+
 	SamReader reader;
 	final SamReaderFactory factory = SamReaderFactory.makeDefault().enable(SamReaderFactory.Option.INCLUDE_SOURCE_IN_RECORDS, SamReaderFactory.Option.VALIDATE_CRC_CHECKSUMS).validationStringency(ValidationStringency.SILENT);
 
 	PrintStream OUT = null;
-	
+
 	final JLayeredPane layeredPane;
 	final JTabbedPane tabbedPane;
 	final JTabbedPane tabbedPane_Duplication;
 	final JTabbedPane tabbedPane_DupStats;
-	
+
+	/**
+	 * Creates a new "SignalDuplicationRate" window with a given GFF file
+	 * 
+	 * @param in  GFF file to analyze
+	 * @param bam BAM files to analyze
+	 * @param w   Size of the analysis window (# of BP)
+	 */
 	public SignalDuplication(File in, Vector<File> bam, double w) {
 		setTitle("Signal Duplication Rate");
 		setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
@@ -80,6 +92,10 @@ public class SignalDuplication extends JFrame {
 		WINDOW = w;
 	}
 	
+	/**
+	 * Runs the duplication analysis and outputs results in GUI
+	 * @throws IOException Invalid file or parameters
+	 */
 	public void run() throws IOException {
 		//Print TimeStamp
 		String time = getTimeStamp();
@@ -219,6 +235,11 @@ public class SignalDuplication extends JFrame {
 		if(OUT != null) OUT.close();
 	}
 	
+	/**
+	 * Gets the index for respective # of duplications to be used with G_Bin and S_Bin
+	 * @param COUNT Number of duplications
+	 * @return The index the value of the read should be placed in
+	 */
 	public static int getBinIndex(int COUNT) {
 		if(COUNT == 1) return 0;
         else if(COUNT >= 2 && COUNT <= 10) return 1;
@@ -238,6 +259,10 @@ public class SignalDuplication extends JFrame {
 		return -999;
 	}
 	
+	/**
+	 * Initializes G_Bin and S_Bin ArrayList&lt;Double&gt;'s
+	 * @param BIN
+	 */
 	public static void initializeBINS(ArrayList<Double> BIN) {
 		BIN.add(Double.valueOf(0)); // Bin 1
 		BIN.add(Double.valueOf(0)); // Bin 2-10
@@ -255,6 +280,10 @@ public class SignalDuplication extends JFrame {
 		BIN.add(Double.valueOf(0)); // Bin 10,000+
 	}
 	
+	/**
+	 * Creates an String[] with labels for bin arrays
+	 * @return
+	 */
 	public static String[] initializeBIN_Names() {
 		String[] NAME = new String[14];
 		NAME[0] = "1";
@@ -274,6 +303,9 @@ public class SignalDuplication extends JFrame {
 		return NAME;
 	}
 	
+	/**
+	 * Checks if a molecule has any overlap with signal region
+	 */
 	public boolean checkOverlap(String chrom, String ID, ArrayList<GFFCoord> coord) {
 		String[] temp = ID.split("_");
 		int start = Integer.parseInt(temp[0]); 
@@ -294,6 +326,10 @@ public class SignalDuplication extends JFrame {
 		return false;
 	}
 	
+	/**
+	 * Reads the gff file and initializes COORD ArrayList&lt;GFFCoord&gt;
+	 * @throws FileNotFoundException Script could not find valid input file
+	 */
     public void loadCoord() throws FileNotFoundException {
     	//chr1	cwpair	.	45524	45525	3067.0	.	.	cw_distance=26
 

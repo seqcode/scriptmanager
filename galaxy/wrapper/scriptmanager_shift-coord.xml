@@ -1,0 +1,62 @@
+<tool id="scriptmanager_shift-coord" name="ScriptManager: Shift BED or GFF" version="0.1.0" profile="22.01" >
+    <description>Shift coordinate intervals up/downstream.</description>
+    <macros>
+        <import>scriptmanager_macros.xml</import>
+    </macros>
+    <requirements>
+	     <expand macro="requirement_openjdk" />
+    </requirements>
+
+    <command detect_errors="aggressive">
+        <![CDATA[
+        java -jar $__tool_directory__/@JAR_FILENAME@ coordinate-manipulation shift-coord
+
+        #if str($bed_or_gff.input) == "gff" :
+            --gff
+        #end if
+
+        -o '$output1'
+
+        -t "$SHIFT"
+
+        '$input1'
+    ]]></command>
+    <inputs>
+        <conditional name="bed_or_gff">
+            <param name="input" type="select" label="Select input format">
+                <option value="bed" selected="True" >BED file</option>
+                <option value="gff" >GFF file</option>
+            </param>
+
+            <when value="bed">
+                <param name="input1" type="data" format="bed" label="Input BED file">
+                </param>
+            </when>
+
+            <when value="gff">
+                <param name="input1" type="data" format="gff" label="Input GFF file">
+                </param>
+            </when>
+
+        </conditional>
+
+        <param name="SHIFT" type="integer" value="0" label="Set a shift distance in bp (upstream: - and downstream: +)" />
+
+    </inputs>
+    <outputs>
+
+        <data name="output1" format="data" label="${tool.name} on ${on_string}">
+        </data>
+
+    </outputs>
+
+    <tests>
+    </tests>
+
+    <help>
+**What it does**
+
+Shifts coordinate intervals
+    </help>
+    <expand macro="citations_pearc" />
+</tool>

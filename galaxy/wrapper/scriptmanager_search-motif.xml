@@ -1,0 +1,112 @@
+<tool id="scriptmanager_search-motif" name="ScriptManager: Search Motif in FASTA file with Mismatch"
+    version="0.1.0+galaxy0" python_template_version="3.5" profile="21.05">
+    <description> Search Motif in FASTA file with Mismatch </description>
+    <macros>
+        <import>scriptmanager_macros.xml</import>
+    </macros>
+    <requirements>
+        <expand macro="requirement_openjdk" />
+    </requirements>
+    <command detect_errors="exit_code"><![CDATA[
+        ln -s "$input" "temp_input.fasta" &&
+        
+        java -jar $__tool_directory__/@JAR_FILENAME@ sequence-analysis search-motif
+        
+        #if str($output_file_name.bool) == "Yes" :
+            -o "$output_file_name.file_name"
+        #end if
+        
+        -m "$iupac_motif"
+        
+        #if str($mismatches) != "0" :
+            -n "$mismatches"
+        #end if
+        
+        "temp_input.fasta"
+    ]]></command>
+    
+    <inputs>
+        <param type="data" name="input" format="fasta" label="Input FASTA file"/>
+        
+        <conditional name="output_file_name">
+        <param type="boolean" name="bool" truevalue="Yes" falsevalue="No" label="Output File Name" >
+        </param>
+            <when value="Yes">
+                <param type="text" name="file_name" value="" label="File Name" />
+            </when>
+            <when value="No">
+            </when>
+        </conditional>
+        
+        <param type="text" name="iupac_motif" value="" label="IUPAC Motif" optional="false"/>
+        
+        <param type="integer" name="mismatches" value="0" label="Number of Mismatches Allowed" />
+    </inputs>
+            
+    <outputs>
+        <data name="output" format="bed" label="${tool.name} on ${on_string}"/>
+    </outputs>
+    <help>
+        
+    **What it does**
+    Search for an IUPAC DNA sequence motif in FASTA files with mismatches allowed.
+
+    </help>
+</tool>
+
+<!--
+    version="0.1.0+galaxy0" python_template_version="3.5" profile="21.05">
+    <description> Search Motif in FASTA file with Mismatch </description>
+    <requirements>
+        <requirement type="package" version="11.0.11">openjdk</requirement>
+    </requirements>
+    <command detect_errors="exit_code"><![CDATA[
+        ln -s "$input" "temp_input.fasta" &&
+        
+        java -jar __tool_directory__/ScriptManager-v0.14.jar sequence-analysis search-motif
+        
+        -m "$iupac_motif.motif"
+        
+        #if str($mismatches) != "0" :
+            -n "$mismatches"
+        #end if
+        
+        "temp_input.fasta"
+    ]]></command>
+    <inputs>
+        <param type="data" name="input" format="fasta" label="Input FASTA file"/>
+        
+        <conditional name="output_file_name">
+        <param type="boolean" name="bool" truevalue="Yes" falsevalue="No" label="Output File Name" >
+        </param>
+            <when value="Yes">
+                <param type="text" name="file_name" value="" label="File Name" />
+            </when>
+            <when value="No">
+            </when>
+        </conditional>
+        
+        <conditional name="iupac_motif">
+        <param type="boolean" name="bool" truevalue="Yes" falsevalue="No" label="IUPAC Motif" >
+        </param>
+            <when value="Yes">
+                <param type="text" name="motif" value="" label="Motif" />
+            </when>
+            <when value="No">
+            </when>
+        </conditional>
+        
+        <param type="integer" name="mismatches" value="0" label="Number of Mismatches Allowed" />
+    </inputs>
+            
+    <outputs>
+        <data name="output" format="bed" label="${tool.name} on ${on_string}"/>
+    </outputs>
+    <help>
+        
+    **What it does**
+    Search for an IUPAC DNA sequence motif in FASTA files with mismatches allowed.
+
+    </help>
+</tool>
+-->

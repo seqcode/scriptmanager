@@ -14,8 +14,11 @@ import scriptmanager.util.ExtensionFileFilter;
 import scriptmanager.scripts.Coordinate_Manipulation.GFF_Manipulation.GFFtoBED;
 
 /**
-	Coordinate_ManipulationCLI/GFFtoBEDCLI
-*/
+ * Command line interface for
+ * {@link scriptmanager.scripts.Coordinate_Manipulation.GFF_Manipulation.GFFtoBED}
+ * 
+ * @author Olivia Lang
+ */
 @Command(name = "gff-to-bed", mixinStandardHelpOptions = true,
 	description = ToolDescriptions.gff_to_bed_description,
 	version = "ScriptManager "+ ToolDescriptions.VERSION,
@@ -31,7 +34,13 @@ public class GFFtoBEDCLI implements Callable<Integer> {
 	private File output = null;
 	@Option(names = {"-s", "--stdout"}, description = "output bed to STDOUT")
 	private boolean stdout = false;
+	@Option(names = {"-z", "--gzip"}, description = "gzip output (default=false)")
+	private boolean gzOutput = false;
 	
+	/**
+	 * Runs when this subcommand is called, running script in respective script package with user defined arguments
+	 * @throws IOException Invalid file or parameters
+	 */
 	@Override
 	public Integer call() throws Exception {
 		System.err.println( ">GFFtoBEDCLI.call()" );
@@ -42,7 +51,7 @@ public class GFFtoBEDCLI implements Callable<Integer> {
 			System.exit(1);
 		}
 		
-		GFFtoBED.convertGFFtoBED(output, gffFile);
+		GFFtoBED.convertGFFtoBED(gffFile, output, gzOutput);
 		
 		System.err.println("Conversion Complete");
 		return(0);
@@ -58,7 +67,7 @@ public class GFFtoBEDCLI implements Callable<Integer> {
 		}
 		//set default output filename
 		if(output==null && !stdout){
-			output = new File(ExtensionFileFilter.stripExtension(gffFile) + ".bed");
+			output = new File(ExtensionFileFilter.stripExtensionIgnoreGZ(gffFile) + ".bed");
 		//check stdout and output not both selected
 		}else if(stdout){
 			if(output!=null){ r += "(!)Cannot use -s flag with -o.\n"; }
@@ -73,5 +82,13 @@ public class GFFtoBEDCLI implements Callable<Integer> {
 		}
 		
 		return(r);
+	}
+
+	public static String getCLIcommand(File GFF, File output, boolean gzOutput) {
+		String command = "java -jar  $SCRIPTMANAGER coordinate-manipulation gff-to-bed";
+		command += " " + GFF.getAbsolutePath();
+		command += " -o " + output.getAbsolutePath();
+		command += gzOutput ? " -z " : "";
+		return command;
 	}
 }

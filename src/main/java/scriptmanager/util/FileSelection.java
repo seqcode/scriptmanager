@@ -5,7 +5,7 @@ import java.io.File;
 import javax.swing.JFileChooser;
 
 /**
- * Various kinds of file selectors used by the window_interface objects to
+ * Various kinds of file selectors used by the `window_interface` objects to
  * restrict user input selection options. Used across many classes in the
  * window_interface package.
  * 
@@ -17,7 +17,7 @@ public class FileSelection {
 	 * Generic multi-file FileSelector without extension restrictions (commonly
 	 * TAB-delimited file formats like matrix/table data).
 	 * 
-	 * @param fc
+	 * @param fc FileChooser that provides all files and displays appropriate files
 	 * @return array of File objects from selector UI
 	 */
 	public static File[] getGenericFiles(JFileChooser fc){
@@ -36,7 +36,7 @@ public class FileSelection {
 	/**
 	 * Generic single-file FileSelector for retrieving directories.
 	 * 
-	 * @param fc
+	 * @param fc FileChooser that provides all files and displays appropriate files
 	 * @return a directory-type file
 	 */
 	public static File getOutputDir(JFileChooser fc) {
@@ -54,7 +54,7 @@ public class FileSelection {
 	 * Extension-based single-file FileSelector for retrieving a single file with a
 	 * specific extension.
 	 * 
-	 * @param fc
+	 * @param fc FileChooser that provides all files and displays appropriate files
 	 * @param ext the extension to restrict file selection options by
 	 * @return a single file with a specific extension (see "ext")
 	 */
@@ -66,7 +66,7 @@ public class FileSelection {
 	 * Extension-based single-file FileSelector for retrieving a single file with a
 	 * specific extension where ignoring ".gz" extensions can be toggled.
 	 * 
-	 * @param fc
+	 * @param fc FileChooser that provides all files and displays appropriate files
 	 * @param ext       the extension to restrict file selection options by
 	 * @param includeGZ true value means ignore the ".gz" if present when checking
 	 *                  the extension
@@ -90,7 +90,7 @@ public class FileSelection {
 	 * Extension-based multi-file FileSelector for retrieving a set of files with a
 	 * specific extension.
 	 * 
-	 * @param fc
+	 * @param fc FileChooser that provides all files and displays appropriate files
 	 * @param ext the extension to restrict file selection options by
 	 * @return a list of files with a specific extension (see "ext")
 	 */
@@ -102,7 +102,7 @@ public class FileSelection {
 	 * Extension-based multi-file FileSelector for retrieving a set of files with a
 	 * specific extension where ignoring ".gz" extensions can be toggled.
 	 * 
-	 * @param fc
+	 * @param fc FileChooser that provides all files and displays appropriate files
 	 * @param ext       the extension to restrict file selection options by
 	 * @param includeGZ true value means ignore the ".gz" if present when checking
 	 *                  the extension

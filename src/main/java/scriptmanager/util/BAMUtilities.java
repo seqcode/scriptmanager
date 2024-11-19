@@ -16,26 +16,132 @@ import htsjdk.samtools.SamReader;
 import htsjdk.samtools.SamReaderFactory;
 import htsjdk.samtools.ValidationStringency;
 import htsjdk.samtools.util.CloseableIterator;
+
+import scriptmanager.objects.Exceptions.OptionException;
+import scriptmanager.objects.PileupParameters;
 import scriptmanager.objects.CoordinateObjects.BEDCoord;
 
+/**
+ * Class containing a set of shared methods to be used across script classes.
+ * 
+ * @author William KM Lai
+ * @see scriptmanager.cli.Read_Analysis.TagPileupCLI
+ * @see scriptmanager.cli.Peak_Analysis.FRiXCalculatorCLI
+ * @see scriptmanager.window_interface.Read_Analysis.TagPileupOutput
+ * @see scriptmanager.window_interface.Peak_Analysis.FRiXCalculatorOutput
+ */
 public class BAMUtilities {
-	
-	public static double calculateStandardizationRatio(File BAM, int read) throws IOException {
-		SamReader inputSam = SamReaderFactory.makeDefault().open(BAM);
-		AbstractBAMFileIndex bai = (AbstractBAMFileIndex) inputSam.indexing().getIndex();
-		double totalAligned = 0;
+
+	/**
+	 * Creates a new BAMUtilities object
+	 */
+	public BAMUtilities(){}
+
+	/**
+	 * Search the BAM header and sum the size of each chromosome/reference sequence
+	 * 
+	 * @param BAM input BAM-formatted file
+	 * @return total bp of ref sequence aligned to
+	 * @throws IOException
+	 */
+	public static double getGenomeSize(File BAM) throws IOException {
+//		SamReaderFactory factory = SamReaderFactory.makeDefault().enable(SamReaderFactory.Option.INCLUDE_SOURCE_IN_RECORDS, SamReaderFactory.Option.VALIDATE_CRC_CHECKSUMS).validationStringency(ValidationStringency.SILENT);
+		SamReader factory = SamReaderFactory.makeDefault().open(BAM);
+		AbstractBAMFileIndex bai = (AbstractBAMFileIndex) factory.indexing().getIndex();
+		// sum the length of each ref sequence
 		double totalGenome = 0;
-		
 		for (int x = 0; x < bai.getNumberOfReferences(); x++) {
-			SAMSequenceRecord seq = inputSam.getFileHeader().getSequence(x);
-			totalAligned += inputSam.indexing().getIndex().getMetaData(x).getAlignedRecordCount();
+			SAMSequenceRecord seq = factory.getFileHeader().getSequence(x);
 			totalGenome += seq.getSequenceLength();
 		}
-		
+		bai.close();
+		factory.close();
+		return (totalGenome);
+	}
+
+	/**
+	 * Loop through BAM index metadata and tally up total aligned read count according to PileupParameters criteria.
+	 * 
+	 * @param BAM input BAM-formatted file
+	 * @return Number of total reads in the BAM file
+	 * @throws OptionException
+	 * @throws IOException
+	 */
+	public static double getReadCount(File BAM, PileupParameters p) throws OptionException, IOException {
+		// Pre-calculate criteria
+		int ASPECT = p.getAspect();
+		int READ = p.getRead();
+		boolean checkR1 = (READ == PileupParameters.READ1 || READ == PileupParameters.ALLREADS);
+		boolean checkR2 = (READ == PileupParameters.READ2 || READ == PileupParameters.ALLREADS);
+		boolean checkFiveOrThree = (ASPECT == PileupParameters.FIVE || ASPECT == PileupParameters.THREE);
+
+		// Get total aligned
+		double totalAligned = 0;
+
+		SamReader factory = SamReaderFactory.makeDefault().open(BAM);
+		CloseableIterator<SAMRecord> iter = factory.iterator();
+		while (iter.hasNext()) {
+			SAMRecord sr = iter.next();
+			// Test for mappability
+			if(!sr.getReadUnmappedFlag()) {
+				// Test for paired-end status
+				if(sr.getReadPairedFlag()) {
+					// count read 1
+					if (sr.getFirstOfPairFlag()) {
+						// count reads if Read1 or All Reads
+						if (checkR1) {
+							// count properly paired reads if midpoint
+							if (sr.getProperPairFlag()) {
+								if (ASPECT == PileupParameters.MIDPOINT) {
+									totalAligned++;
+								} else if (ASPECT == PileupParameters.FRAGMENT) {
+									throw new OptionException("PileupParameters.FRAGMENT not supported for getting read counts");
+								}
+							// count reads if 5' or 3'
+							} else if (checkFiveOrThree) {
+								totalAligned++;
+							}
+						}
+					// count read 2
+					} else {
+						// count reads if Read2 or All Reads && 5' or 3'
+						if (checkR2 && checkFiveOrThree) {
+							totalAligned++;
+						}
+					}
+				//If the read is mapped but not paired-end, default to read 1
+				} else {
+					// count reads if Read1 or All Reads && 5' or 3'
+					if (checkR1 && checkFiveOrThree) {
+						totalAligned++;
+					}
+				}
+			} // ignore all unmapped reads
+		}
+		iter.close();
+		factory.close();
+
+		return (totalAligned);
+	}
+
+	/**
+	 * Calculates the standardization ratio for a given BAM file
+	 * @param BAM BAM file used to calculate ratio
+	 * @param read Read Type (1 = Read1, 1 = Read2, 3 = All reads)
+	 * @return The standardization ratio for a given BAM file
+	 * @throws IOException Invalid file or parameters
+	 */
+	public static double calculateStandardizationRatio(File BAM, int read) throws IOException {
+		// Get Genome Size
+		double totalGenome = getGenomeSize(BAM);
+
+		// Get total aligned
+		double totalAligned = 0;
 		double READ1 = 0;
 		double READ2 = 0;
 		double MID = 0;
-		CloseableIterator<SAMRecord> iter = inputSam.iterator();
+		SamReader factory = SamReaderFactory.makeDefault().open(BAM);
+		CloseableIterator<SAMRecord> iter = factory.iterator();
 		while (iter.hasNext()) {
 			SAMRecord sr = iter.next();
 			if(!sr.getReadUnmappedFlag()) { //Test for mappability
@@ -49,9 +155,8 @@ public class BAMUtilities {
 			}
 		}
 		iter.close();
-		inputSam.close();
-		bai.close();
-				
+		factory.close();
+
 		//System.out.println("Genome Size: " + totalGenome + "\nTotal tags: " + totalAligned + "\nDetected Read 1: " + READ1 + "\nDetected Read 2: " + READ2 + "\nDetected Midpoints: " + MID);
 		if(read == 0) { totalAligned = READ1; }
 		else if(read == 1) { totalAligned = READ2; }
@@ -61,7 +166,15 @@ public class BAMUtilities {
 		if(totalAligned > 0) { return (totalGenome / totalAligned); }
 		else { return 1; }
 	}
-	
+
+	/**
+	 * Calculates the standardization ratio for a given BAM file, ignoring blacklisted reads
+	 * @param BAM BAM file used to calculate ratio 
+	 * @param BLACKFile BED file containing blacklisted regions
+	 * @param read Read Type (1 = Read1, 1 = Read2, 3 = All reads)
+	 * @return The standardization ratio for a given BAM file
+	 * @throws IOException Invalid file or parameters
+	 */
 	public static double calculateStandardizationRatio(File BAM, File BLACKFile, int read) throws IOException {
 		//Blacklist filter in 500bp blocks on the genome with any blacklist region overlapping negating the entire block
 		int windowSize = 500;
@@ -82,7 +195,7 @@ public class BAMUtilities {
 		}
 		inputBAM.close();
 		inputBAI.close();
-				
+
 		//Load Blacklist into HashMap
 		HashMap<String, ArrayList<BEDCoord>> BLACKLIST = loadBlacklist(BLACKFile);
 		
@@ -116,7 +229,15 @@ public class BAMUtilities {
 		if(totalAligned > 0) { return (totalGenome / totalAligned); }
 		else { return 1; }
 	}
-	
+
+	/**
+	 * Sets blacklisted positions to NaN
+	 * @param chrom Chromosome to be processed
+	 * @param chromSize Length of the chromosome
+	 * @param windowSize The window/bin size 
+	 * @param BLACKLIST BED file containing blacklisted regions
+	 * @return An array representing the chromosome, with blacklisted regions being represented as NaN and valid regions being zero
+	 */
 	private static float[] maskChrom(String chrom, long chromSize, int windowSize, HashMap<String, ArrayList<BEDCoord>> BLACKLIST) {
 		float[] chromArray = new float[(int) (chromSize / windowSize) + 1];
 		if(BLACKLIST.containsKey(chrom)) {
@@ -134,6 +255,12 @@ public class BAMUtilities {
 		return chromArray;
 	}
 	
+	/**
+	 * Loads the blacklist BED file into a Hashmap<String, ArrayList<BEDCoord>>
+	 * @param BLACKFile BED file to make the blacklist Hashmap with
+	 * @return A Hashmap<String, ArrayList<BEDCoord>> with the name of chromosomes as keys and ArrayLists of blacklisted coordinates as values
+	 * @throws FileNotFoundException Script could not find valid input file
+	 */
 	private static HashMap<String, ArrayList<BEDCoord>> loadBlacklist(File BLACKFile) throws FileNotFoundException {
 		HashMap<String, ArrayList<BEDCoord>>  BLACKLIST = new HashMap<String, ArrayList<BEDCoord>>();
 	    Scanner scan = new Scanner(BLACKFile);

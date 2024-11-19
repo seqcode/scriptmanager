@@ -3,14 +3,17 @@ package scriptmanager.cli.Peak_Analysis;
 import picocli.CommandLine.Command;
 
 import java.util.concurrent.Callable;
-
+import java.io.File;
 import java.io.IOException;
 
 import scriptmanager.objects.ToolDescriptions;
-	
+
 /**
-	Peak_AnalysisCLI/SignalDuplicationCLI
-*/
+ * (Dev) Unfinished command line interface for
+ * {@link scriptmanager.scripts.Peak_Analysis.SignalDuplication}
+ * 
+ * @author Olivia Lang
+ */
 @Command(name = "signal-dup", mixinStandardHelpOptions = true,
 	description = ToolDescriptions.signal_dup_description,
 	version = "ScriptManager "+ ToolDescriptions.VERSION,
@@ -19,6 +22,10 @@ import scriptmanager.objects.ToolDescriptions;
 	exitCodeOnExecutionException = 1)
 public class SignalDuplicationCLI implements Callable<Integer> {
 	
+	/**
+	 * Runs when this subcommand is called, running script in respective script package with user defined arguments
+	 * @throws IOException Invalid file or parameters
+	 */
 	@Override
 	public Integer call() throws Exception {
 		System.err.println( ">SignalDuplicationCLI.call()" );
@@ -32,6 +39,7 @@ public class SignalDuplicationCLI implements Callable<Integer> {
 		//SEStats.getSEStats( output, bamFile, null );
 		
 		//System.err.println("Calculations Complete");
+		System.err.println("CLI Signal Duplication not yet implemented");
 		return(0);
 	}
 	
@@ -40,5 +48,19 @@ public class SignalDuplicationCLI implements Callable<Integer> {
 		//validate input here
 		//append messages to the user to `r`
 		return(r);
+	}
+
+	/**
+	 * Reconstruct CLI command
+	 * 
+	 * @param input
+	 * @param bam
+	 * @param window
+	 * @return command line to execute with formatted inputs
+	 */
+	public static String getCLIcommand(File input, File bam, double window) {
+		String command = "# (Not yet implemented) java -jar $SCRIPTMANAGER peak-analysis signal-dup";
+		/* TODO: implement CLI */
+		return(command);
 	}
 }

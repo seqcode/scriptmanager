@@ -7,26 +7,23 @@ import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
 import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Scanner;
-import java.util.zip.GZIPInputStream;
 
 import javax.imageio.ImageIO;
 import javax.swing.ImageIcon;
 import javax.swing.JLabel;
 
-import scriptmanager.objects.CustomExceptions.OptionException;
+import scriptmanager.objects.Exceptions.OptionException;
+import scriptmanager.util.GZipUtilities;
 
 /**
- * The script to generate a three-color heamap PNG (with a an adjustable
- * middling value for the middle color) from a matrix of values in
- * tab-delmited/CDT format.
+ * Generate a three-color heamap PNG (with a an adjustable middling value for
+ * the middle color) from a matrix of values in tab-delmited/CDT format.
  * 
  * @author Olivia Lang
  * @see scriptmanager.cli.Figure_Generation.ThreeColorHeatMapCLI
@@ -64,6 +61,29 @@ public class ThreeColorHeatMap {
 
 	private JLabel picLabel = new JLabel();
 
+	/**
+	 * Creates a new instance of a ThreeColorHeatMap with given attributes
+	 * 
+	 * @param in         CDT formatted matrix file
+	 * @param c_min      Color to represent minimum values
+	 * @param c_mid      Color to represent mid values
+	 * @param c_max      Color to represent maximum values
+	 * @param c_nan      Color to represent missing values
+	 * @param startR     Starting row of the CDT file (Zero indexed)
+	 * @param startC     Starting column of the CDT file (Zero indexed)
+	 * @param pHeight    Height of resulting heat map (# pixels)
+	 * @param pWidth     Width of resulting heat map (# pixels)
+	 * @param scale      Scale compression type
+	 * @param minPstatus Minimum percentile value
+	 * @param midPstatus Mid percentile value
+	 * @param maxPstatus Maximum percentile value
+	 * @param min_quant  Minimum absolute value
+	 * @param mid_quant  Mid absolute value
+	 * @param max_quant  Maximum absolute value
+	 * @param exZ        Exclude zero's in percentile threshold calculations
+	 * @param output     Output file
+	 * @param outstatus  Whether a file should be output
+	 */
 	public ThreeColorHeatMap(File in, Color c_min, Color c_mid, Color c_max, Color c_nan, int startR, int startC,
 			int pHeight, int pWidth, String scale, boolean minPstatus, boolean midPstatus, boolean maxPstatus,
 			double min_quant, double mid_quant, double max_quant, boolean exZ, File output, boolean outstatus) {
@@ -174,6 +194,12 @@ public class ThreeColorHeatMap {
 		}
 	}
 
+	/**
+	 * Generates a heat map based on the input matrix and constants passed through the constructor
+	 * @param matrix Matrix to be used in generation
+	 * @return A buffered, three color heat map
+	 * @throws FileNotFoundException Script could not find valid input file
+	 */
 	public static BufferedImage generateHeatMap(ArrayList<double[]> matrix) throws FileNotFoundException {
 		int width = 1;
 		int height = 1;
@@ -229,6 +255,13 @@ public class ThreeColorHeatMap {
 		return im;
 	}
 
+	/**
+	 * Changes the size of an image, retaining the scaling method
+	 * @param img Image to resize
+	 * @param newW New width of the image (# of pixels)
+	 * @param newH New height of the image (# of pixels)
+	 * @return
+	 */
 	public static BufferedImage resize(BufferedImage img, int newW, int newH) {
 		BufferedImage resized_image = new BufferedImage(newW, newH, BufferedImage.TYPE_INT_ARGB);
 		Graphics2D g2 = (Graphics2D) resized_image.createGraphics();
@@ -244,6 +277,11 @@ public class ThreeColorHeatMap {
 		return resized_image;
 	}
 
+	/**
+	 * Adapts input matrix to have the right amount of values for specified resolution
+	 * @param oldmatrix Input matrix
+	 * @return A new matrix with the right # of values
+	 */
 	public static ArrayList<double[]> rebinMatrix(ArrayList<double[]> oldmatrix) {
 		ArrayList<double[]> newmatrix = new ArrayList<double[]>();
 		int R = oldmatrix.size();
@@ -410,6 +448,11 @@ public class ThreeColorHeatMap {
 		return d;
 	}
 
+	/**
+	 * 
+	 * @param orig
+	 * @return
+	 */
 	public static int[] frameshift(int[] orig) {
 		int[] newarray = new int[orig.length];
 		for (int x = 0; x < orig.length; x++) {
@@ -482,8 +525,7 @@ public class ThreeColorHeatMap {
 		ArrayList<double[]> matrix = new ArrayList<double[]>();
 		int currentRow = 0;
 		if (input.getAbsoluteFile().toString().endsWith(".gz")) {
-			BufferedReader scan = new BufferedReader(
-					new InputStreamReader(new GZIPInputStream(new FileInputStream(input)), "UTF-8"));
+			BufferedReader scan = GZipUtilities.makeReader(input);
 			String line = scan.readLine();
 			while (line != null) {
 				String[] temp = line.split("\t");

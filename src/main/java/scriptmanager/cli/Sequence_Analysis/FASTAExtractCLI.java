@@ -7,20 +7,24 @@ import picocli.CommandLine.Parameters;
 import java.util.concurrent.Callable;
 import java.io.File;
 import java.io.IOException;
+import java.io.PrintStream;
 
 import scriptmanager.objects.ToolDescriptions;
 import scriptmanager.util.ExtensionFileFilter;
 import scriptmanager.scripts.Sequence_Analysis.FASTAExtract;
 
 /**
- * Command line interface class for extracting genomic sequences by calling a
- * script implemented in the scripts package.
+ * Command line interface for
+ * {@link scriptmanager.scripts.Sequence_Analysis.FASTAExtract}
  * 
  * @author Olivia Lang
- * @see scriptmanager.scripts.Sequence_Analysis.FASTAExtract
  */
-@Command(name = "fasta-extract", mixinStandardHelpOptions = true, description = ToolDescriptions.fasta_extract_description, version = "ScriptManager "
-		+ ToolDescriptions.VERSION, sortOptions = false, exitCodeOnInvalidInput = 1, exitCodeOnExecutionException = 1)
+@Command(name = "fasta-extract", mixinStandardHelpOptions = true,
+	description = ToolDescriptions.fasta_extract_description,
+	version = "ScriptManager " + ToolDescriptions.VERSION,
+	sortOptions = false,
+	exitCodeOnInvalidInput = 1,
+	exitCodeOnExecutionException = 1)
 public class FASTAExtractCLI implements Callable<Integer> {
 
 	@Parameters(index = "0", description = "reference genome FASTA file")
@@ -37,6 +41,10 @@ public class FASTAExtractCLI implements Callable<Integer> {
 	@Option(names = {"-z", "--gzip"}, description = "gzip output (default=false)")
 	private boolean gzOutput = false;
 
+	/**
+	 * Runs when this subcommand is called, running script in respective script package with user defined arguments
+	 * @throws IOException Invalid file or parameters
+	 */
 	@Override
 	public Integer call() throws Exception {
 		System.err.println(">FASTAExtractCLI.call()");
@@ -55,10 +63,10 @@ public class FASTAExtractCLI implements Callable<Integer> {
 	}
 
 	/**
-	 * Validate the input values before executing the script.
+	 * Validate the input values before executing the script
 	 * 
 	 * @return a multi-line string describing input validation issues
-	 * @throws IOException
+	 * @throws IOException Invalid file or parameters
 	 */
 	private String validateInput() throws IOException {
 		String r = "";
@@ -74,9 +82,8 @@ public class FASTAExtractCLI implements Callable<Integer> {
 		}
 		// set default output filename
 		if (output == null) {
-			String NAME = ExtensionFileFilter.stripExtension(bedFile) + ".fa";
-			NAME += gzOutput ? ".gz" : "";
-			output = new File(NAME);
+			output = new File(ExtensionFileFilter.stripExtension(bedFile) + ".fa"
+					+ (gzOutput ? ".gz" : ""));
 			// check output filename is valid
 		} else {
 			// check directory
@@ -88,5 +95,31 @@ public class FASTAExtractCLI implements Callable<Integer> {
 		}
 
 		return (r);
+	}
+
+	/**
+	 * Reconstruct CLI command
+	 * 
+	 * @param gen         the reference genome sequence in FASTA-format (FAI will be
+	 *                    automatically generated)
+	 * @param input       the BED-formatted coordinate intervals to extract sequence
+	 *                    from
+	 * @param output      the FASTA-formatted subsequences that were extracted from
+	 *                    the genomic sequence
+	 * @param forceStrand force strandedness (true = force, false = don't force)
+	 * @param header      the style of FASTA-header to use for the output (true =
+	 *                    BED coord name, false = use Genomic Coordinate)
+	 * @param gzOutput    If this is true, the output file will be gzipped.
+	 * @return command line to execute with formatted inputs
+	 */
+	public static String getCLIcommand(File gen, File input, File output, boolean forceStrand, boolean header, boolean gzOutput) {
+		String command = "java -jar $SCRIPTMANAGER sequence-analysis fasta-extract";
+		command += " " + gen.getAbsolutePath();
+		command += " " + input.getAbsolutePath();
+		command += " -o " + output.getAbsolutePath();
+		command += header ? " -c " : "";
+		command += forceStrand ? " -n " : "";
+		command += gzOutput ? " --gzip" : "";
+		return command;
 	}
 }

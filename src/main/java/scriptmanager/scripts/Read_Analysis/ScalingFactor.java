@@ -29,14 +29,13 @@ import scriptmanager.charts.ScalingPlotter;
 import scriptmanager.objects.CoordinateObjects.BEDCoord;
 
 /**
- * The script class for calculating various kinds of normalization factors from
- * a BAM file. Used to normalize for various kinds of analysis.
- * <br>
+ * Calculate various kinds of normalization factors from a BAM file. <br>
  * NCIS code adapted from Mahony Lab <a href=
  * "https://github.com/seqcode/seqcode-core">https://github.com/seqcode/seqcode-core</a>
  * <br>
  * NCIS algorithm from Liang &amp; Keles (BMC Bioinformatics 2012)
  * 
+ * @author William KM Lai
  * @see scriptmanager.cli.Read_Analysis.ScalingFactorCLI
  * @see scriptmanager.window_interface.Read_Analysis.ScalingFactorOutput
  * @see scriptmanager.window_interface.Read_Analysis.ScalingFactorWindow
@@ -46,7 +45,7 @@ public class ScalingFactor {
 	private File BAMFile = null;
 	private File BLACKLISTFile = null;
 	private File CONTROL = null;
-	private String OUTBASENAME = null;
+	private File OUT_BASENAME = null;
 	private boolean OUTPUTSTATUS = false;
 	private String FILEID = null;
 
@@ -70,39 +69,34 @@ public class ScalingFactor {
 
 	private String dialogMessage = null;
 
+	public static final short TOTAL_TAG = 1;
+	public static final short NCIS = 2;
+	public static final short NCIS_W_TOTAL_TAG = 3;
+
 	/**
 	 * Initialize scaling factor parameters in this constructor
 	 * 
-	 * @param bamFile
-	 *            the BAM file to calculate a scaling factor from
-	 * @param bl
-	 *            the BED formatted blacklist file for excluding specific
-	 *            regions from the calculation
-	 * @param c
-	 *            the control BAM file that is used by the NCIS strategy to
-	 *            determine background signal
-	 * @param out_basename
-	 *            the filepath base name (the script will append suffixes) for
-	 *            the output files
-	 * @param out
-	 *            whether or not to write the output (write =true, don't write =
-	 *            false)
-	 * @param scale
-	 *            an integer value encoding the scaling type strategy to use
-	 *            (1=Total Tag, 2=NCIS, 3=NCISwithTotal)
-	 * @param win
-	 *            the NCIS parameter for the window/bin size (only used if
-	 *            scale!=1)
-	 * @param min
-	 *            the NCIS parameter for the minimum fraction (only used if
-	 *            scale!=1)
+	 * @param bamFile      the BAM file to calculate a scaling factor from
+	 * @param bl           the BED formatted blacklist file for excluding specific
+	 *                     regions from the calculation
+	 * @param c            the control BAM file that is used by the NCIS strategy to
+	 *                     determine background signal
+	 * @param out_basename the filepath base name (the script will append suffixes)
+	 *                     for the output files
+	 * @param scale        an integer value encoding the scaling type strategy to
+	 *                     use (1=Total Tag, 2=NCIS, 3=NCISwithTotal)
+	 * @param win          the NCIS parameter for the window/bin size (only used if
+	 *                     scale!=1)
+	 * @param min          the NCIS parameter for the minimum fraction (only used if
+	 *                     scale!=1)
+	 * @param out          whether or not to write the output (write =true, don't
+	 *                     write = false)
 	 */
-	public ScalingFactor(File bamFile, File bl, File c, String out_basename, boolean out, int scale, int win,
-			double min) {
+	public ScalingFactor(File bamFile, File bl, File c, File out_basename, int scale, int win, double min, boolean out) {
 		BAMFile = bamFile;
 		BLACKLISTFile = bl;
 		CONTROL = c;
-		OUTBASENAME = out_basename;
+		OUT_BASENAME = out_basename;
 		OUTPUTSTATUS = out;
 		scaleType = scale;
 		windowSize = win;
@@ -113,7 +107,7 @@ public class ScalingFactor {
 	 * Execute to calculate and write/store a scaling factor with the currently
 	 * stored input values.
 	 * 
-	 * @throws IOException
+	 * @throws IOException Invalid file or parameters
 	 */
 	public void run() throws IOException {
 		// Load blacklist HashMap if blacklist file uploaded by user
@@ -122,7 +116,7 @@ public class ScalingFactor {
 		}
 
 		// Load up the Control File once per run
-		if (scaleType != 1) {
+		if (scaleType != TOTAL_TAG) {
 			System.err.println(getTimeStamp() + "\nLoading control genome array...");
 			initalizeGenomeMetainformation(CONTROL);
 			Cgenome = initializeList(CONTROL, false);
@@ -143,7 +137,7 @@ public class ScalingFactor {
 			}
 
 			SCALE = 1;
-			if (scaleType == 1) {
+			if (scaleType == TOTAL_TAG) {
 				initalizeGenomeMetainformation(BAMFile);
 				Sgenome = initializeList(BAMFile, true);
 				double genomeSize = 0;
@@ -165,13 +159,13 @@ public class ScalingFactor {
 					System.err.println("Control tags: " + CTagcount);
 					System.err.println("Bin count: " + Sgenome.size());
 
-					if (scaleType == 2) {
+					if (scaleType == NCIS) {
 						System.err.println("\nCalculating NCIS scaling ratio...");
-						SCALE = 1 / scalingRatioByNCIS(Sgenome, Cgenome, OUTBASENAME, FILEID, minFraction);
+						SCALE = 1 / scalingRatioByNCIS(Sgenome, Cgenome, OUT_BASENAME, FILEID, minFraction);
 						System.err.println("NCIS sample scaling ratio: " + SCALE);
-					} else if (scaleType == 3) {
+					} else if (scaleType == NCIS_W_TOTAL_TAG) {
 						System.err.println("\nCalculating Total tag NCIS scaling ratio...");
-						SCALE = 1 / scalingRatioByHitRatioAndNCIS(Sgenome, Cgenome, STagcount, CTagcount, OUTBASENAME,
+						SCALE = 1 / scalingRatioByHitRatioAndNCIS(Sgenome, Cgenome, STagcount, CTagcount, OUT_BASENAME,
 								FILEID, minFraction);
 						System.err.println("NCIS with Total Tag sample scaling ratio: " + SCALE);
 					}
@@ -182,15 +176,15 @@ public class ScalingFactor {
 
 			// Output scaling factor is user-specified
 			if (OUTPUTSTATUS) {
-				PrintStream OUT = new PrintStream(new File(OUTBASENAME + "_ScalingFactors.out"));
+				PrintStream OUT = new PrintStream(OUT_BASENAME + "_ScalingFactors.out");
 				OUT.println("Sample file:\t" + BAMFile.getCanonicalPath());
-				if (scaleType == 1) {
+				if (scaleType == TOTAL_TAG) {
 					OUT.println("Scaling type:\tTotalTag");
 				} else {
 					OUT.println("Control file:\t" + CONTROL);
-					if (scaleType == 2) {
+					if (scaleType == NCIS) {
 						OUT.println("Scaling type:\tNCIS");
-					} else if (scaleType == 3) {
+					} else if (scaleType == NCIS_W_TOTAL_TAG) {
 						OUT.println("Scaling type:\tTotalTag with NCIS");
 					}
 					OUT.println("Window size (bp):\t" + windowSize);
@@ -203,6 +197,12 @@ public class ScalingFactor {
 		}
 	}
 
+	/**
+	 * Creates a list of reads based on a BAM file, excluding blacklisted reads
+	 * @param BAM BAM file to be used
+	 * @param sample If the BAM file is a sample or a reference (true = sample, false = reference)
+	 * @return A list of tags
+	 */
 	public List<Float> initializeList(File BAM, boolean sample) {
 		List<Float> GENOME = new ArrayList<Float>();
 		SamReader inputBAM = SamReaderFactory.makeDefault().open(BAM);
@@ -256,6 +256,15 @@ public class ScalingFactor {
 		return GENOME;
 	}
 
+	/**
+	 * Sets blacklisted to NaN
+	 * 
+	 * @param chrom      Chromosome to be processed
+	 * @param chromSize  Length of the chromsome
+	 * @param windowSize The window/bin size
+	 * @return An array representing the chromosome, with blacklisted regions being
+	 *         represented as NaN and valid regions being zero
+	 */
 	public float[] maskChrom(String chrom, long chromSize, int windowSize) {
 		float[] chromArray = new float[(int) (chromSize / windowSize) + 1];
 		if (BLACKLIST.containsKey(chrom)) {
@@ -275,6 +284,12 @@ public class ScalingFactor {
 		return chromArray;
 	}
 
+	/**
+	 * Loads the blacklisted coordinates from a BED file
+	 * 
+	 * @param BLACKFile BED file with blacklisted coordinates
+	 * @throws FileNotFoundException Script could not find valid input file
+	 */
 	public void loadBlacklist(File BLACKFile) throws FileNotFoundException {
 		BLACKLIST = new HashMap<String, ArrayList<BEDCoord>>();
 		Scanner scan = new Scanner(BLACKFile);
@@ -312,6 +327,13 @@ public class ScalingFactor {
 //	    }
 	}
 
+	/**
+	 * Initialized chromName and cromLength variables, with the name and length of
+	 * each chromosome respectively
+	 * 
+	 * @param BAM File to be used for initialization
+	 * @throws IOException Invalid file or parameters
+	 */
 	public void initalizeGenomeMetainformation(File BAM) throws IOException {
 		SamReaderFactory factory = SamReaderFactory.makeDefault()
 				.enable(SamReaderFactory.Option.INCLUDE_SOURCE_IN_RECORDS,
@@ -330,6 +352,11 @@ public class ScalingFactor {
 		Sbai.close();
 	}
 
+	/**
+	 * Verifies that sample and control files match
+	 * @return Whether sample and control files are a valid pair
+	 * @throws IOException Invalid file or parameters
+	 */
 	public boolean verifyFiles() throws IOException {
 		SamReaderFactory factory = SamReaderFactory.makeDefault()
 				.enable(SamReaderFactory.Option.INCLUDE_SOURCE_IN_RECORDS,
@@ -380,7 +407,7 @@ public class ScalingFactor {
 	 * @param minFrac
 	 * @return
 	 */
-	public double scalingRatioByNCIS(List<Float> setA, List<Float> setB, String outpath, String fileid,
+	public double scalingRatioByNCIS(List<Float> setA, List<Float> setB, File outpath, String fileid,
 			double minFrac) {
 		double scalingRatio = 1;
 		double totalAtScaling = 0;
@@ -433,17 +460,18 @@ public class ScalingFactor {
 	 * windows in the Lists. Uses ratios that are based on at least 75% of genomic
 	 * regions by default.
 	 * 
-	 * @param setA       signal list
-	 * @param setB       control list
-	 * @param totalA
-	 * @param totalB
+	 * @param setA    signal list
+	 * @param setB    control list
+	 * @param totalA  Total number of A reads
+	 * @param totalB  Total number of B reads
 	 * @param outpath optional file that will contain the data
-	 * @param fileid
-	 * @param minFrac
+	 * @param fileid  Name of file to be used when titling plots
+	 * @param minFrac Minimum ratio of paired counts / num pairs for analysis to
+	 *                start
 	 * @return
 	 */
 	public double scalingRatioByHitRatioAndNCIS(List<Float> setA, List<Float> setB, double totalA, double totalB,
-			String outpath, String fileid, double minFrac) {
+			File outpath, String fileid, double minFrac) {
 		double scalingRatio = 1;
 		double totalAtScaling = 0;
 		if (setA.size() != setB.size()) {
@@ -504,6 +532,11 @@ public class ScalingFactor {
 	public static class PairedCounts implements Comparable<PairedCounts> {
 		public Double x, y;
 
+		/**
+		 * Creates a new PaireCounts object
+		 * @param a The value of X
+		 * @param b The value of Y
+		 */
 		public PairedCounts(double a, double b) {
 			x = a;
 			y = b;
@@ -542,7 +575,18 @@ public class ScalingFactor {
 
 	}
 
-	public void plotGraphs(List<PairedCounts> counts, double totalAtScaling, double scalingRatio, String outbase,
+	/**
+	 * Generates scatter plots, assigning them to CC_plot and M_plot respectively
+	 * 
+	 * @param counts         List of PairedCounts
+	 * @param totalAtScaling Draw a red line at the y-axis for this value
+	 * @param scalingRatio   Draw a red line at the x-axis for this value
+	 * @param outbase        Base name for output files
+	 * @param fileid         Name of file to be used when titling chart
+	 * @param scaletype      Type of scaling to use (1=Total Tag, 2=NCIS,
+	 *                       3=NCISwithTotal)
+	 */
+	public void plotGraphs(List<PairedCounts> counts, double totalAtScaling, double scalingRatio, File outbase,
 			String fileid, String scaletype) {
 		// Scaling plot generation
 		// Cumulative ratio vs bin total
@@ -586,12 +630,12 @@ public class ScalingFactor {
 		if (OUTPUTSTATUS) {
 			// Print data points to files
 			try {
-				FileWriter Cfout = new FileWriter(outbase + "." + scaletype + "_scaling-ccr.count");
+				FileWriter Cfout = new FileWriter(outbase.getAbsolutePath() + "." + scaletype + "_scaling-ccr.count");
 				for (int d = 0; d < bintotals.size(); d++) {
 					Cfout.write(bintotals.get(d) + "\t" + ratios.get(d) + "\n");
 				}
 				Cfout.close();
-				FileWriter Mfout = new FileWriter(outbase + "." + scaletype + "_scaling-marginal.count");
+				FileWriter Mfout = new FileWriter(outbase.getAbsolutePath() + "." + scaletype + "_scaling-marginal.count");
 				for (int d = 0; d < bintot.size(); d++) {
 					Mfout.write(bintot.get(d) + "\t" + mratios.get(d) + "\n");
 				}
@@ -602,18 +646,38 @@ public class ScalingFactor {
 		}
 	}
 
+	/**
+	 * Returns the cumulative plot
+	 * 
+	 * @return
+	 */
 	public ChartPanel getCCPlot() {
 		return (CC_plot);
 	}
 
+	/**
+	 * Returns the marginal plot
+	 * 
+	 * @return The marginal plot
+	 */
 	public ChartPanel getMPlot() {
 		return (M_plot);
 	}
 
+	/**
+	 * Returns the scaling factor
+	 * 
+	 * @return The scaling factor
+	 */
 	public double getScalingFactor() {
 		return (SCALE);
 	}
 
+	/**
+	 * Returns the lastest error message
+	 * 
+	 * @return the lastest error message
+	 */
 	public String getDialogMessage() {
 		return (dialogMessage);
 	}

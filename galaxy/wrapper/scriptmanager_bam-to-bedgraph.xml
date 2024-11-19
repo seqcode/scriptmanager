@@ -1,0 +1,92 @@
+<tool id="scriptmanager_bam-to-bedgraph" name="ScriptManager: Convert BAM to bedGraph" version="0.1.0" profile="22.01" >
+    <description> Convert BAM file to bedGraph file </description>
+    <macros>
+        <import>scriptmanager_macros.xml</import>
+    </macros>
+    <requirements>
+        <expand macro="requirement_openjdk" />
+        <expand macro="requirement_samtools" />
+    </requirements>
+    <command detect_errors="exit_code"><![CDATA[
+        ln -s '$input' bamfile.bam &&
+        #if $input.is_of_type('bam'):
+            #if str( $input.metadata.bam_index ) != "None":
+                ln -s '${input.metadata.bam_index}' localbam.bam.bai &&
+            #else:
+                samtools index localbam.bam localbam.bam.bai &&
+            #end if
+        #end if
+        #if str($gzip) == "Yes" :
+            ln -s '$output_forward' output_forward.bedgraph.gz &&
+            ln -s '$output_reverse' output_reverse.bedgraph.gz &&
+        #else:
+            ln -s '${output_forward}' output_forward.bedgraph &&
+            ln -s '${output_reverse}' output_reverse.bedgraph &&
+        #end if
+
+        java -jar $__tool_directory__/@JAR_FILENAME@ bam-format-converter bam-to-bedgraph
+
+        #if str($gzip) == "Yes" :
+            --gzip
+        #end if
+        #if str($read) == "read_1" :
+            -1
+        #else if str($read) == "read_2" :
+            -2
+        #else if str($read) == "combined" :
+            -a
+        #else if str($read) == "midpoint" :
+            -m
+        #end if
+        #if str($require_paired_end.mate_pair) == "Yes" :
+            -p
+            #if str($require_paired_end.filter_by_min.filter_min) == "Yes" :
+                -n "$require_paired_end.filter_by_min.min_insert"
+            #end if
+            #if str($require_paired_end.filter_by_max.filter_max) == "Yes" :
+                -x "$require_paired_end.filter_by_max.max_insert"
+            #end if
+        #end if
+        -o output
+        bamfile.bam
+    ]]></command>
+    <inputs>
+        <param type="data" name="input" format="bam" label="Input BAM file"/>
+        <param type="select" name="read" label="Select which read to output">
+            <option value="read_1" selected="True" >Read 1</option>
+            <option value="read_2" >Read 2</option>
+            <option value="combined" >Combined </option>
+            <option value="midpoint" >Midpoint (Require PE) </option>
+        </param>
+        <conditional name="require_paired_end">
+            <param type="boolean" name="mate_pair" truevalue="Yes" falsevalue="No" label="Require proper mate-pair" />
+            <when value="Yes">
+              <conditional name="filter_by_min">
+                  <param type="boolean" name="filter_min" truevalue="Yes" falsevalue="No" label="Filter by min insert size (bp)" />
+                  <when value="Yes">
+                      <param type="integer" name="min_insert" value="0" label="Min insert size (bp)" />
+                  </when>
+                  <when value="No" />
+              </conditional>
+              <conditional name="filter_by_max">
+                  <param type="boolean" name="filter_max" truevalue="Yes" falsevalue="No" label="Filter by max insert size (bp)" />
+                  <when value="Yes">
+                      <param type="integer" name="max_insert" value="1000" label="Max insert size (bp)" />
+                  </when>
+                  <when value="No" />
+              </conditional>
+            </when>
+        </conditional>
+        <param name="gzip" type="boolean" checked="true" truevalue="Yes" falsevalue="No" label="Gzip output" />
+    </inputs>
+    <outputs>
+        <data name="output_forward" format="bedgraph" label="${tool.name} (forward) on ${on_string}"></data>
+        <data name="output_reverse" format="bedgraph" label="${tool.name} (reverse) on ${on_string}"></data>
+    </outputs>
+    <help>
+**What it does**
+
+Convert BAM file to bedGraph file.
+    </help>
+    <expand macro="citations_pearc" />
+</tool>

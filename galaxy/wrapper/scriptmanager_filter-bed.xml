@@ -1,0 +1,52 @@
+<tool id="scriptmanager_filter-bed" name="ScriptManager: Filter Bed"
+    version="0.1.0+galaxy0" python_template_version="3.5" profile="21.05">
+    <description> Filter BED by Proximity </description>
+    <macros>
+        <import>scriptmanager_macros.xml</import>
+    </macros>
+    <requirements>
+        <expand macro="requirement_openjdk" />
+    </requirements>
+    <command detect_errors="exit_code"><![CDATA[
+        ln -s "$input" "temp_input.bed" &&
+        
+        java -jar $__tool_directory__/@JAR_FILENAME@ peak-analysis filter-bed
+        
+        #if str($output_file_name.bool) == "Yes" :
+            -o "$output_file_name.file_name"
+        #end if
+
+        #if str($exclusion) != "100" :
+            -e "$exclusion"
+        #end if
+        
+        "temp_input.bed"
+    ]]></command>
+    <inputs>
+        <param type="data" name="input" format="bed" label="Input BED File"/>
+
+        <conditional name="output_file_name">
+        <param type="boolean" name="bool" truevalue="Yes" falsevalue="No" label="Output File Name" >
+        </param>
+            <when value="Yes">
+                <param type="text" name="file_name" value="" label="File Name" />
+            </when>
+            <when value="No">
+            </when>
+        </conditional>
+        
+        <param type="integer" name="exclusion" value="100" label="Exclusion distance" />
+    </inputs>
+            
+    <outputs>
+        <data name="output" format="bed" label="${tool.name} on ${on_string}"/>
+    </outputs>
+    <help>
+        
+    **What it does**
+    Filter BED file using user-specified exclusion zone using the score column to
+    determine which peak to retain.
+
+    
+    </help>
+</tool>

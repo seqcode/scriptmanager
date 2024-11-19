@@ -9,6 +9,8 @@ import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.io.File;
 import java.io.IOException;
+import java.sql.Timestamp;
+import java.util.Date;
 import java.util.Vector;
 
 import javax.swing.DefaultListModel;
@@ -25,18 +27,26 @@ import javax.swing.SpringLayout;
 import javax.swing.SwingWorker;
 import javax.swing.border.EmptyBorder;
 
+import scriptmanager.cli.File_Utilities.CompressFileCLI;
+import scriptmanager.objects.LogItem;
+import scriptmanager.objects.ToolDescriptions;
 import scriptmanager.util.FileSelection;
+
 import scriptmanager.scripts.File_Utilities.GZipFiles;
 
 /**
- * Graphical interface window for calling static gzip compressing method implemented in the scripts package.
+ * GUI for collecting inputs to be processed by
+ * {@link scriptmanager.scripts.File_Utilities.GZipFiles}
  * 
  * @author Olivia Lang
- *
+ * @see scriptmanager.scripts.File_Utilities.GZipFiles
  */
 @SuppressWarnings("serial")
 public class CompressFileWindow extends JFrame implements ActionListener, PropertyChangeListener {
 	private JPanel contentPane;
+	/**
+	 * FileChooser which opens to user's directory
+	 */
 	protected JFileChooser fc = new JFileChooser(new File(System.getProperty("user.dir")));	
 
 	final DefaultListModel<String> expList;
@@ -47,19 +57,47 @@ public class CompressFileWindow extends JFrame implements ActionListener, Proper
 	private JButton btnCompress;
 
 	private JProgressBar progressBar;
+	/**
+	 * Used to run the script efficiently
+	 */
 	public Task task;
 
+	/**
+	 * Organizes user inputs for calling script
+	 */
 	class Task extends SwingWorker<Void, Void> {
 		@Override
-		public Void doInBackground() throws IOException {
-			setProgress(0);
-			for(int x = 0; x < GeneralFiles.size(); x++) {
-				GZipFiles.compressFile(GeneralFiles.get(x), 8192);
-				int percentComplete = (int)(((double)(x + 1) / GeneralFiles.size()) * 100);
-				setProgress(percentComplete);
+		public Void doInBackground() {
+			try {
+				setProgress(0);
+				LogItem old_li = null;
+				for(int x = 0; x < GeneralFiles.size(); x++) {
+					// Initialize LogItem
+					String command = CompressFileCLI.getCLIcommand(GeneralFiles.get(x));
+					LogItem new_li = new LogItem(command);
+					firePropertyChange("log", old_li, new_li);
+					// Execute script
+					GZipFiles.compressFile(GeneralFiles.get(x), 8192);
+					// Update log item
+					new_li.setStopTime(new Timestamp(new Date().getTime()));
+					new_li.setStatus(0);
+					old_li = new_li;
+					// Update progress
+					int percentComplete = (int)(((double)(x + 1) / GeneralFiles.size()) * 100);
+					setProgress(percentComplete);
+				}
+				// Update log at completion
+				firePropertyChange("log", old_li, null);
+				setProgress(100);
+				JOptionPane.showMessageDialog(null, "Compressing Complete");
+			} catch (IOException ioe) {
+				ioe.printStackTrace();
+				JOptionPane.showMessageDialog(null, "I/O issues: " + ioe.getMessage());
+			} catch (Exception e) {
+				e.printStackTrace();
+				JOptionPane.showMessageDialog(null, ToolDescriptions.UNEXPECTED_EXCEPTION_MESSAGE + e.getMessage());
 			}
 			setProgress(100);
-			JOptionPane.showMessageDialog(null, "Compressing Complete");
 			return null;
 		}
 
@@ -140,6 +178,9 @@ public class CompressFileWindow extends JFrame implements ActionListener, Proper
 		btnCompress.addActionListener(this);
 	}
 
+	/**
+	 * Runs when a task is invoked, making window non-interactive and executing the task.
+	 */
 	@Override
 	public void actionPerformed(ActionEvent arg0) {
 		massXable(contentPane, false);
@@ -153,13 +194,21 @@ public class CompressFileWindow extends JFrame implements ActionListener, Proper
 	/**
 	 * Invoked when task's progress property changes.
 	 */
+	@Override
 	public void propertyChange(PropertyChangeEvent evt) {
 		if ("progress" == evt.getPropertyName()) {
 			int progress = (Integer) evt.getNewValue();
 			progressBar.setValue(progress);
+		} else if ("log" == evt.getPropertyName()) {
+			firePropertyChange("log", evt.getOldValue(), evt.getNewValue());
 		}
 	}
 
+	/**
+	 * Makes the content pane non-interactive If the window should be interactive data
+	 * @param con Content pane to make non-interactive
+	 * @param status If the window should be interactive
+	 */
 	public void massXable(Container con, boolean status) {
 		for(Component c : con.getComponents()) {
 			c.setEnabled(status);

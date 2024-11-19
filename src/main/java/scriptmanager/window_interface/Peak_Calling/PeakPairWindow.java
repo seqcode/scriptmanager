@@ -12,6 +12,8 @@ import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.io.File;
 import java.io.IOException;
+import java.sql.Timestamp;
+import java.util.Date;
 import java.util.Vector;
 
 import javax.swing.ButtonGroup;
@@ -35,11 +37,25 @@ import javax.swing.SwingWorker;
 import javax.swing.border.EmptyBorder;
 
 import scriptmanager.util.FileSelection;
+import scriptmanager.objects.LogItem;
+import scriptmanager.objects.ToolDescriptions;
+
+import scriptmanager.cli.Peak_Calling.PeakPairCLI;
 import scriptmanager.scripts.Peak_Calling.PeakPair;
 
+/**
+ * (Dev) Unfinished GUI for collecting inputs to be processed by
+ * {@link scriptmanager.scripts.Peak_Calling.PeakPair}
+ * 
+ * @author William KM Lai
+ * @see scriptmanager.scripts.Peak_Calling.PeakPair
+ */
 @SuppressWarnings("serial")
 public class PeakPairWindow extends JFrame implements ActionListener, PropertyChangeListener {
 	private JPanel contentPane;
+	/**
+	 * FileChooser which opens to user's directory
+	 */
 	protected JFileChooser fc = new JFileChooser(new File(System.getProperty("user.dir")));	
 	
 	final DefaultListModel<String> expList;
@@ -50,6 +66,9 @@ public class PeakPairWindow extends JFrame implements ActionListener, PropertyCh
 	private JButton btnPeak;
 
 	private JProgressBar progressBar;
+	/**
+	 * Used to run the script efficiently
+	 */
 	public Task task;
 	
 	private JRadioButton rdbtnMode;
@@ -72,9 +91,12 @@ public class PeakPairWindow extends JFrame implements ActionListener, PropertyCh
 	private JComboBox<String> cmboScore;
 	private JLabel lblScore;
 	
+	/**
+	 * Organizes user inputs for calling script
+	 */
 	class Task extends SwingWorker<Void, Void> {
         @Override
-        public Void doInBackground() throws IOException {
+        public Void doInBackground() {
         	try {
 				if(Integer.parseInt(txtUp.getText()) < 0) {
 					JOptionPane.showMessageDialog(null, "Invalid Upstream Distance!!!");
@@ -102,20 +124,38 @@ public class PeakPairWindow extends JFrame implements ActionListener, PropertyCh
 					if(rdbtnAbsoluteThreshold.isSelected()) ABS = Integer.parseInt(txtAbs.getText());
 					if(rdbtnRelativeThreshold.isSelected()) REL = Integer.parseInt(txtRel.getText());
 					
-		        	setProgress(0);
-		        	for(int x = 0; x < BAMFiles.size(); x++) { 
+					setProgress(0);
+					LogItem old_li = null;
+					for(int x = 0; x < BAMFiles.size(); x++) {
+						// Initialize LogItem
+						String command = PeakPairCLI.getCLIcommand(BAMFiles.get(x), MODE, UP, DOWN, BIN, ABS, REL);
+						LogItem new_li = new LogItem(command);
+						firePropertyChange("log", old_li, new_li);
+						// Execute script
 		        		PeakPair peak = new PeakPair(BAMFiles.get(x), MODE, UP, DOWN, BIN, ABS, REL);
 		        		peak.setVisible(true);
 		        		peak.run();
-
+						// Update LogItem
+						new_li.setStopTime(new Timestamp(new Date().getTime()));
+						new_li.setStatus(0);
+						old_li = new_li;
+						// Update progress
 		        		int percentComplete = (int)(((double)(x + 1) / BAMFiles.size()) * 100);
 		        		setProgress(percentComplete);
 		        	}
-		        	setProgress(100);
+					// final update
+					firePropertyChange("log", old_li, null);
+					setProgress(100);
 				}
 			} catch(NumberFormatException nfe){
 				JOptionPane.showMessageDialog(null, "Invalid Input in Fields!!!");
-			}	
+			} catch (IOException ioe) {
+				ioe.printStackTrace();
+				JOptionPane.showMessageDialog(null, "I/O issues: " + ioe.getMessage());
+			} catch (Exception e) {
+				e.printStackTrace();
+				JOptionPane.showMessageDialog(null, ToolDescriptions.UNEXPECTED_EXCEPTION_MESSAGE + e.getMessage());
+			}
         	return null;
         }
         
@@ -368,6 +408,9 @@ public class PeakPairWindow extends JFrame implements ActionListener, PropertyCh
         btnPeak.addActionListener(this);
 	}
 	
+	/**
+	 * Runs when a task is invoked, making window non-interactive and executing the task.
+	 */
 	@Override
 	public void actionPerformed(ActionEvent arg0) {
 		massXable(contentPane, false);
@@ -379,15 +422,23 @@ public class PeakPairWindow extends JFrame implements ActionListener, PropertyCh
 	}
 	
 	/**
-     * Invoked when task's progress property changes.
-     */
-    public void propertyChange(PropertyChangeEvent evt) {
-        if ("progress" == evt.getPropertyName()) {
-            int progress = (Integer) evt.getNewValue();
-            progressBar.setValue(progress);
-        }
-    }
-	
+	 * Invoked when task's progress property changes.
+	 */
+	@Override
+	public void propertyChange(PropertyChangeEvent evt) {
+		if ("progress" == evt.getPropertyName()) {
+			int progress = (Integer) evt.getNewValue();
+			progressBar.setValue(progress);
+		} else if ("log" == evt.getPropertyName()) {
+			firePropertyChange("log", evt.getOldValue(), evt.getNewValue());
+		}
+	}
+
+	/**
+	 * Makes the content pane non-interactive If the window should be interactive data
+	 * @param con Content pane to make non-interactive
+	 * @param status If the window should be interactive
+	 */
 	public void massXable(Container con, boolean status) {
 		for(Component c : con.getComponents()) {
 			c.setEnabled(status);

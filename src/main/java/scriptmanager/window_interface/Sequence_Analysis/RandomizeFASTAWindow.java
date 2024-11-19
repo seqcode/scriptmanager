@@ -13,7 +13,9 @@ import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.io.File;
 import java.io.IOException;
+import java.sql.Timestamp;
 import java.util.ArrayList;
+import java.util.Date;
 
 import javax.swing.DefaultListModel;
 import javax.swing.JButton;
@@ -35,11 +37,14 @@ import javax.swing.border.EmptyBorder;
 
 import scriptmanager.util.FileSelection;
 import scriptmanager.util.ExtensionFileFilter;
+import scriptmanager.cli.Sequence_Analysis.RandomizeFASTACLI;
+import scriptmanager.objects.LogItem;
+import scriptmanager.objects.ToolDescriptions;
 import scriptmanager.scripts.Sequence_Analysis.RandomizeFASTA;
 
 /**
- * Graphical interface window for randomizing sequences (shuffling nucleotides)
- * in a FASTA file by calling the methods implemented in the scripts package.
+ * GUI for collecting inputs to be processed by
+ * {@link scriptmanager.scripts.Sequence_Analysis.RandomizeFASTA}
  * 
  * @author William KM Lai
  * @see scriptmanager.scripts.Sequence_Analysis.RandomizeFASTA
@@ -47,6 +52,9 @@ import scriptmanager.scripts.Sequence_Analysis.RandomizeFASTA;
 @SuppressWarnings("serial")
 public class RandomizeFASTAWindow extends JFrame implements ActionListener, PropertyChangeListener {
 	private JPanel contentPane;
+	/**
+	 * FileChooser which opens to user's directory
+	 */
 	protected JFileChooser fc = new JFileChooser(new File(System.getProperty("user.dir")));
 
 	final DefaultListModel<String> expList;
@@ -57,6 +65,7 @@ public class RandomizeFASTAWindow extends JFrame implements ActionListener, Prop
 	private JButton btnRemoveBam;
 	private JButton btnCalculate;
 	private JButton btnOutput;
+	private JCheckBox chckbxGzipOutput;
 	private JCheckBox chckbxSetSeed;
 	
 	private JLabel lblDefaultToLocal;
@@ -64,43 +73,65 @@ public class RandomizeFASTAWindow extends JFrame implements ActionListener, Prop
 	private JProgressBar progressBar;
 	private JTextField txtSeed;
 
+	/**
+	 * Used to run the script efficiently
+	 */
 	public Task task;
 
 	/**
-	 * Organize user inputs for calling script.
+	 * Organizes user inputs for calling script
 	 */
 	class Task extends SwingWorker<Void, Void> {
 		@Override
-		public Void doInBackground() throws IOException, InterruptedException {
-			if (FASTAFiles.size() < 1) {
-				JOptionPane.showMessageDialog(null, "No FASTA Files Loaded!!!");
-			} else {
-				setProgress(0);
+		public Void doInBackground() {
+			try {
+				if (FASTAFiles.size() < 1) {
+					JOptionPane.showMessageDialog(null, "No FASTA Files Loaded!!!");
+				} else {
+					setProgress(0);
+					LogItem old_li = null;
+					for (int x = 0; x < FASTAFiles.size(); x++) {
 
-				try {
-				for (int x = 0; x < FASTAFiles.size(); x++) {
-					String OUTPUT = ExtensionFileFilter.stripExtension(FASTAFiles.get(x)) + "_RAND.fa";
-					Integer SEED = null;
-					if(chckbxSetSeed.isSelected()) {
-						SEED = Integer.valueOf(txtSeed.getText());
-						OUTPUT = ExtensionFileFilter.stripExtension(FASTAFiles.get(x)) + "_s" + SEED + "_RAND.fa";
+						String OUTPUT = ExtensionFileFilter.stripExtensionIgnoreGZ(FASTAFiles.get(x)) + "_RAND.fa";
+						Integer SEED = null;
+						if(chckbxSetSeed.isSelected()) {
+							SEED = Integer.valueOf(txtSeed.getText());
+							OUTPUT = ExtensionFileFilter.stripExtensionIgnoreGZ(FASTAFiles.get(x)) + "_s" + SEED + "_RAND.fa";
+						}
+						OUTPUT += chckbxGzipOutput.isSelected() ? ".gz" : "";
+						if (OUT_DIR != null) {
+							OUTPUT = OUT_DIR + File.separator + OUTPUT;
+						}
+						// Initialize LogItem
+						String command = RandomizeFASTACLI.getCLIcommand(FASTAFiles.get(x), new File(OUTPUT), SEED);
+						LogItem new_li = new LogItem(command);
+						firePropertyChange("log", old_li, new_li);
+
+						// Execute script
+						RandomizeFASTA.randomizeFASTA(FASTAFiles.get(x), new File(OUTPUT), SEED, chckbxGzipOutput.isSelected());
+						// Update LogItem
+						new_li.setStopTime(new Timestamp(new Date().getTime()));
+						new_li.setStatus(0);
+						old_li = new_li;
+						firePropertyChange("log", old_li, null);
+
+						// Update progress
+						int percentComplete = (int) (((double) (x + 1) / FASTAFiles.size()) * 100);
+						setProgress(percentComplete);
 					}
-
-					if (OUT_DIR != null) {
-						OUTPUT = OUT_DIR + File.separator + OUTPUT;
-					}
-
-					RandomizeFASTA.randomizeFASTA(FASTAFiles.get(x), new File(OUTPUT), SEED);
-
-					int percentComplete = (int) (((double) (x + 1) / FASTAFiles.size()) * 100);
-					setProgress(percentComplete);
+					setProgress(100);
+					JOptionPane.showMessageDialog(null, "Randomization Complete");
 				}
-				setProgress(100);
-				JOptionPane.showMessageDialog(null, "Randomization Complete");
-				} catch (NumberFormatException nfe) {
-					JOptionPane.showMessageDialog(null, "Invalid Seed!!!");
-				}
+			} catch (NumberFormatException nfe) {
+				JOptionPane.showMessageDialog(null, "Invalid Seed!!!");
+			} catch (IOException ioe) {
+				ioe.printStackTrace();
+				JOptionPane.showMessageDialog(null, "I/O issues: " + ioe.getMessage());
+			} catch (Exception e) {
+				e.printStackTrace();
+				JOptionPane.showMessageDialog(null, ToolDescriptions.UNEXPECTED_EXCEPTION_MESSAGE + e.getMessage());
 			}
+			setProgress(100);
 			return null;
 		}
 
@@ -140,7 +171,7 @@ public class RandomizeFASTAWindow extends JFrame implements ActionListener, Prop
 		sl_contentPane.putConstraint(SpringLayout.WEST, btnLoad, 10, SpringLayout.WEST, contentPane);
 		btnLoad.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
-				File[] newFASTAFiles = FileSelection.getFiles(fc, "fa");
+				File[] newFASTAFiles = FileSelection.getFiles(fc, "fa", true);
 				if (newFASTAFiles != null) {
 					for (int x = 0; x < newFASTAFiles.length; x++) {
 						FASTAFiles.add(newFASTAFiles[x]);
@@ -168,6 +199,11 @@ public class RandomizeFASTAWindow extends JFrame implements ActionListener, Prop
 		sl_contentPane.putConstraint(SpringLayout.WEST, btnCalculate, 163, SpringLayout.WEST, contentPane);
 		sl_contentPane.putConstraint(SpringLayout.EAST, btnCalculate, -167, SpringLayout.EAST, contentPane);
 		contentPane.add(btnCalculate);
+
+		chckbxGzipOutput = new JCheckBox("Output GZip");
+		sl_contentPane.putConstraint(SpringLayout.NORTH, chckbxGzipOutput, 0, SpringLayout.NORTH, btnCalculate);
+		sl_contentPane.putConstraint(SpringLayout.WEST, chckbxGzipOutput, 30, SpringLayout.WEST, contentPane);
+		contentPane.add(chckbxGzipOutput);
 
 		progressBar = new JProgressBar();
 		sl_contentPane.putConstraint(SpringLayout.NORTH, progressBar, 3, SpringLayout.NORTH, btnCalculate);
@@ -235,6 +271,9 @@ public class RandomizeFASTAWindow extends JFrame implements ActionListener, Prop
 		txtSeed.setColumns(10);
 	}
 
+	/**
+	 * Runs when a task is invoked, making window non-interactive and executing the task.
+	 */
 	@Override
 	public void actionPerformed(ActionEvent arg0) {
 		massXable(contentPane, false);
@@ -248,13 +287,21 @@ public class RandomizeFASTAWindow extends JFrame implements ActionListener, Prop
 	/**
 	 * Invoked when task's progress property changes.
 	 */
+	@Override
 	public void propertyChange(PropertyChangeEvent evt) {
 		if ("progress" == evt.getPropertyName()) {
 			int progress = (Integer) evt.getNewValue();
 			progressBar.setValue(progress);
+		} else if ("log" == evt.getPropertyName()) {
+			firePropertyChange("log", evt.getOldValue(), evt.getNewValue());
 		}
 	}
 
+	/**
+	 * Makes the content pane non-interactive If the window should be interactive data
+	 * @param con Content pane to make non-interactive
+	 * @param status If the window should be interactive
+	 */
 	public void massXable(Container con, boolean status) {
 		for (Component c : con.getComponents()) {
 			c.setEnabled(status);

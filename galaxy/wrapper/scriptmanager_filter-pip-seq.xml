@@ -1,0 +1,65 @@
+<tool id="scriptmanager_filter-pip-seq" name="ScriptManager: Filter Pip Seq"
+    version="0.1.0+galaxy0" python_template_version="3.5" profile="21.05">
+    <description> Filter Pip Seq </description>
+    <macros>
+        <import>scriptmanager_macros.xml</import>
+    </macros>
+    <requirements>
+        <expand macro="requirement_openjdk" />
+        <expand macro="requirement_samtools" />
+    </requirements>
+    <command detect_errors="exit_code"><![CDATA[
+        ln -s "$input1" "temp_input1.fasta" &&
+        ln -s "$input2" "temp_input2.bam" &&
+        
+        samtools faidx "temp_input1.fasta" &&
+        samtools index "temp_input2.bam" &&
+        
+        java -jar $__tool_directory__/@JAR_FILENAME@ bam-manipulation filter-pip-seq
+
+        #if str($output_file_name.bool) == "Yes" :
+            -o "$output_file_name.file_name"
+        #end if
+        
+        #if str($nucleotide) != "T" :
+            -f "$nucleotide"
+        #end if
+        
+        "temp_input1.fasta"
+        "temp_input2.bam"
+    ]]></command>
+    <inputs>
+        <param type="data" name="input1" format="fasta" label="Input FASTA File"/>
+
+        <param type="data" name="input2" format="bam" label="Input BAM File"/>
+        
+        <conditional name="output_file_name">
+        <param type="boolean" name="bool" truevalue="Yes" falsevalue="No" label="Output File Name" >
+        </param>
+            <when value="Yes">
+                <param type="text" name="file_name" value="" label="File Name" />
+            </when>
+            <when value="No">
+            </when>
+        </conditional>
+        
+        <param type="select" name="nucleotide" label="Filter Nucleotide">
+            <option value="T" selected="True" >T</option>
+            <option value="A" >A</option>
+            <option value="C" >C</option>
+            <option value="G" >G</option>
+        </param>
+    </inputs>
+            
+    <outputs>
+        <data name="output" format="bam" label="${tool.name} on ${on_string}"/>
+    </outputs>
+    <help>
+        
+    **What it does**
+    Filter BAM file by -1 nucleotide. Requires genome FASTA file.
+    Note this program does not index the resulting BAM file and user must use
+    appropriate samtools command to generate BAI.
+    
+    </help>
+</tool>

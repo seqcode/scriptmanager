@@ -1,1674 +1,345 @@
 package scriptmanager.main;
 
-import java.awt.*;
+import java.awt.EventQueue;
+import java.awt.FlowLayout;
+import java.awt.GridBagConstraints;
+import java.awt.GridBagLayout;
+import java.awt.Insets;
 import java.awt.event.ActionListener;
+import java.beans.PropertyChangeEvent;
+import java.beans.PropertyChangeListener;
 import java.awt.event.ActionEvent;
-import java.util.logging.Filter;
 
-import javax.swing.*;
+import javax.swing.JFrame;
+import javax.swing.BoxLayout;
+import javax.swing.JButton;
+import javax.swing.SpringLayout;
+import javax.swing.UIManager;
+import javax.swing.JTabbedPane;
+import javax.swing.JPanel;
+import javax.swing.JScrollPane;
+import javax.swing.JSplitPane;
+import javax.swing.JTextArea;
+import javax.swing.ScrollPaneConstants;
 
 import scriptmanager.objects.ToolDescriptions;
+import scriptmanager.objects.LogItem;
 
-import scriptmanager.window_interface.BAM_Format_Converter.*;
-import scriptmanager.window_interface.BAM_Manipulation.*;
-import scriptmanager.window_interface.BAM_Statistics.CollectBaseDistributionByCycleWindow;
-import scriptmanager.window_interface.BAM_Statistics.PEStatWindow;
-import scriptmanager.window_interface.BAM_Statistics.SEStatWindow;
-import scriptmanager.window_interface.BAM_Statistics.BAMGenomeCorrelationWindow;
-import scriptmanager.window_interface.Peak_Analysis.BEDPeakAligntoRefWindow;
-import scriptmanager.window_interface.Peak_Analysis.FilterBEDbyProximityWindow;
-import scriptmanager.window_interface.Peak_Analysis.RandomCoordinateWindow;
-import scriptmanager.window_interface.Peak_Analysis.SignalDuplicationWindow;
-import scriptmanager.window_interface.Peak_Analysis.TileGenomeWindow;
-import scriptmanager.window_interface.Peak_Calling.GeneTrackWindow;
-import scriptmanager.window_interface.Peak_Calling.PeakPairWindow;
-import scriptmanager.window_interface.Coordinate_Manipulation.BED_Manipulation.BEDtoGFFWindow;
-import scriptmanager.window_interface.Coordinate_Manipulation.BED_Manipulation.ExpandBEDWindow;
-import scriptmanager.window_interface.Coordinate_Manipulation.BED_Manipulation.SortBEDWindow;
-import scriptmanager.window_interface.Coordinate_Manipulation.GFF_Manipulation.ExpandGFFWindow;
-import scriptmanager.window_interface.Coordinate_Manipulation.GFF_Manipulation.GFFtoBEDWindow;
-import scriptmanager.window_interface.Coordinate_Manipulation.GFF_Manipulation.SortGFFWindow;
-import scriptmanager.window_interface.Coordinate_Manipulation.ShiftIntervalWindow;
-import scriptmanager.window_interface.File_Utilities.MD5ChecksumWindow;
-import scriptmanager.window_interface.File_Utilities.ConvertBEDChrNamesWindow;
-import scriptmanager.window_interface.File_Utilities.ConvertGFFChrNamesWindow;
-import scriptmanager.window_interface.File_Utilities.CompressFileWindow;
-import scriptmanager.window_interface.File_Utilities.DecompressGZFileWindow;
-import scriptmanager.window_interface.Read_Analysis.AggregateDataWindow;
-import scriptmanager.window_interface.Read_Analysis.ScaleMatrixWindow;
-import scriptmanager.window_interface.Read_Analysis.ScalingFactorWindow;
-import scriptmanager.window_interface.Read_Analysis.TagPileupWindow;
-import scriptmanager.window_interface.Sequence_Analysis.DNAShapefromBEDWindow;
-import scriptmanager.window_interface.Sequence_Analysis.DNAShapefromFASTAWindow;
-import scriptmanager.window_interface.Sequence_Analysis.FASTAExtractWindow;
-import scriptmanager.window_interface.Sequence_Analysis.RandomizeFASTAWindow;
-import scriptmanager.window_interface.Sequence_Analysis.SearchMotifWindow;
-import scriptmanager.window_interface.Figure_Generation.FourColorSequenceWindow;
-import scriptmanager.window_interface.Figure_Generation.TwoColorHeatMapWindow;
-import scriptmanager.window_interface.Figure_Generation.ThreeColorHeatMapWindow;
-import scriptmanager.window_interface.Figure_Generation.MergeHeatMapWindow;
-import scriptmanager.window_interface.Figure_Generation.PlotCompositeWindow;
-import scriptmanager.window_interface.Figure_Generation.LabelHeatMapWindow;
-
+/**
+ * Main GUI object that manages main window design for spinning out the GUI for
+ * each tool and the logging manager window. Instantiated by
+ * scriptmanager.main.ScriptManager.
+ *
+ * @author William KM Lai
+ * @see scriptmanager.main.ScriptManager
+ */
 public class ScriptManagerGUI {
 	private JFrame frmScriptManager;
+	private static LogManagerWindow logs;
+
+	private final int FRAME_WIDTH = 600;
+	private final int FRAME_HEIGHT = 380;
 
 	/**
 	 * Initialize the contents of the frame.
 	 */
-	private void initialize() {
+	private void initialize() throws ClassNotFoundException {
 		frmScriptManager = new JFrame();
 		frmScriptManager.setTitle("Script Manager v" + ToolDescriptions.VERSION);
-		frmScriptManager.setBounds(100, 100, 600, 350);
+		frmScriptManager.setBounds(100, 100, FRAME_WIDTH, FRAME_HEIGHT);
 		frmScriptManager.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		frmScriptManager.setResizable(false);
 		SpringLayout springLayout = new SpringLayout();
 		frmScriptManager.getContentPane().setLayout(springLayout);
 
+		// ======== Logging ========
+		JPanel pnlLogging = new JPanel();
+		springLayout.putConstraint(SpringLayout.NORTH, pnlLogging, -40, SpringLayout.SOUTH, frmScriptManager.getContentPane());
+		springLayout.putConstraint(SpringLayout.WEST, pnlLogging, 10, SpringLayout.WEST, frmScriptManager.getContentPane());
+		springLayout.putConstraint(SpringLayout.SOUTH, pnlLogging, -10, SpringLayout.SOUTH, frmScriptManager.getContentPane());
+		springLayout.putConstraint(SpringLayout.EAST, pnlLogging, -10, SpringLayout.EAST, frmScriptManager.getContentPane());
+		frmScriptManager.getContentPane().add(pnlLogging);
+
+//		TitledBorder ttlLogging = BorderFactory.createTitledBorder("Session logs");
+//		ttlLogging.setTitleFont(new Font("Lucida Grande", Font.ITALIC, 14));
+//		pnlLogging.setBorder(ttlLogging);
+
+		// Initialize Logging Manager Window
+		logs = new LogManagerWindow();
+
+		JButton btnLoggingManager = new JButton("Open Log Manager");
+		btnLoggingManager.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				EventQueue.invokeLater(new Runnable() {
+					public void run() {
+						try {
+							logs.setVisible(true);
+						} catch (Exception e) {
+							e.printStackTrace();
+						}
+					}
+				});
+			}
+		});
+		pnlLogging.add(btnLoggingManager);
+
 		JTabbedPane tabbedPane = new JTabbedPane(JTabbedPane.TOP);
-		springLayout.putConstraint(SpringLayout.NORTH, tabbedPane, 10, SpringLayout.NORTH,
-				frmScriptManager.getContentPane());
-		springLayout.putConstraint(SpringLayout.WEST, tabbedPane, 10, SpringLayout.WEST,
-				frmScriptManager.getContentPane());
-		springLayout.putConstraint(SpringLayout.SOUTH, tabbedPane, -10, SpringLayout.SOUTH,
-				frmScriptManager.getContentPane());
-		springLayout.putConstraint(SpringLayout.EAST, tabbedPane, -10, SpringLayout.EAST,
-				frmScriptManager.getContentPane());
+		springLayout.putConstraint(SpringLayout.NORTH, tabbedPane, 10, SpringLayout.NORTH, frmScriptManager.getContentPane());
+		springLayout.putConstraint(SpringLayout.WEST, tabbedPane, 10, SpringLayout.WEST, frmScriptManager.getContentPane());
+		springLayout.putConstraint(SpringLayout.SOUTH, tabbedPane, -10, SpringLayout.NORTH, pnlLogging);
+		springLayout.putConstraint(SpringLayout.EAST, tabbedPane, -10, SpringLayout.EAST, frmScriptManager.getContentPane());
 		frmScriptManager.getContentPane().add(tabbedPane);
 
-		// >>>>>>>> BAM_Statistics <<<<<<<<
+		/* Template for new tool
+		// COMMENT
+		PANEL.add(initializeToolPanel("NAME", ToolDescriptions.DESCRIPTION,
+				Class.forName("scriptmanager.window_interface.PACKAGE.CLASS")));
+		*/
+
+		// ======== BAM_Statistics ========
 		JPanel pnlStat = new JPanel();
-		SpringLayout sl_pnlStat = new SpringLayout();
-		pnlStat.setLayout(sl_pnlStat);
-		tabbedPane.addTab("BAM Statistics", null, pnlStat, null);
+		BoxLayout bl_pnlStat = new BoxLayout(pnlStat, BoxLayout.PAGE_AXIS);
+		pnlStat.setLayout(bl_pnlStat);
+		JScrollPane sp_pnlStat = new JScrollPane(pnlStat, ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED, ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
+		tabbedPane.addTab("BAM Statistics", null, sp_pnlStat, null);
 
-		// >SEStats
-		JTextArea txtOutputAlignmentStatistics = new JTextArea();
-		initializeTextArea(txtOutputAlignmentStatistics);
-		txtOutputAlignmentStatistics.setText(ToolDescriptions.se_stat_description);
-		sl_pnlStat.putConstraint(SpringLayout.NORTH, txtOutputAlignmentStatistics, 10, SpringLayout.NORTH, pnlStat);
-		sl_pnlStat.putConstraint(SpringLayout.EAST, txtOutputAlignmentStatistics, -10, SpringLayout.EAST, pnlStat);
-		pnlStat.add(txtOutputAlignmentStatistics);
+		// SEStats
+		pnlStat.add(initializeToolPanel("BAM Statistics", ToolDescriptions.se_stat_description,
+				Class.forName("scriptmanager.window_interface.BAM_Statistics.SEStatWindow")));
+		// PEStats
+		pnlStat.add(initializeToolPanel("Paired-End Statistics", ToolDescriptions.pe_stat_description,
+				Class.forName("scriptmanager.window_interface.BAM_Statistics.PEStatWindow")));
+		// SearchMotif
+		pnlStat.add(initializeToolPanel("BAM Genome Correlation", ToolDescriptions.bam_correlation_description,
+				Class.forName("scriptmanager.window_interface.BAM_Statistics.BAMGenomeCorrelationWindow")));
+		// CrossCorrelation
+		pnlStat.add(initializeToolPanel("Cross Correlation", ToolDescriptions.archtex_crosscorrelation_description,
+				Class.forName("scriptmanager.window_interface.BAM_Statistics.CrossCorrelationWindow")));
 
-		JButton btnBAMStats = new JButton("BAM Statistics");
-		btnBAMStats.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				EventQueue.invokeLater(new Runnable() {
-					public void run() {
-						try {
-							SEStatWindow frame = new SEStatWindow();
-							frame.setVisible(true);
-						} catch (Exception e) {
-							e.printStackTrace();
-						}
-					}
-				});
-			}
-		});
-		sl_pnlStat.putConstraint(SpringLayout.NORTH, btnBAMStats, 0, SpringLayout.NORTH, txtOutputAlignmentStatistics);
-		sl_pnlStat.putConstraint(SpringLayout.WEST, btnBAMStats, 10, SpringLayout.WEST, pnlStat);
-		sl_pnlStat.putConstraint(SpringLayout.WEST, txtOutputAlignmentStatistics, 10, SpringLayout.EAST, btnBAMStats);
-		pnlStat.add(btnBAMStats);
-
-		// >PEStats
-		JTextArea txtPEStats = new JTextArea();
-		initializeTextArea(txtPEStats);
-		txtPEStats.setText(ToolDescriptions.pe_stat_description);
-		sl_pnlStat.putConstraint(SpringLayout.NORTH, txtPEStats, 10, SpringLayout.SOUTH, txtOutputAlignmentStatistics);
-// 		sl_pnlStat.putConstraint(SpringLayout.NORTH, txtPEStats, 10, SpringLayout.SOUTH, btnBAMStats);
-		sl_pnlStat.putConstraint(SpringLayout.EAST, txtPEStats, -10, SpringLayout.EAST, pnlStat);
-		pnlStat.add(txtPEStats);
-
-		JButton btnPEStats = new JButton("Paired-End Statistics");
-		btnPEStats.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				EventQueue.invokeLater(new Runnable() {
-					public void run() {
-						try {
-							PEStatWindow frame = new PEStatWindow();
-							frame.setVisible(true);
-						} catch (Exception e) {
-							e.printStackTrace();
-						}
-					}
-				});
-			}
-		});
-		sl_pnlStat.putConstraint(SpringLayout.NORTH, btnPEStats, 0, SpringLayout.NORTH, txtPEStats);
-		sl_pnlStat.putConstraint(SpringLayout.WEST, btnPEStats, 10, SpringLayout.WEST, pnlStat);
-		sl_pnlStat.putConstraint(SpringLayout.WEST, txtPEStats, 10, SpringLayout.EAST, btnPEStats);
-		pnlStat.add(btnPEStats);
-
-		// >BAMCorr
-		JTextArea txtBamGenomeCorrelation = new JTextArea();
-		initializeTextArea(txtBamGenomeCorrelation);
-		txtBamGenomeCorrelation.setText(ToolDescriptions.bam_correlation_description);
-		sl_pnlStat.putConstraint(SpringLayout.NORTH, txtBamGenomeCorrelation, 10, SpringLayout.SOUTH, txtPEStats);
-// 		sl_pnlStat.putConstraint(SpringLayout.NORTH, txtBamGenomeCorrelation, 10, SpringLayout.SOUTH, btnPEStats);
-		sl_pnlStat.putConstraint(SpringLayout.EAST, txtBamGenomeCorrelation, -10, SpringLayout.EAST, pnlStat);
-		pnlStat.add(txtBamGenomeCorrelation);
-
-		JButton btnBamGenomeCorrelation = new JButton("BAM Genome Correlation");
-		btnBamGenomeCorrelation.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent arg0) {
-				EventQueue.invokeLater(new Runnable() {
-					public void run() {
-						try {
-							BAMGenomeCorrelationWindow frame = new BAMGenomeCorrelationWindow();
-							frame.setVisible(true);
-						} catch (Exception e) {
-							e.printStackTrace();
-						}
-					}
-				});
-			}
-		});
-		sl_pnlStat.putConstraint(SpringLayout.NORTH, btnBamGenomeCorrelation, 0, SpringLayout.NORTH,
-				txtBamGenomeCorrelation);
-		sl_pnlStat.putConstraint(SpringLayout.WEST, btnBamGenomeCorrelation, 10, SpringLayout.WEST, pnlStat);
-		sl_pnlStat.putConstraint(SpringLayout.WEST, txtBamGenomeCorrelation, 10, SpringLayout.EAST,
-				btnBamGenomeCorrelation);
-		pnlStat.add(btnBamGenomeCorrelation);
-
-		JTextArea txtCollectBase = new JTextArea();
-		sl_pnlStat.putConstraint(SpringLayout.NORTH, txtCollectBase, 20, SpringLayout.SOUTH, txtBamGenomeCorrelation);
-		sl_pnlStat.putConstraint(SpringLayout.EAST, txtCollectBase, -10, SpringLayout.EAST, pnlStat);
-		initializeTextArea(txtCollectBase);
-
-		txtCollectBase.setText(ToolDescriptions.collect_base_distribution_by_cycle_description);
-		pnlStat.add(txtCollectBase);
-
-		JButton btnCollectBase = new JButton("Collect BAM Distribution");
-		btnCollectBase.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				EventQueue.invokeLater(new Runnable() {
-					public void run() {
-						try {
-							CollectBaseDistributionByCycleWindow frame = new CollectBaseDistributionByCycleWindow();
-							frame.setVisible(true);
-						} catch (Exception e) {
-							e.printStackTrace();
-						}
-					}
-				});
-			}
-		});
-		sl_pnlStat.putConstraint(SpringLayout.NORTH, btnCollectBase, 0, SpringLayout.NORTH, txtCollectBase);
-		sl_pnlStat.putConstraint(SpringLayout.WEST, btnCollectBase, 10, SpringLayout.WEST, pnlStat);
-		sl_pnlStat.putConstraint(SpringLayout.WEST, txtCollectBase, 10, SpringLayout.EAST, btnCollectBase);
-		pnlStat.add(btnCollectBase);
-
-		// >>>>>>>> BAM_Manipulation <<<<<<<<
+		// ======== BAM_Manipulation ========
 		JPanel pnlBamManip = new JPanel();
-		SpringLayout sl_pnlBamManip = new SpringLayout();
-		pnlBamManip.setLayout(sl_pnlBamManip);
+		BoxLayout bl_pnlBamManip = new BoxLayout(pnlBamManip, BoxLayout.PAGE_AXIS);
+		pnlBamManip.setLayout(bl_pnlBamManip);
+		JScrollPane sp_pnlBamManip = new JScrollPane(pnlBamManip, ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED, ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
+		tabbedPane.addTab("BAM Manipulation", null, sp_pnlBamManip, null);
 
-		// This line keeps the width at default but modifies the height.
-		// This is required to allow for scrolling. It is set at 500 pixels to provide room for future tools
-		pnlBamManip.setPreferredSize(new Dimension(pnlBamManip.getPreferredSize().width, 500));
+		// BAMIndexer
+		pnlBamManip.add(initializeToolPanel("BAM-BAI Indexer", ToolDescriptions.bam_indexer_description,
+				Class.forName("scriptmanager.window_interface.BAM_Manipulation.BAIIndexerWindow")));
+		// BAMFileSorter
+		pnlBamManip.add(initializeToolPanel("BAM File Sorter", ToolDescriptions.sort_bam_description,
+				Class.forName("scriptmanager.window_interface.BAM_Manipulation.SortBAMWindow")));
+		// BAMRemoveDup
+		pnlBamManip.add(initializeToolPanel("BAM MarkDuplicates", ToolDescriptions.remove_duplicates_description,
+				Class.forName("scriptmanager.window_interface.BAM_Manipulation.BAMMarkDupWindow")));
+		// BAMReplicateMerge
+		pnlBamManip.add(initializeToolPanel("BAM Replicate Merge", ToolDescriptions.merge_bam_description,
+				Class.forName("scriptmanager.window_interface.BAM_Manipulation.MergeBAMWindow")));
+		// FilterPIPseq
+		pnlBamManip.add(initializeToolPanel("Filter for PIP-seq", ToolDescriptions.filter_pip_seq_description,
+				Class.forName("scriptmanager.window_interface.BAM_Manipulation.FilterforPIPseqWindow")));
 
-		// Wrapped pnlBamManip in a scrollPane to support scrolling
-		JScrollPane scrollPane = new JScrollPane(pnlBamManip);
-		scrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_ALWAYS);
-
-		//This line control the speed of the scroll. Higher number - faster scroll
-		scrollPane.getVerticalScrollBar().setUnitIncrement(15);
-
-		// Adds the Bam Manipulation tab to the main GUI
-		tabbedPane.addTab("BAM Manipulation", null, scrollPane, null);
-
-
-		// >BAMIndexer
-		JTextArea txtBAIIndex = new JTextArea();
-		initializeTextArea(txtBAIIndex);
-		sl_pnlBamManip.putConstraint(SpringLayout.NORTH, txtBAIIndex, 10, SpringLayout.NORTH, pnlBamManip);
-		sl_pnlBamManip.putConstraint(SpringLayout.EAST, txtBAIIndex, -10, SpringLayout.EAST, pnlBamManip);
-		txtBAIIndex.setText(ToolDescriptions.bam_indexer_description);
-		pnlBamManip.add(txtBAIIndex);
-
-		JButton btnBaiIndexer = new JButton("BAM-BAI Indexer");
-		btnBaiIndexer.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				EventQueue.invokeLater(new Runnable() {
-					public void run() {
-						try {
-							BAIIndexerWindow frame = new BAIIndexerWindow();
-							frame.setVisible(true);
-						} catch (Exception e) {
-							e.printStackTrace();
-						}
-					}
-				});
-			}
-		});
-		sl_pnlBamManip.putConstraint(SpringLayout.NORTH, btnBaiIndexer, 0, SpringLayout.NORTH, txtBAIIndex);
-		sl_pnlBamManip.putConstraint(SpringLayout.WEST, btnBaiIndexer, 10, SpringLayout.WEST, pnlBamManip);
-		sl_pnlBamManip.putConstraint(SpringLayout.WEST, txtBAIIndex, 10, SpringLayout.EAST, btnBaiIndexer);
-		pnlBamManip.add(btnBaiIndexer);
-
-		// >BAMFileSorter
-		JTextArea txtBamSort = new JTextArea();
-		initializeTextArea(txtBamSort);
-		sl_pnlBamManip.putConstraint(SpringLayout.NORTH, txtBamSort, 10, SpringLayout.SOUTH, txtBAIIndex);
-		sl_pnlBamManip.putConstraint(SpringLayout.EAST, txtBamSort, -10, SpringLayout.EAST, pnlBamManip);
-		txtBamSort.setText(ToolDescriptions.sort_bam_description);
-		pnlBamManip.add(txtBamSort);
-
-		JButton btnBamSort = new JButton("BAM File Sorter");
-		btnBamSort.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				EventQueue.invokeLater(new Runnable() {
-					public void run() {
-						try {
-							SortBAMWindow frame = new SortBAMWindow();
-							frame.setVisible(true);
-						} catch (Exception e) {
-							e.printStackTrace();
-						}
-					}
-				});
-			}
-		});
-		sl_pnlBamManip.putConstraint(SpringLayout.NORTH, btnBamSort, 0, SpringLayout.NORTH, txtBamSort);
-		sl_pnlBamManip.putConstraint(SpringLayout.WEST, btnBamSort, 10, SpringLayout.WEST, pnlBamManip);
-		sl_pnlBamManip.putConstraint(SpringLayout.WEST, txtBamSort, 10, SpringLayout.EAST, btnBamSort);
-		pnlBamManip.add(btnBamSort);
-
-		// >BAMRemoveDup
-		JTextArea txtMarkDuplicates = new JTextArea();
-		initializeTextArea(txtMarkDuplicates);
-		sl_pnlBamManip.putConstraint(SpringLayout.NORTH, txtMarkDuplicates, 10, SpringLayout.SOUTH, txtBamSort);
-		sl_pnlBamManip.putConstraint(SpringLayout.EAST, txtMarkDuplicates, -10, SpringLayout.EAST, pnlBamManip);
-		txtMarkDuplicates.setText(ToolDescriptions.remove_duplicates_description);
-		pnlBamManip.add(txtMarkDuplicates);
-
-		JButton btnMarkDuplicates = new JButton("BAM MarkDuplicates");
-		btnMarkDuplicates.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				EventQueue.invokeLater(new Runnable() {
-					public void run() {
-						try {
-							BAMMarkDupWindow frame = new BAMMarkDupWindow();
-							frame.setVisible(true);
-						} catch (Exception e) {
-							e.printStackTrace();
-						}
-					}
-				});
-			}
-		});
-		sl_pnlBamManip.putConstraint(SpringLayout.NORTH, btnMarkDuplicates, 0, SpringLayout.NORTH,	txtMarkDuplicates);
-		sl_pnlBamManip.putConstraint(SpringLayout.WEST, btnMarkDuplicates, 10, SpringLayout.WEST, pnlBamManip);
-		sl_pnlBamManip.putConstraint(SpringLayout.WEST, txtMarkDuplicates, 10, SpringLayout.EAST, btnMarkDuplicates);
-		pnlBamManip.add(btnMarkDuplicates);
-
-		// >BAMReplicateMerge
-		JTextArea txtBamReplicateMerge = new JTextArea();
-		initializeTextArea(txtBamReplicateMerge);
-		sl_pnlBamManip.putConstraint(SpringLayout.NORTH, txtBamReplicateMerge, 10, SpringLayout.SOUTH, txtMarkDuplicates);
-		sl_pnlBamManip.putConstraint(SpringLayout.EAST, txtBamReplicateMerge, -10, SpringLayout.EAST, pnlBamManip);
-		txtBamReplicateMerge.setText(ToolDescriptions.merge_bam_description);
-		pnlBamManip.add(txtBamReplicateMerge);
-
-		JButton btnBamReplicateMerge = new JButton("BAM Replicate Merge");
-		btnBamReplicateMerge.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				EventQueue.invokeLater(new Runnable() {
-					public void run() {
-						try {
-							MergeBAMWindow frame = new MergeBAMWindow();
-							frame.setVisible(true);
-						} catch (Exception e) {
-							e.printStackTrace();
-						}
-					}
-				});
-			}
-		});
-		sl_pnlBamManip.putConstraint(SpringLayout.NORTH, btnBamReplicateMerge, 0, SpringLayout.NORTH,
-				txtBamReplicateMerge);
-		sl_pnlBamManip.putConstraint(SpringLayout.WEST, btnBamReplicateMerge, 10, SpringLayout.WEST, pnlBamManip);
-		sl_pnlBamManip.putConstraint(SpringLayout.WEST, txtBamReplicateMerge, 10, SpringLayout.EAST,
-				btnBamReplicateMerge);
-		pnlBamManip.add(btnBamReplicateMerge);
-
-		// >FilterPIPseq
-		JTextArea txtFilterForPIPseq = new JTextArea();
-		initializeTextArea(txtFilterForPIPseq);
-		sl_pnlBamManip.putConstraint(SpringLayout.NORTH, txtFilterForPIPseq, 10, SpringLayout.SOUTH,
-				txtBamReplicateMerge);
-		sl_pnlBamManip.putConstraint(SpringLayout.EAST, txtFilterForPIPseq, -10, SpringLayout.EAST, pnlBamManip);
-		txtFilterForPIPseq.setText(ToolDescriptions.filter_pip_seq_description);
-		pnlBamManip.add(txtFilterForPIPseq);
-
-		JButton btnFilterForPIPseq = new JButton("Filter for PIP-seq");
-		btnFilterForPIPseq.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				EventQueue.invokeLater(new Runnable() {
-					public void run() {
-						try {
-							FilterforPIPseqWindow frame = new FilterforPIPseqWindow();
-							frame.setVisible(true);
-						} catch (Exception e) {
-							e.printStackTrace();
-						}
-					}
-				});
-			}
-		});
-		sl_pnlBamManip.putConstraint(SpringLayout.NORTH, btnFilterForPIPseq, 0, SpringLayout.NORTH, txtFilterForPIPseq);
-		sl_pnlBamManip.putConstraint(SpringLayout.WEST, btnFilterForPIPseq, 10, SpringLayout.WEST, pnlBamManip);
-		sl_pnlBamManip.putConstraint(SpringLayout.WEST, txtFilterForPIPseq, 10, SpringLayout.EAST, btnFilterForPIPseq);
-		pnlBamManip.add(btnFilterForPIPseq);
-
-		// DownsampleSam
-
-		JTextArea txtDownsample = new JTextArea();
-		sl_pnlBamManip.putConstraint(SpringLayout.NORTH, txtDownsample, 20, SpringLayout.SOUTH, txtFilterForPIPseq);
-		sl_pnlBamManip.putConstraint(SpringLayout.EAST, txtDownsample, -10, SpringLayout.EAST, pnlBamManip);
-		initializeTextArea(txtDownsample);
-
-		txtDownsample.setText(ToolDescriptions.downsample_sam_description);
-		pnlBamManip.add(txtDownsample);
-
-		JButton btnDownsample = new JButton("Downsample SAM/BAM");
-		btnDownsample.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				EventQueue.invokeLater(new Runnable() {
-					public void run() {
-						try {
-							DownsampleSamWindow frame = new DownsampleSamWindow();
-							frame.setVisible(true);
-						} catch (Exception e) {
-							e.printStackTrace();
-						}
-					}
-				});
-			}
-		});
-		sl_pnlBamManip.putConstraint(SpringLayout.NORTH, btnDownsample, 0, SpringLayout.NORTH, txtDownsample);
-		sl_pnlBamManip.putConstraint(SpringLayout.WEST, btnDownsample, 10, SpringLayout.WEST, pnlBamManip);
-		sl_pnlBamManip.putConstraint(SpringLayout.WEST, txtDownsample, 10, SpringLayout.EAST, btnDownsample);
-		pnlBamManip.add(btnDownsample);
-
-		// ValidateSamFile
-
-		JTextArea txtValidateSamFile = new JTextArea();
-		sl_pnlBamManip.putConstraint(SpringLayout.NORTH, txtValidateSamFile, 20, SpringLayout.SOUTH, txtDownsample);
-		sl_pnlBamManip.putConstraint(SpringLayout.EAST, txtValidateSamFile, -10, SpringLayout.EAST, pnlBamManip);
-		initializeTextArea(txtValidateSamFile);
-
-		txtValidateSamFile.setText(ToolDescriptions.validate_sam_file_description);
-		pnlBamManip.add(txtValidateSamFile);
-
-		JButton btnValidateSamFile = new JButton("Validate SAM/BAM");
-		btnValidateSamFile.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				EventQueue.invokeLater(new Runnable() {
-					public void run() {
-						try {
-							ValidateSamWindow frame = new ValidateSamWindow();
-							frame.setVisible(true);
-						} catch (Exception e) {
-							e.printStackTrace();
-						}
-					}
-				});
-			}
-		});
-		sl_pnlBamManip.putConstraint(SpringLayout.NORTH, btnValidateSamFile, 0, SpringLayout.NORTH, txtValidateSamFile);
-		sl_pnlBamManip.putConstraint(SpringLayout.WEST, btnValidateSamFile, 10, SpringLayout.WEST, pnlBamManip);
-		sl_pnlBamManip.putConstraint(SpringLayout.WEST, txtValidateSamFile, 10, SpringLayout.EAST, btnValidateSamFile);
-		pnlBamManip.add(btnValidateSamFile);
-
-		// NormalizeFasta
-
-		JTextArea txtNormalizeFasta = new JTextArea();
-		sl_pnlBamManip.putConstraint(SpringLayout.NORTH, txtNormalizeFasta, 20, SpringLayout.SOUTH, txtValidateSamFile);
-		sl_pnlBamManip.putConstraint(SpringLayout.EAST, txtNormalizeFasta, -10, SpringLayout.EAST, pnlBamManip);
-		initializeTextArea(txtNormalizeFasta);
-
-		txtNormalizeFasta.setText(ToolDescriptions.normalize_fasta_description);
-		pnlBamManip.add(txtNormalizeFasta);
-
-		JButton btnNormalizeFasta = new JButton("Normalize FASTA File");
-		btnNormalizeFasta.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				EventQueue.invokeLater(new Runnable() {
-					public void run() {
-						try {
-							NormalizeFastaWindow frame = new NormalizeFastaWindow();
-							frame.setVisible(true);
-						} catch (Exception e) {
-							e.printStackTrace();
-						}
-					}
-				});
-			}
-		});
-		sl_pnlBamManip.putConstraint(SpringLayout.NORTH, btnNormalizeFasta, 0, SpringLayout.NORTH, txtNormalizeFasta);
-		sl_pnlBamManip.putConstraint(SpringLayout.WEST, btnNormalizeFasta, 10, SpringLayout.WEST, pnlBamManip);
-		sl_pnlBamManip.putConstraint(SpringLayout.WEST, txtNormalizeFasta, 10, SpringLayout.EAST, btnNormalizeFasta);
-		pnlBamManip.add(btnNormalizeFasta);
-
-		// FilterSamReads
-
-		JTextArea txtFilterSamReads = new JTextArea();
-		sl_pnlBamManip.putConstraint(SpringLayout.NORTH, txtFilterSamReads, 20, SpringLayout.SOUTH, txtNormalizeFasta);
-		sl_pnlBamManip.putConstraint(SpringLayout.EAST, txtFilterSamReads, -10, SpringLayout.EAST, pnlBamManip);
-		initializeTextArea(txtFilterSamReads);
-
-		txtFilterSamReads.setText(ToolDescriptions.filter_sam_reads_description);
-		pnlBamManip.add(txtFilterSamReads);
-
-		JButton btnFilterSamReads = new JButton("Filter Bam Reads");
-		btnFilterSamReads.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				EventQueue.invokeLater(new Runnable() {
-					public void run() {
-						try {
-							FilterSamReadsWindow frame = new FilterSamReadsWindow();
-							frame.setVisible(true);
-						} catch (Exception e) {
-							e.printStackTrace();
-						}
-					}
-				});
-			}
-		});
-		sl_pnlBamManip.putConstraint(SpringLayout.NORTH, btnFilterSamReads, 0, SpringLayout.NORTH, txtFilterSamReads);
-		sl_pnlBamManip.putConstraint(SpringLayout.WEST, btnFilterSamReads, 10, SpringLayout.WEST, pnlBamManip);
-		sl_pnlBamManip.putConstraint(SpringLayout.WEST, txtFilterSamReads, 10, SpringLayout.EAST, btnFilterSamReads);
-		pnlBamManip.add(btnFilterSamReads);
-
-		// >>>>>>>> BAM_Format_Converter <<<<<<<<
+		// ======== BAM_Format_Converter ========
 		JPanel pnlBamConvert = new JPanel();
-		SpringLayout sl_pnlBamConvert = new SpringLayout();
-		pnlBamConvert.setLayout(sl_pnlBamConvert);
-		tabbedPane.addTab("BAM Format Converter", null, pnlBamConvert, null);
+		BoxLayout bl_pnlBamConvert = new BoxLayout(pnlBamConvert, BoxLayout.PAGE_AXIS);
+		pnlBamConvert.setLayout(bl_pnlBamConvert);
+		JScrollPane sp_pnlBamConvert = new JScrollPane(pnlBamConvert, ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED, ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
+		tabbedPane.addTab("BAM Format Converter", null, sp_pnlBamConvert, null);
 
-		// >BAMtoscIdx
-		JTextArea txtBamToscIDX = new JTextArea();
-		initializeTextArea(txtBamToscIDX);
-		txtBamToscIDX.setText(ToolDescriptions.bam_to_scidx_description);
-		sl_pnlBamConvert.putConstraint(SpringLayout.NORTH, txtBamToscIDX, 10, SpringLayout.NORTH, pnlBamConvert);
-		sl_pnlBamConvert.putConstraint(SpringLayout.EAST, txtBamToscIDX, -10, SpringLayout.EAST, pnlBamConvert);
-		pnlBamConvert.add(txtBamToscIDX);
+		// BAMtoscIdx
+		pnlBamConvert.add(initializeToolPanel("BAM to scIDX", ToolDescriptions.bam_to_scidx_description,
+				Class.forName("scriptmanager.window_interface.BAM_Format_Converter.BAMtoscIDXWindow")));
+//		pnlBamConvert.add(Box.createVerticalGlue());
+		// BAMtoGFF
+		pnlBamConvert.add(initializeToolPanel("BAM to GFF", ToolDescriptions.bam_to_gff_description,
+				Class.forName("scriptmanager.window_interface.BAM_Format_Converter.BAMtoGFFWindow")));
+		// BAMtoBED
+		pnlBamConvert.add(initializeToolPanel("BAM to BED", ToolDescriptions.bam_to_bed_description,
+				Class.forName("scriptmanager.window_interface.BAM_Format_Converter.BAMtoBEDWindow")));
+		// BAMtobedGraph
+		pnlBamConvert.add(initializeToolPanel("BAM to bedGraph", ToolDescriptions.bam_to_bedgraph_description,
+				Class.forName("scriptmanager.window_interface.BAM_Format_Converter.BAMtobedGraphWindow")));
 
-		JButton btnBamToscIDX = new JButton("BAM to scIDX");
-		btnBamToscIDX.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				EventQueue.invokeLater(new Runnable() {
-					public void run() {
-						try {
-							BAMtoscIDXWindow frame = new BAMtoscIDXWindow();
-							frame.setVisible(true);
-						} catch (Exception e) {
-							e.printStackTrace();
-						}
-					}
-				});
-			}
-		});
-		sl_pnlBamConvert.putConstraint(SpringLayout.NORTH, btnBamToscIDX, 0, SpringLayout.NORTH, txtBamToscIDX);
-		sl_pnlBamConvert.putConstraint(SpringLayout.WEST, btnBamToscIDX, 10, SpringLayout.WEST, pnlBamConvert);
-		sl_pnlBamConvert.putConstraint(SpringLayout.WEST, txtBamToscIDX, 10, SpringLayout.EAST, btnBamToscIDX);
-		pnlBamConvert.add(btnBamToscIDX);
-
-		// >BAMtoGFF
-		JTextArea txtBamToGFF = new JTextArea();
-		initializeTextArea(txtBamToGFF);
-		txtBamToGFF.setText(ToolDescriptions.bam_to_gff_description);
-		sl_pnlBamConvert.putConstraint(SpringLayout.NORTH, txtBamToGFF, 10, SpringLayout.SOUTH, txtBamToscIDX);
-		sl_pnlBamConvert.putConstraint(SpringLayout.NORTH, txtBamToGFF, 10, SpringLayout.SOUTH, btnBamToscIDX);
-		sl_pnlBamConvert.putConstraint(SpringLayout.EAST, txtBamToGFF, -10, SpringLayout.EAST, pnlBamConvert);
-		pnlBamConvert.add(txtBamToGFF);
-
-		JButton btnBamToGff = new JButton("BAM to GFF");
-		btnBamToGff.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				EventQueue.invokeLater(new Runnable() {
-					public void run() {
-						try {
-							BAMtoGFFWindow frame = new BAMtoGFFWindow();
-							frame.setVisible(true);
-						} catch (Exception e) {
-							e.printStackTrace();
-						}
-					}
-				});
-			}
-		});
-		sl_pnlBamConvert.putConstraint(SpringLayout.NORTH, btnBamToGff, 0, SpringLayout.NORTH, txtBamToGFF);
-		sl_pnlBamConvert.putConstraint(SpringLayout.WEST, btnBamToGff, 10, SpringLayout.WEST, pnlBamConvert);
-		sl_pnlBamConvert.putConstraint(SpringLayout.WEST, txtBamToGFF, 10, SpringLayout.EAST, btnBamToGff);
-		pnlBamConvert.add(btnBamToGff);
-
-		// >BAMtoBED
-		JTextArea txtBamToBed = new JTextArea();
-		initializeTextArea(txtBamToBed);
-		txtBamToBed.setText(ToolDescriptions.bam_to_bed_description);
-		sl_pnlBamConvert.putConstraint(SpringLayout.NORTH, txtBamToBed, 10, SpringLayout.SOUTH, txtBamToGFF);
-		sl_pnlBamConvert.putConstraint(SpringLayout.NORTH, txtBamToBed, 10, SpringLayout.SOUTH, btnBamToGff);
-		sl_pnlBamConvert.putConstraint(SpringLayout.EAST, txtBamToBed, -10, SpringLayout.EAST, pnlBamConvert);
-		pnlBamConvert.add(txtBamToBed);
-
-		JButton btnBamToBed = new JButton("BAM to BED");
-		btnBamToBed.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				EventQueue.invokeLater(new Runnable() {
-					public void run() {
-						try {
-							BAMtoBEDWindow frame = new BAMtoBEDWindow();
-							frame.setVisible(true);
-						} catch (Exception e) {
-							e.printStackTrace();
-						}
-					}
-				});
-			}
-		});
-		sl_pnlBamConvert.putConstraint(SpringLayout.NORTH, btnBamToBed, 0, SpringLayout.NORTH, txtBamToBed);
-		sl_pnlBamConvert.putConstraint(SpringLayout.WEST, btnBamToBed, 10, SpringLayout.WEST, pnlBamConvert);
-		sl_pnlBamConvert.putConstraint(SpringLayout.WEST, txtBamToBed, 10, SpringLayout.EAST, btnBamToBed);
-		pnlBamConvert.add(btnBamToBed);
-
-		// >BAMtobedGraph
-		JTextArea txtBamToBedgraph = new JTextArea();
-		initializeTextArea(txtBamToBedgraph);
-		txtBamToBedgraph.setText(ToolDescriptions.bam_to_bedgraph_description);
-		sl_pnlBamConvert.putConstraint(SpringLayout.NORTH, txtBamToBedgraph, 10, SpringLayout.SOUTH, txtBamToBed);
-		sl_pnlBamConvert.putConstraint(SpringLayout.NORTH, txtBamToBedgraph, 10, SpringLayout.SOUTH, btnBamToBed);
-		sl_pnlBamConvert.putConstraint(SpringLayout.EAST, txtBamToBedgraph, -10, SpringLayout.EAST, pnlBamConvert);
-		pnlBamConvert.add(txtBamToBedgraph);
-
-		JButton btnBamToBedgraph = new JButton("BAM to bedGraph");
-		btnBamToBedgraph.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				EventQueue.invokeLater(new Runnable() {
-					public void run() {
-						try {
-							BAMtobedGraphWindow frame = new BAMtobedGraphWindow();
-							frame.setVisible(true);
-						} catch (Exception e) {
-							e.printStackTrace();
-						}
-					}
-				});
-			}
-		});
-		sl_pnlBamConvert.putConstraint(SpringLayout.NORTH, btnBamToBedgraph, 0, SpringLayout.NORTH, txtBamToBedgraph);
-		sl_pnlBamConvert.putConstraint(SpringLayout.WEST, btnBamToBedgraph, 10, SpringLayout.WEST, pnlBamConvert);
-		sl_pnlBamConvert.putConstraint(SpringLayout.WEST, txtBamToBedgraph, 10, SpringLayout.EAST, btnBamToBedgraph);
-		pnlBamConvert.add(btnBamToBedgraph);
-
-		// >SamtoFastq
-		JTextArea txtSamtoFastq = new JTextArea();
-		initializeTextArea(txtSamtoFastq);
-		txtSamtoFastq.setText(ToolDescriptions.sam_to_fastq_description);
-		sl_pnlBamConvert.putConstraint(SpringLayout.NORTH, txtSamtoFastq, 10, SpringLayout.SOUTH, txtBamToBedgraph);
-		sl_pnlBamConvert.putConstraint(SpringLayout.NORTH, txtSamtoFastq, 10, SpringLayout.SOUTH, btnBamToBedgraph);
-		sl_pnlBamConvert.putConstraint(SpringLayout.EAST, txtSamtoFastq, -10, SpringLayout.EAST, pnlBamConvert);
-		pnlBamConvert.add(txtSamtoFastq);
-
-		JButton btnSamtoFastq = new JButton("BAM to FASTQ");
-		btnSamtoFastq.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				EventQueue.invokeLater(new Runnable() {
-					public void run() {
-						try {
-							SamtoFastqWindow frame = new SamtoFastqWindow();
-							frame.setVisible(true);
-						} catch (Exception e) {
-							e.printStackTrace();
-						}
-					}
-				});
-			}
-		});
-		sl_pnlBamConvert.putConstraint(SpringLayout.NORTH, btnSamtoFastq, 0, SpringLayout.NORTH, txtSamtoFastq);
-		sl_pnlBamConvert.putConstraint(SpringLayout.WEST, btnSamtoFastq, 10, SpringLayout.WEST, pnlBamConvert);
-		sl_pnlBamConvert.putConstraint(SpringLayout.WEST, txtSamtoFastq, 10, SpringLayout.EAST, btnSamtoFastq);
-		pnlBamConvert.add(btnSamtoFastq);
-
-		// >SamFormatConverter
-		JTextArea txtSamFormatConverter = new JTextArea();
-		initializeTextArea(txtSamtoFastq);
-		txtSamFormatConverter.setText(ToolDescriptions.sam_format_converter_description);
-		sl_pnlBamConvert.putConstraint(SpringLayout.NORTH, txtSamFormatConverter, 10, SpringLayout.SOUTH, txtSamtoFastq);
-		sl_pnlBamConvert.putConstraint(SpringLayout.NORTH, txtSamFormatConverter, 10, SpringLayout.SOUTH, btnSamtoFastq);
-		sl_pnlBamConvert.putConstraint(SpringLayout.EAST, txtSamFormatConverter, -10, SpringLayout.EAST, pnlBamConvert);
-		pnlBamConvert.add(txtSamFormatConverter);
-
-		JButton btnSamFormatConverter = new JButton("SAM to BAM or BAM to SAM");
-		btnSamFormatConverter.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				EventQueue.invokeLater(new Runnable() {
-					public void run() {
-						try {
-							SamFormatConverterWindow frame = new SamFormatConverterWindow();
-							frame.setVisible(true);
-						} catch (Exception e) {
-							e.printStackTrace();
-						}
-					}
-				});
-			}
-		});
-		sl_pnlBamConvert.putConstraint(SpringLayout.NORTH, btnSamFormatConverter, 0, SpringLayout.NORTH, txtSamFormatConverter);
-		sl_pnlBamConvert.putConstraint(SpringLayout.WEST, btnSamFormatConverter, 10, SpringLayout.WEST, pnlBamConvert);
-		sl_pnlBamConvert.putConstraint(SpringLayout.WEST, txtSamFormatConverter, 10, SpringLayout.EAST, btnSamFormatConverter);
-		pnlBamConvert.add(btnSamFormatConverter);
-
-		// >>>>>>>> File_Utilities <<<<<<<<
+		// ======== File_Utilities ========
 		JPanel pnlFileUtility = new JPanel();
-		SpringLayout sl_pnlFileUtility = new SpringLayout();
-		pnlFileUtility.setLayout(sl_pnlFileUtility);
-		tabbedPane.addTab("File Utilities", null, pnlFileUtility, null);
+		BoxLayout bl_pnlFileUtility = new BoxLayout(pnlFileUtility, BoxLayout.PAGE_AXIS);
+		pnlFileUtility.setLayout(bl_pnlFileUtility);
+		JScrollPane sp_pnlFileUtility = new JScrollPane(pnlFileUtility, ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED, ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
+		tabbedPane.addTab("File Utilities", null, sp_pnlFileUtility, null);
 
-		// >MD5checksum
-		JTextArea txtMD5 = new JTextArea();
-		initializeTextArea(txtMD5);
-		txtMD5.setText(ToolDescriptions.md5checksum_description);
-		sl_pnlFileUtility.putConstraint(SpringLayout.NORTH, txtMD5, 10, SpringLayout.NORTH, pnlFileUtility);
-		sl_pnlFileUtility.putConstraint(SpringLayout.EAST, txtMD5, -10, SpringLayout.EAST, pnlFileUtility);
-		pnlFileUtility.add(txtMD5);
+		// MD5checksum
+		pnlFileUtility.add(initializeToolPanel("MD5 Checksum", ToolDescriptions.md5checksum_description,
+				Class.forName("scriptmanager.window_interface.File_Utilities.MD5ChecksumWindow")));
+		// ConvertBEDChrNames
+		pnlFileUtility.add(initializeToolPanel("Convert BED Chr Names", ToolDescriptions.convertBEDChrNamesDescription,
+				Class.forName("scriptmanager.window_interface.File_Utilities.ConvertBEDChrNamesWindow")));
+		// ConvertGFFChrNames
+		pnlFileUtility.add(initializeToolPanel("Convert GFF Chr Names", ToolDescriptions.convertGFFChrNamesDescription,
+				Class.forName("scriptmanager.window_interface.File_Utilities.ConvertGFFChrNamesWindow")));
+		// CompressFileWindow
+		pnlFileUtility.add(initializeToolPanel("Compress Files", ToolDescriptions.compressFileDescription,
+				Class.forName("scriptmanager.window_interface.File_Utilities.CompressFileWindow")));
+		// DecompressGZFileWindow
+		pnlFileUtility.add(initializeToolPanel("Decompress Files", ToolDescriptions.decompressFileDescription,
+				Class.forName("scriptmanager.window_interface.File_Utilities.DecompressGZFileWindow")));
 
-		JButton btnMD5 = new JButton("MD5 Checksum");
-		btnMD5.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				EventQueue.invokeLater(new Runnable() {
-					public void run() {
-						try {
-							MD5ChecksumWindow frame = new MD5ChecksumWindow();
-							frame.setVisible(true);
-						} catch (Exception e) {
-							e.printStackTrace();
-						}
-					}
-				});
-			}
-		});
-		sl_pnlFileUtility.putConstraint(SpringLayout.NORTH, btnMD5, 0, SpringLayout.NORTH, txtMD5);
-		sl_pnlFileUtility.putConstraint(SpringLayout.WEST, btnMD5, 10, SpringLayout.WEST, pnlFileUtility);
-		sl_pnlFileUtility.putConstraint(SpringLayout.WEST, txtMD5, 10, SpringLayout.EAST, btnMD5);
-		pnlFileUtility.add(btnMD5);
-		
-		// >ConvertBEDChrNames
-		JTextArea txtConvertBEDChrNames = new JTextArea();
-		initializeTextArea(txtConvertBEDChrNames);
-		txtConvertBEDChrNames.setText(ToolDescriptions.convertBEDChrNamesDescription);
-		sl_pnlFileUtility.putConstraint(SpringLayout.NORTH, txtConvertBEDChrNames, 10, SpringLayout.SOUTH, btnMD5);
-		sl_pnlFileUtility.putConstraint(SpringLayout.EAST, txtConvertBEDChrNames, -10, SpringLayout.EAST, pnlFileUtility);
-		pnlFileUtility.add(txtConvertBEDChrNames);
-		
-		JButton btnConvertBEDChrNames = new JButton("Convert BED Chr Names");
-		btnConvertBEDChrNames.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				EventQueue.invokeLater(new Runnable() {
-					public void run() {
-						try {
-							ConvertBEDChrNamesWindow frame = new ConvertBEDChrNamesWindow();
-							frame.setVisible(true);
-						} catch (Exception e) {
-							e.printStackTrace();
-						}
-					}
-				});
-			}
-		});
-		sl_pnlFileUtility.putConstraint(SpringLayout.NORTH, btnConvertBEDChrNames, 0, SpringLayout.NORTH, txtConvertBEDChrNames);
-		sl_pnlFileUtility.putConstraint(SpringLayout.WEST, btnConvertBEDChrNames, 10, SpringLayout.WEST, pnlFileUtility);
-		sl_pnlFileUtility.putConstraint(SpringLayout.WEST, txtConvertBEDChrNames, 10, SpringLayout.EAST, btnConvertBEDChrNames);
-		pnlFileUtility.add(btnConvertBEDChrNames);
-
-		// >ConvertGFFChrNames
-		JTextArea txtConvertGFFChrNames = new JTextArea();
-		initializeTextArea(txtConvertGFFChrNames);
-		txtConvertGFFChrNames.setText(ToolDescriptions.convertGFFChrNamesDescription);
-		sl_pnlFileUtility.putConstraint(SpringLayout.NORTH, txtConvertGFFChrNames, 10, SpringLayout.SOUTH, txtConvertBEDChrNames);
-		sl_pnlFileUtility.putConstraint(SpringLayout.EAST, txtConvertGFFChrNames, -10, SpringLayout.EAST, pnlFileUtility);
-		pnlFileUtility.add(txtConvertGFFChrNames);
-		
-		JButton btnConvertGFFChrNames = new JButton("Convert GFF Chr Names");
-		btnConvertGFFChrNames.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				EventQueue.invokeLater(new Runnable() {
-					public void run() {
-						try {
-							ConvertGFFChrNamesWindow frame = new ConvertGFFChrNamesWindow();
-							frame.setVisible(true);
-						} catch (Exception e) {
-							e.printStackTrace();
-						}
-					}
-				});
-			}
-		});
-		sl_pnlFileUtility.putConstraint(SpringLayout.NORTH, btnConvertGFFChrNames, 0, SpringLayout.NORTH, txtConvertGFFChrNames);
-		sl_pnlFileUtility.putConstraint(SpringLayout.WEST, btnConvertGFFChrNames, 10, SpringLayout.WEST, pnlFileUtility);
-		sl_pnlFileUtility.putConstraint(SpringLayout.WEST, txtConvertGFFChrNames, 10, SpringLayout.EAST, btnConvertGFFChrNames);
-		pnlFileUtility.add(btnConvertGFFChrNames);
-
-		// >CompressFileWindow
-		JTextArea txtCompressFile = new JTextArea();
-		initializeTextArea(txtCompressFile);
-		txtCompressFile.setText(ToolDescriptions.compressFileDescription);
-		sl_pnlFileUtility.putConstraint(SpringLayout.NORTH, txtCompressFile, 10, SpringLayout.SOUTH, txtConvertGFFChrNames);
-		sl_pnlFileUtility.putConstraint(SpringLayout.EAST, txtCompressFile, -10, SpringLayout.EAST, pnlFileUtility);
-		pnlFileUtility.add(txtCompressFile);
-
-		JButton btnCompressFile = new JButton("Compress Files");
-		btnCompressFile.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				EventQueue.invokeLater(new Runnable() {
-					public void run() {
-						try {
-							CompressFileWindow frame = new CompressFileWindow();
-							frame.setVisible(true);
-						} catch (Exception e) {
-							e.printStackTrace();
-						}
-					}
-				});
-			}
-		});
-		sl_pnlFileUtility.putConstraint(SpringLayout.NORTH, btnCompressFile, 0, SpringLayout.NORTH, txtCompressFile);
-		sl_pnlFileUtility.putConstraint(SpringLayout.WEST, btnCompressFile, 10, SpringLayout.WEST, pnlFileUtility);
-		sl_pnlFileUtility.putConstraint(SpringLayout.WEST, txtCompressFile, 10, SpringLayout.EAST, btnCompressFile);
-		pnlFileUtility.add(btnCompressFile);
-
-		// >DecompressGZFileWindow
-		JTextArea txtDecompressFile = new JTextArea();
-		initializeTextArea(txtDecompressFile);
-		txtDecompressFile.setText(ToolDescriptions.decompressFileDescription);
-		sl_pnlFileUtility.putConstraint(SpringLayout.NORTH, txtDecompressFile, 10, SpringLayout.SOUTH, txtCompressFile);
-		sl_pnlFileUtility.putConstraint(SpringLayout.EAST, txtDecompressFile, -10, SpringLayout.EAST, pnlFileUtility);
-		pnlFileUtility.add(txtDecompressFile);
-
-		JButton btnDecompressFile = new JButton("Decompress Files");
-		btnDecompressFile.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				EventQueue.invokeLater(new Runnable() {
-					public void run() {
-						try {
-							DecompressGZFileWindow frame = new DecompressGZFileWindow();
-							frame.setVisible(true);
-						} catch (Exception e) {
-							e.printStackTrace();
-						}
-					}
-				});
-			}
-		});
-		sl_pnlFileUtility.putConstraint(SpringLayout.NORTH, btnDecompressFile, 0, SpringLayout.NORTH, txtDecompressFile);
-		sl_pnlFileUtility.putConstraint(SpringLayout.WEST, btnDecompressFile, 10, SpringLayout.WEST, pnlFileUtility);
-		sl_pnlFileUtility.putConstraint(SpringLayout.WEST, txtDecompressFile, 10, SpringLayout.EAST, btnDecompressFile);
-		pnlFileUtility.add(btnDecompressFile);
-
-		// >>>>>>>> Peak_Calling <<<<<<<<
+		// ======== Peak_Calling ========
 		JPanel pnlPeakCalling = new JPanel();
-		SpringLayout sl_pnlPeakCalling = new SpringLayout();
-		pnlPeakCalling.setLayout(sl_pnlPeakCalling);
-		tabbedPane.addTab("Peak Calling", null, pnlPeakCalling, null);
+		BoxLayout bl_pnlPeakCalling = new BoxLayout(pnlPeakCalling, BoxLayout.PAGE_AXIS);
+		pnlPeakCalling.setLayout(bl_pnlPeakCalling);
+		JScrollPane sp_pnlPeakCalling = new JScrollPane(pnlPeakCalling, ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED, ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
+		tabbedPane.addTab("Peak Calling", null, sp_pnlPeakCalling, null);
 
-		// >GeneTrack
-		JTextArea txtGenetrack = new JTextArea();
-		initializeTextArea(txtGenetrack);
-		txtGenetrack.setText(ToolDescriptions.gene_track_description);
-		sl_pnlPeakCalling.putConstraint(SpringLayout.NORTH, txtGenetrack, 10, SpringLayout.NORTH, pnlPeakCalling);
-		sl_pnlPeakCalling.putConstraint(SpringLayout.EAST, txtGenetrack, -10, SpringLayout.EAST, pnlPeakCalling);
-		pnlPeakCalling.add(txtGenetrack);
+		// GeneTrack
+		pnlPeakCalling.add(initializeToolPanel("GeneTrack", ToolDescriptions.gene_track_description,
+				Class.forName("scriptmanager.window_interface.Peak_Calling.GeneTrackWindow")));
+		// PeakPairing
+		pnlPeakCalling.add(initializeToolPanel("Peak-Pairing", ToolDescriptions.peak_pairing_description,
+				Class.forName("scriptmanager.window_interface.Peak_Calling.PeakPairWindow")));
+//		// ReplicateMatching
+//		pnlPeakCalling.add(initializeToolPanel("Replicate Match", ToolDescriptions.replicate_match_description,
+//				Class.forName("scriptmanager.window_interface.Peak_Calling.CLASS")));
 
-		JButton btnGenetrack = new JButton("GeneTrack");
-		btnGenetrack.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				EventQueue.invokeLater(new Runnable() {
-					public void run() {
-						try {
-							GeneTrackWindow frame = new GeneTrackWindow();
-							frame.setVisible(true);
-						} catch (Exception e) {
-							e.printStackTrace();
-						}
-					}
-				});
-			}
-		});
-		sl_pnlPeakCalling.putConstraint(SpringLayout.NORTH, btnGenetrack, 0, SpringLayout.NORTH, txtGenetrack);
-		sl_pnlPeakCalling.putConstraint(SpringLayout.WEST, btnGenetrack, 10, SpringLayout.WEST, pnlPeakCalling);
-		sl_pnlPeakCalling.putConstraint(SpringLayout.WEST, txtGenetrack, 10, SpringLayout.EAST, btnGenetrack);
-		pnlPeakCalling.add(btnGenetrack);
-
-		// >PeakPairing
-		JTextArea txtPeakpairing = new JTextArea();
-		initializeTextArea(txtPeakpairing);
-		txtPeakpairing.setText(ToolDescriptions.peak_pairing_description);
-		sl_pnlPeakCalling.putConstraint(SpringLayout.NORTH, txtPeakpairing, 10, SpringLayout.SOUTH, txtGenetrack);
-		sl_pnlPeakCalling.putConstraint(SpringLayout.NORTH, txtPeakpairing, 10, SpringLayout.SOUTH, btnGenetrack);
-		sl_pnlPeakCalling.putConstraint(SpringLayout.EAST, txtPeakpairing, -10, SpringLayout.EAST, pnlPeakCalling);
-		pnlPeakCalling.add(txtPeakpairing);
-
-		JButton btnPeakpairing = new JButton("Peak-Pairing");
-		btnPeakpairing.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				EventQueue.invokeLater(new Runnable() {
-					public void run() {
-						try {
-							PeakPairWindow frame = new PeakPairWindow();
-							frame.setVisible(true);
-						} catch (Exception e) {
-							e.printStackTrace();
-						}
-					}
-				});
-			}
-		});
-		pnlPeakCalling.add(btnPeakpairing);
-		sl_pnlPeakCalling.putConstraint(SpringLayout.NORTH, btnPeakpairing, 0, SpringLayout.NORTH, txtPeakpairing);
-		sl_pnlPeakCalling.putConstraint(SpringLayout.WEST, btnPeakpairing, 10, SpringLayout.WEST, pnlPeakCalling);
-		sl_pnlPeakCalling.putConstraint(SpringLayout.WEST, txtPeakpairing, 10, SpringLayout.EAST, btnPeakpairing);
-		btnPeakpairing.setEnabled(false);
-
-		// >ReplicateMatching
-		JTextArea txtReplicateMatch = new JTextArea();
-		initializeTextArea(txtReplicateMatch);
-		txtReplicateMatch.setText(ToolDescriptions.replicate_match_description);
-		sl_pnlPeakCalling.putConstraint(SpringLayout.NORTH, txtReplicateMatch, 10, SpringLayout.SOUTH, txtPeakpairing);
-		sl_pnlPeakCalling.putConstraint(SpringLayout.NORTH, txtReplicateMatch, 10, SpringLayout.SOUTH, btnPeakpairing);
-		sl_pnlPeakCalling.putConstraint(SpringLayout.EAST, txtReplicateMatch, -10, SpringLayout.EAST, pnlPeakCalling);
-		pnlPeakCalling.add(txtReplicateMatch);
-
-		JButton btnReplicateMatch = new JButton("Replicate Match");
-		sl_pnlPeakCalling.putConstraint(SpringLayout.NORTH, btnReplicateMatch, 0, SpringLayout.NORTH,
-				txtReplicateMatch);
-		sl_pnlPeakCalling.putConstraint(SpringLayout.WEST, btnReplicateMatch, 10, SpringLayout.WEST, pnlPeakCalling);
-		sl_pnlPeakCalling.putConstraint(SpringLayout.WEST, txtReplicateMatch, 10, SpringLayout.EAST, btnReplicateMatch);
-		pnlPeakCalling.add(btnReplicateMatch);
-		btnReplicateMatch.setEnabled(false);
-
-		// >>>>>>>> Peak_Analysis <<<<<<<<
+		// ======== Peak_Analysis ========
 		JPanel pnlPeakAnalysis = new JPanel();
-		SpringLayout sl_pnlPeakAnalysis = new SpringLayout();
-		pnlPeakAnalysis.setLayout(sl_pnlPeakAnalysis);
-		tabbedPane.addTab("Peak Analysis", null, pnlPeakAnalysis, null);
+		BoxLayout bl_pnlPeakAnalysis = new BoxLayout(pnlPeakAnalysis, BoxLayout.PAGE_AXIS);
+		pnlPeakAnalysis.setLayout(bl_pnlPeakAnalysis);
+		JScrollPane sp_pnlPeakAnalysis = new JScrollPane(pnlPeakAnalysis, ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED, ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
+		tabbedPane.addTab("Peak Analysis", null, sp_pnlPeakAnalysis, null);
 
-		// >PeakAlign
-		JTextArea txtBedPeakAlignment = new JTextArea();
-		initializeTextArea(txtBedPeakAlignment);
-		txtBedPeakAlignment.setText(ToolDescriptions.peak_align_ref_description);
-		sl_pnlPeakAnalysis.putConstraint(SpringLayout.NORTH, txtBedPeakAlignment, 10, SpringLayout.NORTH,
-				pnlPeakAnalysis);
-		sl_pnlPeakAnalysis.putConstraint(SpringLayout.EAST, txtBedPeakAlignment, -10, SpringLayout.EAST,
-				pnlPeakAnalysis);
-		pnlPeakAnalysis.add(txtBedPeakAlignment);
+		// PeakAlign
+		pnlPeakAnalysis.add(initializeToolPanel("Align BED to Reference", ToolDescriptions.peak_align_ref_description,
+				Class.forName("scriptmanager.window_interface.Peak_Analysis.BEDPeakAligntoRefWindow")));
+		// FilterBED
+		pnlPeakAnalysis.add(initializeToolPanel("Filter BED by Proximity", ToolDescriptions.filter_bed_description,
+				Class.forName("scriptmanager.window_interface.Peak_Analysis.FilterBEDbyProximityWindow")));
+		// TileGenome
+		pnlPeakAnalysis.add(initializeToolPanel("Genomic Coordinate Tile", ToolDescriptions.tile_genome_description,
+				Class.forName("scriptmanager.window_interface.Peak_Analysis.TileGenomeWindow")));
+		// RandCoord
+		pnlPeakAnalysis.add(initializeToolPanel("Generate Random Coordinate", ToolDescriptions.rand_coord_description,
+				"Generate random BED coordinates based on reference genome.",
+				Class.forName("scriptmanager.window_interface.Peak_Analysis.RandomCoordinateWindow")));
+		// Signal_Duplication
+		pnlPeakAnalysis.add(initializeToolPanel("Signal Duplication", ToolDescriptions.signal_dup_description,
+				"Output signal duplication statistics",
+				Class.forName("scriptmanager.window_interface.Peak_Analysis.SignalDuplicationWindow")));
+		// SortByRef
+		pnlPeakAnalysis.add(initializeToolPanel("Sort Coordinates By Distance", ToolDescriptions.sort_by_dist_description,
+				"Sort BED/GFF files by distance to peak BED/GFF",
+				Class.forName("scriptmanager.window_interface.Peak_Analysis.SortByDistWindow")));
+		// FRiXCalculator
+		pnlPeakAnalysis.add(initializeToolPanel("FRiX Score Calculator", ToolDescriptions.frix_description,
+				Class.forName("scriptmanager.window_interface.Peak_Analysis.FRiXCalculatorWindow")));
 
-		JButton btnBedPeakAlignment = new JButton("Align BED to Reference");
-		btnBedPeakAlignment.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				EventQueue.invokeLater(new Runnable() {
-					public void run() {
-						try {
-							BEDPeakAligntoRefWindow frame = new BEDPeakAligntoRefWindow();
-							frame.setVisible(true);
-						} catch (Exception e) {
-							e.printStackTrace();
-						}
-					}
-				});
-			}
-		});
-		sl_pnlPeakAnalysis.putConstraint(SpringLayout.NORTH, btnBedPeakAlignment, 0, SpringLayout.NORTH,
-				txtBedPeakAlignment);
-		sl_pnlPeakAnalysis.putConstraint(SpringLayout.WEST, btnBedPeakAlignment, 10, SpringLayout.WEST,
-				pnlPeakAnalysis);
-		sl_pnlPeakAnalysis.putConstraint(SpringLayout.WEST, txtBedPeakAlignment, 10, SpringLayout.EAST,
-				btnBedPeakAlignment);
-		pnlPeakAnalysis.add(btnBedPeakAlignment);
-
-		// >FilterBED
-		JTextArea txtBedFilter = new JTextArea();
-		initializeTextArea(txtBedFilter);
-		txtBedFilter.setText(ToolDescriptions.filter_bed_description);
-		sl_pnlPeakAnalysis.putConstraint(SpringLayout.NORTH, txtBedFilter, 10, SpringLayout.SOUTH, txtBedPeakAlignment);
-		sl_pnlPeakAnalysis.putConstraint(SpringLayout.EAST, txtBedFilter, -10, SpringLayout.EAST, pnlPeakAnalysis);
-		pnlPeakAnalysis.add(txtBedFilter);
-
-		JButton btnBedFilter = new JButton("Filter BED by Proximity");
-		btnBedFilter.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				EventQueue.invokeLater(new Runnable() {
-					public void run() {
-						try {
-							FilterBEDbyProximityWindow frame = new FilterBEDbyProximityWindow();
-							frame.setVisible(true);
-						} catch (Exception e) {
-							e.printStackTrace();
-						}
-					}
-				});
-			}
-		});
-		sl_pnlPeakAnalysis.putConstraint(SpringLayout.NORTH, btnBedFilter, 0, SpringLayout.NORTH, txtBedFilter);
-		sl_pnlPeakAnalysis.putConstraint(SpringLayout.WEST, btnBedFilter, 10, SpringLayout.WEST, pnlPeakAnalysis);
-		sl_pnlPeakAnalysis.putConstraint(SpringLayout.WEST, txtBedFilter, 10, SpringLayout.EAST, btnBedFilter);
-		pnlPeakAnalysis.add(btnBedFilter);
-
-		// >TileGenome
-		JTextArea txtGenomicCoordinateTile = new JTextArea();
-		initializeTextArea(txtGenomicCoordinateTile);
-		txtGenomicCoordinateTile.setText(ToolDescriptions.tile_genome_description);
-		sl_pnlPeakAnalysis.putConstraint(SpringLayout.NORTH, txtGenomicCoordinateTile, 10, SpringLayout.SOUTH,
-				txtBedFilter);
-		sl_pnlPeakAnalysis.putConstraint(SpringLayout.EAST, txtGenomicCoordinateTile, -10, SpringLayout.EAST,
-				pnlPeakAnalysis);
-		pnlPeakAnalysis.add(txtGenomicCoordinateTile);
-
-		JButton btnGenomicCoordinateTile = new JButton("Genomic Coordinate Tile");
-		btnGenomicCoordinateTile.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				EventQueue.invokeLater(new Runnable() {
-					public void run() {
-						try {
-							TileGenomeWindow frame = new TileGenomeWindow();
-							frame.setVisible(true);
-						} catch (Exception e) {
-							e.printStackTrace();
-						}
-					}
-				});
-			}
-		});
-		sl_pnlPeakAnalysis.putConstraint(SpringLayout.NORTH, btnGenomicCoordinateTile, 0, SpringLayout.NORTH,
-				txtGenomicCoordinateTile);
-		sl_pnlPeakAnalysis.putConstraint(SpringLayout.WEST, btnGenomicCoordinateTile, 10, SpringLayout.WEST,
-				pnlPeakAnalysis);
-		sl_pnlPeakAnalysis.putConstraint(SpringLayout.WEST, txtGenomicCoordinateTile, 10, SpringLayout.EAST,
-				btnGenomicCoordinateTile);
-		pnlPeakAnalysis.add(btnGenomicCoordinateTile);
-
-		// >RandCoord
-		JTextArea txtRandomCoordinateGeneration = new JTextArea();
-		initializeTextArea(txtRandomCoordinateGeneration);
-		txtRandomCoordinateGeneration.setText(ToolDescriptions.rand_coord_description);
-		sl_pnlPeakAnalysis.putConstraint(SpringLayout.NORTH, txtRandomCoordinateGeneration, 10, SpringLayout.SOUTH,
-				txtGenomicCoordinateTile);
-		sl_pnlPeakAnalysis.putConstraint(SpringLayout.EAST, txtRandomCoordinateGeneration, -10, SpringLayout.EAST,
-				pnlPeakAnalysis);
-		pnlPeakAnalysis.add(txtRandomCoordinateGeneration);
-
-		JButton btnRandomCoordinateGeneration = new JButton("Generate Random Coordinate");
-		btnRandomCoordinateGeneration.setToolTipText("Generate random BED coordinates based on reference genome.");
-		btnRandomCoordinateGeneration.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				EventQueue.invokeLater(new Runnable() {
-					public void run() {
-						try {
-							RandomCoordinateWindow frame = new RandomCoordinateWindow();
-							frame.setVisible(true);
-						} catch (Exception e) {
-							e.printStackTrace();
-						}
-					}
-				});
-			}
-		});
-		sl_pnlPeakAnalysis.putConstraint(SpringLayout.NORTH, btnRandomCoordinateGeneration, 0, SpringLayout.NORTH,
-				txtRandomCoordinateGeneration);
-		sl_pnlPeakAnalysis.putConstraint(SpringLayout.WEST, btnRandomCoordinateGeneration, 10, SpringLayout.WEST,
-				pnlPeakAnalysis);
-		sl_pnlPeakAnalysis.putConstraint(SpringLayout.WEST, txtRandomCoordinateGeneration, 10, SpringLayout.EAST,
-				btnRandomCoordinateGeneration);
-		pnlPeakAnalysis.add(btnRandomCoordinateGeneration);
-
-		// >Signal_Duplication
-		JTextArea txtOutputSignalDuplication = new JTextArea();
-		initializeTextArea(txtOutputSignalDuplication);
-		txtOutputSignalDuplication.setText(ToolDescriptions.signal_dup_description);
-		sl_pnlPeakAnalysis.putConstraint(SpringLayout.NORTH, txtOutputSignalDuplication, 10, SpringLayout.SOUTH,
-				txtRandomCoordinateGeneration);
-		sl_pnlPeakAnalysis.putConstraint(SpringLayout.EAST, txtOutputSignalDuplication, -10, SpringLayout.EAST,
-				pnlPeakAnalysis);
-		pnlPeakAnalysis.add(txtOutputSignalDuplication);
-
-		JButton btnSignalDuplication = new JButton("Signal Duplication");
-		btnSignalDuplication.setToolTipText("Output signal duplication statistics");
-		btnSignalDuplication.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent arg0) {
-				EventQueue.invokeLater(new Runnable() {
-					public void run() {
-						try {
-							SignalDuplicationWindow frame = new SignalDuplicationWindow();
-							frame.setVisible(true);
-						} catch (Exception e) {
-							e.printStackTrace();
-						}
-					}
-				});
-			}
-		});
-		sl_pnlPeakAnalysis.putConstraint(SpringLayout.NORTH, btnSignalDuplication, 0, SpringLayout.NORTH,
-				txtOutputSignalDuplication);
-		sl_pnlPeakAnalysis.putConstraint(SpringLayout.WEST, btnSignalDuplication, 10, SpringLayout.WEST,
-				pnlPeakAnalysis);
-		sl_pnlPeakAnalysis.putConstraint(SpringLayout.WEST, txtOutputSignalDuplication, 10, SpringLayout.EAST,
-				btnSignalDuplication);
-		pnlPeakAnalysis.add(btnSignalDuplication);
-
-		// >>>>>>>> Coordinate_Manipulation <<<<<<<<
+		// ======== Coordinate_Manipulation ========
 		JPanel pnlCoordManip = new JPanel();
 		pnlCoordManip.setLayout(new FlowLayout(FlowLayout.CENTER, 100, 5));
 		tabbedPane.addTab("Coordinate File Manipulation", null, pnlCoordManip, null);
 
 		JSplitPane splitPaneExpand = new JSplitPane();
 		pnlCoordManip.add(splitPaneExpand);
-
-		// >ExpandBED
-		JButton btnExpandBedFile = new JButton("Expand BED File");
-		btnExpandBedFile.setToolTipText(ToolDescriptions.expand_bed_description);
-		btnExpandBedFile.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				EventQueue.invokeLater(new Runnable() {
-					public void run() {
-						try {
-							ExpandBEDWindow frame = new ExpandBEDWindow();
-							frame.setVisible(true);
-						} catch (Exception e) {
-							e.printStackTrace();
-						}
-					}
-				});
-			}
-		});
-		splitPaneExpand.setLeftComponent(btnExpandBedFile);
-
-		// >ExpandGFF
-		JButton btnExpandGffFile = new JButton("Expand GFF File");
-		btnExpandGffFile.setToolTipText(ToolDescriptions.expand_gff_description);
-		btnExpandGffFile.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				EventQueue.invokeLater(new Runnable() {
-					public void run() {
-						try {
-							ExpandGFFWindow frame = new ExpandGFFWindow();
-							frame.setVisible(true);
-						} catch (Exception e) {
-							e.printStackTrace();
-						}
-					}
-				});
-			}
-		});
-		splitPaneExpand.setRightComponent(btnExpandGffFile);
+		// ExpandBED
+		splitPaneExpand.setLeftComponent(initializeToolPanel("Expand BED File", null, ToolDescriptions.expand_bed_description,
+				Class.forName("scriptmanager.window_interface.Coordinate_Manipulation.BED_Manipulation.ExpandBEDWindow")));
+		// ExpandGFF
+		splitPaneExpand.setRightComponent(initializeToolPanel("Expand GFF File", null, ToolDescriptions.expand_gff_description,
+				Class.forName("scriptmanager.window_interface.Coordinate_Manipulation.GFF_Manipulation.ExpandGFFWindow")));
 
 		JSplitPane splitPaneConvert = new JSplitPane();
 		pnlCoordManip.add(splitPaneConvert);
-
-		// >BEDtoGFF
-		JButton btnBedToGFF = new JButton("Convert BED to GFF");
-		btnBedToGFF.setToolTipText(ToolDescriptions.bed_to_gff_description);
-		btnBedToGFF.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent arg0) {
-				EventQueue.invokeLater(new Runnable() {
-					public void run() {
-						try {
-							BEDtoGFFWindow frame = new BEDtoGFFWindow();
-							frame.setVisible(true);
-						} catch (Exception e) {
-							e.printStackTrace();
-						}
-					}
-				});
-			}
-		});
-		splitPaneConvert.setLeftComponent(btnBedToGFF);
-
-		// >GFFtoBED
-		JButton btnGffToBed = new JButton("Convert GFF to BED");
-		btnGffToBed.setToolTipText(ToolDescriptions.gff_to_bed_description);
-		btnGffToBed.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				EventQueue.invokeLater(new Runnable() {
-					public void run() {
-						try {
-							GFFtoBEDWindow frame = new GFFtoBEDWindow();
-							frame.setVisible(true);
-						} catch (Exception e) {
-							e.printStackTrace();
-						}
-					}
-				});
-			}
-		});
-		splitPaneConvert.setRightComponent(btnGffToBed);
+		// BEDtoGFF
+		splitPaneConvert.setLeftComponent(initializeToolPanel("Convert BED to GFF", null, ToolDescriptions.bed_to_gff_description,
+				Class.forName("scriptmanager.window_interface.Coordinate_Manipulation.BED_Manipulation.BEDtoGFFWindow")));
+		// GFFtoBED
+		splitPaneConvert.setRightComponent(initializeToolPanel("Convert GFF to BED", null, ToolDescriptions.gff_to_bed_description,
+				Class.forName("scriptmanager.window_interface.Coordinate_Manipulation.GFF_Manipulation.GFFtoBEDWindow")));
 
 		JSplitPane splitPaneSort = new JSplitPane();
 		pnlCoordManip.add(splitPaneSort);
+		// SortBED
+		splitPaneSort.setLeftComponent(initializeToolPanel("Sort BED by CDT", null, ToolDescriptions.sort_bed_description,
+				Class.forName("scriptmanager.window_interface.Coordinate_Manipulation.BED_Manipulation.SortBEDWindow")));
+		// SortGFF
+		splitPaneSort.setRightComponent(initializeToolPanel("Sort GFF by CDT", null, ToolDescriptions.sort_gff_description,
+				Class.forName("scriptmanager.window_interface.Coordinate_Manipulation.GFF_Manipulation.SortGFFWindow")));
 
-		// >SortBED
-		JButton btnBEDSort = new JButton("Sort BED by CDT");
-		btnBEDSort.setToolTipText(ToolDescriptions.sort_bed_description);
-		btnBEDSort.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				EventQueue.invokeLater(new Runnable() {
-					public void run() {
-						try {
-							SortBEDWindow frame = new SortBEDWindow();
-							frame.setVisible(true);
-						} catch (Exception e) {
-							e.printStackTrace();
-						}
-					}
-				});
-			}
-		});
-		splitPaneSort.setLeftComponent(btnBEDSort);
+		// ShiftInterval
+		pnlCoordManip.add(initializeToolPanel("Shift Coordinate Interval", null, ToolDescriptions.shift_coordinate_description,
+				Class.forName("scriptmanager.window_interface.Coordinate_Manipulation.ShiftIntervalWindow")));
 
-		// >SortGFF
-		JButton btnSortGffFile = new JButton("Sort GFF by CDT");
-		btnSortGffFile.setToolTipText(ToolDescriptions.sort_gff_description);
-		btnSortGffFile.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				EventQueue.invokeLater(new Runnable() {
-					public void run() {
-						try {
-							SortGFFWindow frame = new SortGFFWindow();
-							frame.setVisible(true);
-						} catch (Exception e) {
-							e.printStackTrace();
-						}
-					}
-				});
-			}
-		});
-		splitPaneSort.setRightComponent(btnSortGffFile);
-
-		JButton btnShiftInterval = new JButton("Shift Coordinate Interval");
-		btnSortGffFile.setToolTipText(ToolDescriptions.shift_coordinate_description);
-		btnShiftInterval.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				EventQueue.invokeLater(new Runnable() {
-					public void run() {
-						try {
-							ShiftIntervalWindow frame = new ShiftIntervalWindow();
-							frame.setVisible(true);
-						} catch (Exception e) {
-							e.printStackTrace();
-						}
-					}
-				});
-			}
-		});
-		pnlCoordManip.add(btnShiftInterval);
-		
-		
-		// >>>>>>>> Read_Analysis <<<<<<<<
+		// ======== Read_Analysis ========
 		JPanel pnlReadAnalysis = new JPanel();
-		SpringLayout sl_pnlReadAnalysis = new SpringLayout();
-		pnlReadAnalysis.setLayout(sl_pnlReadAnalysis);
-		tabbedPane.addTab("Sequence Read Analysis", null, pnlReadAnalysis, null);
+		BoxLayout bl_pnlReadAnalysis = new BoxLayout(pnlReadAnalysis, BoxLayout.PAGE_AXIS);
+		pnlReadAnalysis.setLayout(bl_pnlReadAnalysis);
+		JScrollPane sp_pnlReadAnalysis = new JScrollPane(pnlReadAnalysis, ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED, ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
+		tabbedPane.addTab("Sequence Read Analysis", null, sp_pnlReadAnalysis, null);
 
-		// >TagPileup
-		JTextArea txtTagPileup = new JTextArea();
-		initializeTextArea(txtTagPileup);
-		txtTagPileup.setText(ToolDescriptions.tag_pileup_description);
-		sl_pnlReadAnalysis.putConstraint(SpringLayout.NORTH, txtTagPileup, 10, SpringLayout.NORTH, pnlReadAnalysis);
-		sl_pnlReadAnalysis.putConstraint(SpringLayout.EAST, txtTagPileup, -10, SpringLayout.EAST, pnlReadAnalysis);
-		pnlReadAnalysis.add(txtTagPileup);
+		// TagPileup
+		pnlReadAnalysis.add(initializeToolPanel("Tag Pileup", ToolDescriptions.tag_pileup_description,
+				Class.forName("scriptmanager.window_interface.Read_Analysis.TagPileupWindow")));
+		// ScalingFactor
+		pnlReadAnalysis.add(initializeToolPanel("Calculate Scaling Factor", ToolDescriptions.scaling_factor_description,
+				Class.forName("scriptmanager.window_interface.Read_Analysis.ScalingFactorWindow")));
+		// ScaleMatrix
+		pnlReadAnalysis.add(initializeToolPanel("Scale Matrix Data", ToolDescriptions.scale_matrix_description,
+				Class.forName("scriptmanager.window_interface.Read_Analysis.ScaleMatrixWindow")));
+		// AggregateData
+		pnlReadAnalysis.add(initializeToolPanel("Aggregate Data", ToolDescriptions.aggregate_data_description,
+				Class.forName("scriptmanager.window_interface.Read_Analysis.AggregateDataWindow")));
+		// TransposeMatrix
+		pnlReadAnalysis.add(initializeToolPanel("Transpose Matrix", ToolDescriptions.transpose_matrix_description,
+				Class.forName("scriptmanager.window_interface.Read_Analysis.TransposeMatrixWindow")));
 
-		JButton btnTagPileup = new JButton("Tag Pileup");
-		btnTagPileup.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				EventQueue.invokeLater(new Runnable() {
-					public void run() {
-						try {
-							TagPileupWindow frame = new TagPileupWindow();
-							frame.setVisible(true);
-						} catch (Exception e) {
-							e.printStackTrace();
-						}
-					}
-				});
-			}
-		});
-		sl_pnlReadAnalysis.putConstraint(SpringLayout.NORTH, btnTagPileup, 0, SpringLayout.NORTH, txtTagPileup);
-		sl_pnlReadAnalysis.putConstraint(SpringLayout.WEST, btnTagPileup, 10, SpringLayout.WEST, pnlReadAnalysis);
-		sl_pnlReadAnalysis.putConstraint(SpringLayout.WEST, txtTagPileup, 10, SpringLayout.EAST, btnTagPileup);
-		pnlReadAnalysis.add(btnTagPileup);
-
-		// >ScalingFactor
-		JTextArea txtCalculateScalingFactor = new JTextArea();
-		initializeTextArea(txtCalculateScalingFactor);
-		txtCalculateScalingFactor.setText(ToolDescriptions.scaling_factor_description);
-		sl_pnlReadAnalysis.putConstraint(SpringLayout.NORTH, txtCalculateScalingFactor, 10, SpringLayout.SOUTH,
-				txtTagPileup);
-// 		sl_pnlReadAnalysis.putConstraint(SpringLayout.NORTH, txtCalculateScalingFactor, 10, SpringLayout.SOUTH, btnTagPileup);
-		sl_pnlReadAnalysis.putConstraint(SpringLayout.EAST, txtCalculateScalingFactor, -10, SpringLayout.EAST,
-				pnlReadAnalysis);
-		pnlReadAnalysis.add(txtCalculateScalingFactor);
-
-		JButton btnScale = new JButton("Calculate Scaling Factor");
-		btnScale.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				EventQueue.invokeLater(new Runnable() {
-					public void run() {
-						try {
-							ScalingFactorWindow frame = new ScalingFactorWindow();
-							frame.setVisible(true);
-						} catch (Exception e) {
-							e.printStackTrace();
-						}
-					}
-				});
-			}
-		});
-		sl_pnlReadAnalysis.putConstraint(SpringLayout.NORTH, btnScale, 0, SpringLayout.NORTH,
-				txtCalculateScalingFactor);
-		sl_pnlReadAnalysis.putConstraint(SpringLayout.WEST, btnScale, 10, SpringLayout.WEST, pnlReadAnalysis);
-		sl_pnlReadAnalysis.putConstraint(SpringLayout.WEST, txtCalculateScalingFactor, 10, SpringLayout.EAST, btnScale);
-		pnlReadAnalysis.add(btnScale);
-
-		// >ScaleMatrix
-		JTextArea txtApplyScalingFactor = new JTextArea();
-		initializeTextArea(txtApplyScalingFactor);
-		txtApplyScalingFactor.setText(ToolDescriptions.scale_matrix_description);
-		sl_pnlReadAnalysis.putConstraint(SpringLayout.NORTH, txtApplyScalingFactor, 10, SpringLayout.SOUTH,
-				txtCalculateScalingFactor);
-// 		sl_pnlReadAnalysis.putConstraint(SpringLayout.NORTH, txtApplyScalingFactor, 10, SpringLayout.SOUTH, btnScale);
-		sl_pnlReadAnalysis.putConstraint(SpringLayout.EAST, txtApplyScalingFactor, -10, SpringLayout.EAST,
-				pnlReadAnalysis);
-		pnlReadAnalysis.add(txtApplyScalingFactor);
-
-		JButton btnScaleMatrixData = new JButton("Scale Matrix Data");
-		btnScaleMatrixData.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				EventQueue.invokeLater(new Runnable() {
-					public void run() {
-						try {
-							ScaleMatrixWindow frame = new ScaleMatrixWindow();
-							frame.setVisible(true);
-						} catch (Exception e) {
-							e.printStackTrace();
-						}
-					}
-				});
-			}
-		});
-		sl_pnlReadAnalysis.putConstraint(SpringLayout.NORTH, btnScaleMatrixData, 0, SpringLayout.NORTH,
-				txtApplyScalingFactor);
-		sl_pnlReadAnalysis.putConstraint(SpringLayout.WEST, btnScaleMatrixData, 10, SpringLayout.WEST, pnlReadAnalysis);
-		sl_pnlReadAnalysis.putConstraint(SpringLayout.WEST, txtApplyScalingFactor, 10, SpringLayout.EAST,
-				btnScaleMatrixData);
-		pnlReadAnalysis.add(btnScaleMatrixData);
-
-		// >AggregateData
-		JTextArea txtAggregateData = new JTextArea();
-		initializeTextArea(txtAggregateData);
-		txtAggregateData.setText(ToolDescriptions.aggregate_data_description);
-		sl_pnlReadAnalysis.putConstraint(SpringLayout.NORTH, txtAggregateData, 10, SpringLayout.SOUTH,
-				txtApplyScalingFactor);
-		sl_pnlReadAnalysis.putConstraint(SpringLayout.NORTH, txtAggregateData, 10, SpringLayout.SOUTH,
-				btnScaleMatrixData);
-		sl_pnlReadAnalysis.putConstraint(SpringLayout.EAST, txtAggregateData, -10, SpringLayout.EAST, pnlReadAnalysis);
-		pnlReadAnalysis.add(txtAggregateData);
-
-		JButton btnAggregateData = new JButton("Aggregate Data");
-		btnAggregateData.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				EventQueue.invokeLater(new Runnable() {
-					public void run() {
-						try {
-							AggregateDataWindow frame = new AggregateDataWindow();
-							frame.setVisible(true);
-						} catch (Exception e) {
-							e.printStackTrace();
-						}
-					}
-				});
-			}
-		});
-		sl_pnlReadAnalysis.putConstraint(SpringLayout.NORTH, btnAggregateData, 0, SpringLayout.NORTH, txtAggregateData);
-		sl_pnlReadAnalysis.putConstraint(SpringLayout.WEST, btnAggregateData, 10, SpringLayout.WEST, pnlReadAnalysis);
-		sl_pnlReadAnalysis.putConstraint(SpringLayout.WEST, txtAggregateData, 10, SpringLayout.EAST, btnAggregateData);
-		pnlReadAnalysis.add(btnAggregateData);
-
-		// >>>>>>>> Sequence_Analysis <<<<<<<<
+		// ========= Sequence_Analysis ==========
 		JPanel pnlSeqAnalysis = new JPanel();
-		SpringLayout sl_pnlSeqAnalysis = new SpringLayout();
-		pnlSeqAnalysis.setLayout(sl_pnlSeqAnalysis);
-		tabbedPane.addTab("DNA Sequence Analysis", null, pnlSeqAnalysis, null);
+		BoxLayout bl_pnlSeqAnalysis = new BoxLayout(pnlSeqAnalysis, BoxLayout.PAGE_AXIS);
+		pnlSeqAnalysis.setLayout(bl_pnlSeqAnalysis);
+		JScrollPane sp_pnlSeqAnalysis = new JScrollPane(pnlSeqAnalysis, ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED, ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
+		tabbedPane.addTab("DNA Sequence Analysis", null, sp_pnlSeqAnalysis, null);
 
-		// >FASTAExtract
-		JTextArea txtFASTAExtract = new JTextArea();
-		initializeTextArea(txtFASTAExtract);
-		txtFASTAExtract.setText(ToolDescriptions.fasta_extract_description);
-		sl_pnlSeqAnalysis.putConstraint(SpringLayout.NORTH, txtFASTAExtract, 10, SpringLayout.NORTH, pnlSeqAnalysis);
-		sl_pnlSeqAnalysis.putConstraint(SpringLayout.EAST, txtFASTAExtract, -10, SpringLayout.EAST, pnlSeqAnalysis);
-		pnlSeqAnalysis.add(txtFASTAExtract);
+		// FASTAExtract
+		pnlSeqAnalysis.add(initializeToolPanel("FASTA from BED", ToolDescriptions.fasta_extract_description,
+				Class.forName("scriptmanager.window_interface.Sequence_Analysis.FASTAExtractWindow")));
+		// RandomizeFASTA
+		pnlSeqAnalysis.add(initializeToolPanel("Randomize FASTA", ToolDescriptions.randomize_fasta_description,
+				Class.forName("scriptmanager.window_interface.Sequence_Analysis.RandomizeFASTAWindow")));
+		// SearchMotif
+		pnlSeqAnalysis.add(initializeToolPanel("Search Motif in FASTA", ToolDescriptions.search_motif_description,
+				Class.forName("scriptmanager.window_interface.Sequence_Analysis.SearchMotifWindow")));
+		// DNAShapeFromBED
+		pnlSeqAnalysis.add(initializeToolPanel("DNA Shape from BED", ToolDescriptions.dna_shape_from_bed_description,
+				Class.forName("scriptmanager.window_interface.Sequence_Analysis.DNAShapefromBEDWindow")));
+		// DNAShapeFromFASTA
+		pnlSeqAnalysis.add(initializeToolPanel("DNA Shape from FASTA", ToolDescriptions.dna_shape_from_fasta_description,
+				"Calculate intrinsic DNA shape given input FASTA file",
+				Class.forName("scriptmanager.window_interface.Sequence_Analysis.DNAShapefromFASTAWindow")));
 
-		JButton btnFASTAExtract = new JButton("FASTA from BED");
-		btnFASTAExtract.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				EventQueue.invokeLater(new Runnable() {
-					public void run() {
-						try {
-							FASTAExtractWindow frame = new FASTAExtractWindow();
-							frame.setVisible(true);
-						} catch (Exception e) {
-							e.printStackTrace();
-						}
-					}
-				});
-			}
-		});
-		sl_pnlSeqAnalysis.putConstraint(SpringLayout.NORTH, btnFASTAExtract, 0, SpringLayout.NORTH, txtFASTAExtract);
-		sl_pnlSeqAnalysis.putConstraint(SpringLayout.WEST, btnFASTAExtract, 10, SpringLayout.WEST, pnlSeqAnalysis);
-		sl_pnlSeqAnalysis.putConstraint(SpringLayout.WEST, txtFASTAExtract, 10, SpringLayout.EAST, btnFASTAExtract);
-		pnlSeqAnalysis.add(btnFASTAExtract);
-
-		// >RandomizeFASTA
-		JTextArea txtRandomizeFasta = new JTextArea();
-		initializeTextArea(txtRandomizeFasta);
-		txtRandomizeFasta.setText(ToolDescriptions.randomize_fasta_description);
-		sl_pnlSeqAnalysis.putConstraint(SpringLayout.NORTH, txtRandomizeFasta, 10, SpringLayout.SOUTH, txtFASTAExtract);
-		sl_pnlSeqAnalysis.putConstraint(SpringLayout.EAST, txtRandomizeFasta, -10, SpringLayout.EAST, pnlSeqAnalysis);
-		pnlSeqAnalysis.add(txtRandomizeFasta);
-
-		JButton btnRandomizeFasta = new JButton("Randomize FASTA");
-		btnRandomizeFasta.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent arg0) {
-				EventQueue.invokeLater(new Runnable() {
-					public void run() {
-						try {
-							RandomizeFASTAWindow frame = new RandomizeFASTAWindow();
-							frame.setVisible(true);
-						} catch (Exception e) {
-							e.printStackTrace();
-						}
-					}
-				});
-			}
-		});
-		sl_pnlSeqAnalysis.putConstraint(SpringLayout.NORTH, btnRandomizeFasta, 0, SpringLayout.NORTH,
-				txtRandomizeFasta);
-		sl_pnlSeqAnalysis.putConstraint(SpringLayout.WEST, btnRandomizeFasta, 10, SpringLayout.WEST, pnlSeqAnalysis);
-		sl_pnlSeqAnalysis.putConstraint(SpringLayout.WEST, txtRandomizeFasta, 10, SpringLayout.EAST, btnRandomizeFasta);
-		pnlSeqAnalysis.add(btnRandomizeFasta);
-
-		// >SearchMotif
-		JTextArea txtSearchMotif = new JTextArea();
-		initializeTextArea(txtSearchMotif);
-		txtSearchMotif.setText(ToolDescriptions.search_motif_description);
-// 		sl_pnlSeqAnalysis.putConstraint(SpringLayout.NORTH, txtSearchMotif, 10, SpringLayout.SOUTH, txtRandomizeFasta);
-		sl_pnlSeqAnalysis.putConstraint(SpringLayout.NORTH, txtSearchMotif, 10, SpringLayout.SOUTH, btnRandomizeFasta);
-		sl_pnlSeqAnalysis.putConstraint(SpringLayout.EAST, txtSearchMotif, -10, SpringLayout.EAST, pnlSeqAnalysis);
-		pnlSeqAnalysis.add(txtSearchMotif);
-
-		JButton btnSearchMotif = new JButton("Search Motif in FASTA");
-		btnSearchMotif.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent arg0) {
-				EventQueue.invokeLater(new Runnable() {
-					public void run() {
-						try {
-							SearchMotifWindow frame = new SearchMotifWindow();
-							frame.setVisible(true);
-						} catch (Exception e) {
-							e.printStackTrace();
-						}
-					}
-				});
-			}
-		});
-		sl_pnlSeqAnalysis.putConstraint(SpringLayout.NORTH, btnSearchMotif, 0, SpringLayout.NORTH, txtSearchMotif);
-		sl_pnlSeqAnalysis.putConstraint(SpringLayout.WEST, btnSearchMotif, 10, SpringLayout.WEST, pnlSeqAnalysis);
-		sl_pnlSeqAnalysis.putConstraint(SpringLayout.WEST, txtSearchMotif, 10, SpringLayout.EAST, btnSearchMotif);
-		pnlSeqAnalysis.add(btnSearchMotif);
-
-		// >DNAShapeFromBED
-		JTextArea txtDnaShapeBed = new JTextArea();
-		initializeTextArea(txtDnaShapeBed);
-		txtDnaShapeBed.setText(ToolDescriptions.dna_shape_from_bed_description);
-		sl_pnlSeqAnalysis.putConstraint(SpringLayout.NORTH, txtDnaShapeBed, 10, SpringLayout.SOUTH, txtSearchMotif);
-// 		sl_pnlSeqAnalysis.putConstraint(SpringLayout.NORTH, txtDnaShapeBed, 10, SpringLayout.SOUTH, btnSearchMotif);
-		sl_pnlSeqAnalysis.putConstraint(SpringLayout.EAST, txtDnaShapeBed, -10, SpringLayout.EAST, pnlSeqAnalysis);
-		pnlSeqAnalysis.add(txtDnaShapeBed);
-
-		JButton btnDnaShapeBed = new JButton("DNA Shape from BED");
-		btnDnaShapeBed.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent arg0) {
-				EventQueue.invokeLater(new Runnable() {
-					public void run() {
-						try {
-							DNAShapefromBEDWindow frame = new DNAShapefromBEDWindow();
-							frame.setVisible(true);
-						} catch (Exception e) {
-							e.printStackTrace();
-						}
-					}
-				});
-			}
-		});
-		sl_pnlSeqAnalysis.putConstraint(SpringLayout.NORTH, btnDnaShapeBed, 0, SpringLayout.NORTH, txtDnaShapeBed);
-		sl_pnlSeqAnalysis.putConstraint(SpringLayout.WEST, btnDnaShapeBed, 10, SpringLayout.WEST, pnlSeqAnalysis);
-		sl_pnlSeqAnalysis.putConstraint(SpringLayout.WEST, txtDnaShapeBed, 10, SpringLayout.EAST, btnDnaShapeBed);
-		pnlSeqAnalysis.add(btnDnaShapeBed);
-
-		// >DNAShapeFromFASTA
-		JTextArea txtDnaShapeFasta = new JTextArea();
-		initializeTextArea(txtDnaShapeFasta);
-		txtDnaShapeFasta.setText(ToolDescriptions.dna_shape_from_fasta_description);
-		sl_pnlSeqAnalysis.putConstraint(SpringLayout.NORTH, txtDnaShapeFasta, 10, SpringLayout.SOUTH, txtDnaShapeBed);
-// 		sl_pnlSeqAnalysis.putConstraint(SpringLayout.NORTH, txtDnaShapeFasta, 10, SpringLayout.SOUTH, btnDnaShapeBed);
-		sl_pnlSeqAnalysis.putConstraint(SpringLayout.EAST, txtDnaShapeFasta, -10, SpringLayout.EAST, pnlSeqAnalysis);
-		pnlSeqAnalysis.add(txtDnaShapeFasta);
-
-		JButton btnDnaShapeFasta = new JButton("DNA Shape from FASTA");
-		btnDnaShapeFasta.setToolTipText("Calculate intrinsic DNA shape given input FASTA file");
-		btnDnaShapeFasta.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent arg0) {
-				EventQueue.invokeLater(new Runnable() {
-					public void run() {
-						try {
-							DNAShapefromFASTAWindow frame = new DNAShapefromFASTAWindow();
-							frame.setVisible(true);
-						} catch (Exception e) {
-							e.printStackTrace();
-						}
-					}
-				});
-			}
-		});
-		sl_pnlSeqAnalysis.putConstraint(SpringLayout.NORTH, btnDnaShapeFasta, 0, SpringLayout.NORTH, txtDnaShapeFasta);
-		sl_pnlSeqAnalysis.putConstraint(SpringLayout.WEST, btnDnaShapeFasta, 10, SpringLayout.WEST, pnlSeqAnalysis);
-		sl_pnlSeqAnalysis.putConstraint(SpringLayout.WEST, txtDnaShapeFasta, 10, SpringLayout.EAST, btnDnaShapeFasta);
-		pnlSeqAnalysis.add(btnDnaShapeFasta);
-
-		// >>>>>>>> Figure_Generation <<<<<<<<
+		// ======== Figure_Generation ========
 		JPanel pnlFigure = new JPanel();
-		SpringLayout sl_pnlFigure = new SpringLayout();
-		pnlFigure.setLayout(sl_pnlFigure);
-		tabbedPane.addTab("Figure Generation", null, pnlFigure, null);
+		BoxLayout bl_pnlFigure = new BoxLayout(pnlFigure, BoxLayout.PAGE_AXIS);
+		pnlFigure.setLayout(bl_pnlFigure);
+		JScrollPane sp_pnlFigure = new JScrollPane(pnlFigure, ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED, ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
+		tabbedPane.addTab("Figure Generation", null, sp_pnlFigure, null);
 
-		// >TwoColorHeatMap
-		JTextArea txtTwoColorHeatMap = new JTextArea();
-		initializeTextArea(txtTwoColorHeatMap);
-		txtTwoColorHeatMap.setText(ToolDescriptions.heatmap_description);
-		sl_pnlFigure.putConstraint(SpringLayout.NORTH, txtTwoColorHeatMap, 10, SpringLayout.NORTH, pnlFigure);
-		sl_pnlFigure.putConstraint(SpringLayout.EAST, txtTwoColorHeatMap, -10, SpringLayout.EAST, pnlFigure);
-		pnlFigure.add(txtTwoColorHeatMap);
-
-		JButton btnTwoColorHeatMap = new JButton("Two-Color Heat Map");
-		btnTwoColorHeatMap.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent arg0) {
-				EventQueue.invokeLater(new Runnable() {
-					public void run() {
-						try {
-							TwoColorHeatMapWindow frame = new TwoColorHeatMapWindow();
-							frame.setVisible(true);
-						} catch (Exception e) {
-							e.printStackTrace();
-						}
-					}
-				});
-			}
-		});
-		sl_pnlFigure.putConstraint(SpringLayout.NORTH, btnTwoColorHeatMap, 0, SpringLayout.NORTH, txtTwoColorHeatMap);
-		sl_pnlFigure.putConstraint(SpringLayout.WEST, btnTwoColorHeatMap, 10, SpringLayout.WEST, pnlFigure);
-		sl_pnlFigure.putConstraint(SpringLayout.WEST, txtTwoColorHeatMap, 10, SpringLayout.EAST, btnTwoColorHeatMap);
-		pnlFigure.add(btnTwoColorHeatMap);
-
-// 		>ThreeColorHeatMap
-		JTextArea txtThreeColorHeatMap = new JTextArea();
-		initializeTextArea(txtThreeColorHeatMap);
-		txtThreeColorHeatMap.setText(ToolDescriptions.threecolorheatmap_description);
-		sl_pnlFigure
-				.putConstraint(SpringLayout.NORTH, txtThreeColorHeatMap, 10, SpringLayout.SOUTH,
-				txtTwoColorHeatMap);
-		sl_pnlFigure.putConstraint(SpringLayout.NORTH, txtThreeColorHeatMap, 10, SpringLayout.SOUTH,
-				btnTwoColorHeatMap);
-		sl_pnlFigure.putConstraint(SpringLayout.EAST, txtThreeColorHeatMap, -10, SpringLayout.EAST, pnlFigure);
-		pnlFigure.add(txtThreeColorHeatMap);
-
-		JButton btnThreeColorHeatMap = new JButton("Three Color Heat Map");
-		btnThreeColorHeatMap.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent arg0) {
-				EventQueue.invokeLater(new Runnable() {
-					public void run() {
-						try {
-							ThreeColorHeatMapWindow frame = new ThreeColorHeatMapWindow();
-							frame.setVisible(true);
-						} catch (Exception e) {
-							e.printStackTrace();
-						}
-					}
-				});
-			}
-		});
-		sl_pnlFigure.putConstraint(SpringLayout.NORTH, btnThreeColorHeatMap, 0, SpringLayout.NORTH,
-				txtThreeColorHeatMap);
-		sl_pnlFigure.putConstraint(SpringLayout.WEST, btnThreeColorHeatMap, 10, SpringLayout.WEST, pnlFigure);
-		sl_pnlFigure.putConstraint(SpringLayout.WEST, txtThreeColorHeatMap, 10, SpringLayout.EAST,
-				btnThreeColorHeatMap);
-		pnlFigure.add(btnThreeColorHeatMap);
-
-		// >MergeHeatMap
-		JTextArea txtMergeHeatmap = new JTextArea();
-		initializeTextArea(txtMergeHeatmap);
-		txtMergeHeatmap.setText(ToolDescriptions.merge_heatmap_description);
-		sl_pnlFigure.putConstraint(SpringLayout.NORTH, txtMergeHeatmap, 10, SpringLayout.SOUTH, txtThreeColorHeatMap);
-		sl_pnlFigure.putConstraint(SpringLayout.NORTH, txtMergeHeatmap, 10, SpringLayout.SOUTH, btnThreeColorHeatMap);
-		sl_pnlFigure.putConstraint(SpringLayout.EAST, txtMergeHeatmap, -10, SpringLayout.EAST, pnlFigure);
-		pnlFigure.add(txtMergeHeatmap);
-
-		JButton btnMergeHeatmap = new JButton("Merge Heatmaps");
-		btnMergeHeatmap.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent arg0) {
-				EventQueue.invokeLater(new Runnable() {
-					public void run() {
-						try {
-							MergeHeatMapWindow frame = new MergeHeatMapWindow();
-							frame.setVisible(true);
-						} catch (Exception e) {
-							e.printStackTrace();
-						}
-					}
-				});
-			}
-		});
-		sl_pnlFigure.putConstraint(SpringLayout.NORTH, btnMergeHeatmap, 0, SpringLayout.NORTH, txtMergeHeatmap);
-		sl_pnlFigure.putConstraint(SpringLayout.WEST, btnMergeHeatmap, 10, SpringLayout.WEST, pnlFigure);
-		sl_pnlFigure.putConstraint(SpringLayout.WEST, txtMergeHeatmap, 10, SpringLayout.EAST, btnMergeHeatmap);
-		pnlFigure.add(btnMergeHeatmap);
-
-		// >LabelHeatMap
-		JTextArea txtLabelHeatMap = new JTextArea();
-		initializeTextArea(txtLabelHeatMap);
-		txtLabelHeatMap.setText(ToolDescriptions.label_heatmap_description);
-		sl_pnlFigure.putConstraint(SpringLayout.NORTH, txtLabelHeatMap, 10, SpringLayout.SOUTH, txtMergeHeatmap);
-		sl_pnlFigure.putConstraint(SpringLayout.NORTH, txtLabelHeatMap, 10, SpringLayout.SOUTH, btnMergeHeatmap);
-		sl_pnlFigure.putConstraint(SpringLayout.EAST, txtLabelHeatMap, -10, SpringLayout.EAST, pnlFigure);
-		pnlFigure.add(txtLabelHeatMap);
-
-		JButton btnLabelHeatMap = new JButton("Label HeatMap");
-		btnLabelHeatMap.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				EventQueue.invokeLater(new Runnable() {
-					public void run() {
-						try {
-							LabelHeatMapWindow frame = new LabelHeatMapWindow();
-							frame.setVisible(true);
-						} catch (Exception e) {
-							e.printStackTrace();
-						}
-					}
-				});
-			}
-		});
-		sl_pnlFigure.putConstraint(SpringLayout.NORTH, btnLabelHeatMap, 0, SpringLayout.NORTH,
-				txtLabelHeatMap);
-		sl_pnlFigure.putConstraint(SpringLayout.WEST, btnLabelHeatMap, 10, SpringLayout.WEST, pnlFigure);
-		sl_pnlFigure.putConstraint(SpringLayout.WEST, txtLabelHeatMap, 10, SpringLayout.EAST,
-				btnLabelHeatMap);
-		pnlFigure.add(btnLabelHeatMap);
-
-		// >FourColorPlot
-		JTextArea txtcolorSequencePlot = new JTextArea();
-		initializeTextArea(txtcolorSequencePlot);
-		txtcolorSequencePlot.setText(ToolDescriptions.four_color_description);
-		sl_pnlFigure.putConstraint(SpringLayout.NORTH, txtcolorSequencePlot, 10, SpringLayout.SOUTH, txtLabelHeatMap);
-		sl_pnlFigure.putConstraint(SpringLayout.NORTH, txtcolorSequencePlot, 10, SpringLayout.SOUTH, btnLabelHeatMap);
-		sl_pnlFigure.putConstraint(SpringLayout.EAST, txtcolorSequencePlot, -10, SpringLayout.EAST, pnlFigure);
-		pnlFigure.add(txtcolorSequencePlot);
-
-		JButton btncolorSequencePlot = new JButton("4Color Sequence Plot");
-		btncolorSequencePlot.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				EventQueue.invokeLater(new Runnable() {
-					public void run() {
-						try {
-							FourColorSequenceWindow frame = new FourColorSequenceWindow();
-							frame.setVisible(true);
-						} catch (Exception e) {
-							e.printStackTrace();
-						}
-					}
-				});
-			}
-		});
-		sl_pnlFigure.putConstraint(SpringLayout.NORTH, btncolorSequencePlot, 0, SpringLayout.NORTH, txtcolorSequencePlot);
-		sl_pnlFigure.putConstraint(SpringLayout.WEST, btncolorSequencePlot, 10, SpringLayout.WEST, pnlFigure);
-		sl_pnlFigure.putConstraint(SpringLayout.WEST, txtcolorSequencePlot, 10, SpringLayout.EAST, btncolorSequencePlot);
-		pnlFigure.add(btncolorSequencePlot);
-		
-
-		// >FourColorPlot
-		JTextArea txtMakeCompositePlot = new JTextArea();
-		initializeTextArea(txtMakeCompositePlot);
-		txtMakeCompositePlot.setText(ToolDescriptions.composite_description);
-		sl_pnlFigure.putConstraint(SpringLayout.NORTH, txtMakeCompositePlot, 10, SpringLayout.SOUTH, txtcolorSequencePlot);
-		sl_pnlFigure.putConstraint(SpringLayout.NORTH, txtMakeCompositePlot, 10, SpringLayout.SOUTH, btncolorSequencePlot);
-		sl_pnlFigure.putConstraint(SpringLayout.EAST, txtMakeCompositePlot, -10, SpringLayout.EAST, pnlFigure);
-		pnlFigure.add(txtMakeCompositePlot);
-
-		JButton btnMakeCompositePlot = new JButton("Composite Plot");
-		btnMakeCompositePlot.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				EventQueue.invokeLater(new Runnable() {
-					public void run() {
-						try {
-							PlotCompositeWindow frame = new PlotCompositeWindow();
-							frame.setVisible(true);
-						} catch (Exception e) {
-							e.printStackTrace();
-						}
-					}
-				});
-			}
-		});
-		sl_pnlFigure.putConstraint(SpringLayout.NORTH, btnMakeCompositePlot, 0, SpringLayout.NORTH, txtMakeCompositePlot);
-		sl_pnlFigure.putConstraint(SpringLayout.WEST, btnMakeCompositePlot, 10, SpringLayout.WEST, pnlFigure);
-		sl_pnlFigure.putConstraint(SpringLayout.WEST, txtMakeCompositePlot, 10, SpringLayout.EAST, btnMakeCompositePlot);
-		pnlFigure.add(btnMakeCompositePlot);
+		// TwoColorHeatMap
+		pnlFigure.add(initializeToolPanel("Two-Color Heat Map", ToolDescriptions.heatmap_description,
+				Class.forName("scriptmanager.window_interface.Figure_Generation.TwoColorHeatMapWindow")));
+		// ThreeColorHeatMap
+		pnlFigure.add(initializeToolPanel("Three Color Heat Map", ToolDescriptions.threecolorheatmap_description,
+				Class.forName("scriptmanager.window_interface.Figure_Generation.ThreeColorHeatMapWindow")));
+		// MergeHeatMap
+		pnlFigure.add(initializeToolPanel("Merge Heatmaps", ToolDescriptions.merge_heatmap_description,
+				Class.forName("scriptmanager.window_interface.Figure_Generation.MergeHeatMapWindow")));
+		// LabelHeatMap
+		pnlFigure.add(initializeToolPanel("Label HeatMap", ToolDescriptions.label_heatmap_description,
+				Class.forName("scriptmanager.window_interface.Figure_Generation.LabelHeatMapWindow")));
+		// FourColorPlot
+		pnlFigure.add(initializeToolPanel("4Color Sequence Plot", ToolDescriptions.four_color_description,
+				Class.forName("scriptmanager.window_interface.Figure_Generation.FourColorSequenceWindow")));
+		// Composite Plot
+		pnlFigure.add(initializeToolPanel("Composite Plot", ToolDescriptions.composite_description,
+				Class.forName("scriptmanager.window_interface.Figure_Generation.PlotCompositeWindow")));
 
 		// Set default tab to open to...
 		// 0=BAM_Statistics 5=Peak_Analysis
@@ -1679,17 +350,105 @@ public class ScriptManagerGUI {
 		tabbedPane.setSelectedIndex(0);
 	}
 
-	private void initializeTextArea(JTextArea text) {
-		text.setWrapStyleWord(true);
-		text.setEditable(false);
-		text.setLineWrap(true);
+	/**
+	 * Call initializeToolPanel without the tooltip in the signature (call
+	 * initializeToolPanel with tooltip set to null).
+	 * 
+	 * @param btnName         the name of the tool to display in the JButton
+	 * @param toolDescription the text describing the tool in the JTextArea
+	 * @param c               the full package name of the class that the JButton
+	 *                        instantiates an instance of
+	 * @return
+	 */
+	private JPanel initializeToolPanel(String btnName, String toolDescription, Class<?> c) {
+		return (initializeToolPanel(btnName, toolDescription, null, c));
+	}
+
+	/**
+	 * Use reflections to generalize the ActionListener definition to different
+	 * window_interface classes. If toolDescription is set to null, then the
+	 * JTextArea is not instantiated and the JPanel returned only contains the
+	 * JButton component.
+	 * 
+	 * @param btnName         the name of the tool to display in the JButton
+	 * @param toolDescription the text describing the tool in the JTextArea
+	 * @param toolTip         the text describing the JButton component when the
+	 *                        user hovers over it
+	 * @param c               the full package name of the class that the JButton
+	 *                        instantiates an instance of
+	 * @return
+	 */
+	private JPanel initializeToolPanel(String btnName, String toolDescription, String toolTip, Class<?> c) {
+		// Instantiate and set layout of tool pane
+		JPanel toolPane = new JPanel();
+		GridBagLayout gbl = new GridBagLayout();
+		toolPane.setLayout(gbl);
+		// Configure GridBag constraints
+		GridBagConstraints gbc = new GridBagConstraints();
+		gbc.fill = GridBagConstraints.HORIZONTAL;
+		gbc.anchor = GridBagConstraints.NORTH;
+		gbc.weightx = 0.1;
+		gbc.weighty = 0.1;
+		gbc.insets = new Insets(5, 5, 5, 5);
+		// Add black border (for debugging purposes)
+//		Border blackline = BorderFactory.createLineBorder(Color.black);
+//		toolPane.setBorder(blackline);
+		// Format tool button w/ name and action
+		JButton btnTool = new JButton(btnName);
+		btnTool.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent arg0) {
+				EventQueue.invokeLater(new Runnable() {
+					public void run() {
+						try {
+							// Use reflections to instantiate objects and logs from a Class input
+							JFrame frame = (JFrame) c.getDeclaredConstructor().newInstance();
+							frame.addPropertyChangeListener("log", new PropertyChangeListener() {
+								public void propertyChange(PropertyChangeEvent evt) {
+									// Add log item if logging is turned on
+									if ("log" == evt.getPropertyName() && logs.getToggleOn()) {
+										if (evt.getNewValue() != null) {
+											logs.addLogItem((LogItem) evt.getNewValue());
+										}
+										logs.updateTable();
+									}
+								}
+							});
+							frame.setVisible(true);
+						} catch (Exception e) {
+							e.printStackTrace();
+						}
+					}
+				});
+			}
+		});
+		// Add tool tip if specified
+		if (toolTip != null) {
+			btnTool.setToolTipText(toolTip);
+		}
+		// Add JButton to spin up window instance to the tool pane
+		toolPane.add(btnTool, gbc);
+		// Make & add description component if specified
+		if (toolDescription != null) {
+			// Instantiate and configure text area for tool description
+			JTextArea txtToolDescription = new JTextArea(toolDescription);
+			txtToolDescription.setWrapStyleWord(true);
+			txtToolDescription.setEditable(false);
+			txtToolDescription.setLineWrap(true);
+			// Add JTextArea description to the tool pane
+			toolPane.add(txtToolDescription, gbc);
+		}
+		return (toolPane);
 	}
 
 	/**
 	 * Create the application.
 	 */
 	public ScriptManagerGUI() {
-		initialize();
+		try {
+			initialize();
+		} catch (ClassNotFoundException cnfe) {
+			cnfe.printStackTrace();
+		}
 	}
 
 	/**
@@ -1712,5 +471,4 @@ public class ScriptManagerGUI {
 			}
 		});
 	}
-
 }

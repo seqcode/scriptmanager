@@ -12,9 +12,21 @@ import javax.swing.JLabel;
 import javax.swing.JScrollPane;
 import javax.swing.JTabbedPane;
 
+import scriptmanager.cli.Figure_Generation.TwoColorHeatMapCLI;
+import scriptmanager.objects.LogItem;
+import scriptmanager.objects.Exceptions.OptionException;
 import scriptmanager.scripts.Figure_Generation.TwoColorHeatMap;
 import scriptmanager.util.ExtensionFileFilter;
 
+/**
+ * Output wrapper for running
+ * {@link scriptmanager.scripts.Figure_Generation.TwoColorHeatMap} and reporting
+ * heatmap results
+ * 
+ * @author William KM Lai
+ * @see scriptmanager.scripts.Figure_Generation.TwoColorHeatMap
+ * @see scriptmanager.window_interface.Figure_Generation.TwoColorHeatMapWindow
+ */
 @SuppressWarnings("serial")
 public class TwoColorHeatMapOutput extends JFrame {
 
@@ -32,13 +44,28 @@ public class TwoColorHeatMapOutput extends JFrame {
 	public static Color MAXCOLOR = new Color(255, 0, 0);
 	public boolean transparentBackground = false;
 
-	protected static boolean OUTPUTSTATUS = false;
+	protected static boolean OUTPUT_STATUS = false;
 	protected static File OUT_DIR = null;
 
 	public static double COLOR_RATIO = 1;
 
 	JTabbedPane newpane;
 
+	/**
+	 * Creates a new instance of a TwoColorHeatMapOutput with given attributes
+	 * @param in Matrix file for heat map to represent
+	 * @param c Color to represent maximum values
+	 * @param startR Starting row of the CDT file (Zero indexed)
+	 * @param startC Starting column of the CDT file (Zero indexed)
+	 * @param pHeight Height of resulting heat map (# pixels)
+	 * @param pWidth Width of resulting heat map (# pixels)
+	 * @param scale Scale compression type
+	 * @param abs The difference in values for each step of the color scale
+	 * @param quant The difference in percent of values for each step of the color scale
+	 * @param out_dir Directory to output PNG to
+	 * @param outstatus Whether or not to output a PNG
+	 * @param trans If min values should be transparent
+	 */
 	public TwoColorHeatMapOutput(ArrayList<File> in, Color c, int startR, int startC, int pHeight, int pWidth,
 			String scale, double abs, double quant, File out_dir, boolean outstatus, boolean trans) {
 		setTitle("Heatmap");
@@ -61,35 +88,38 @@ public class TwoColorHeatMapOutput extends JFrame {
 		quantile = quant;
 
 		OUT_DIR = out_dir;
-		OUTPUTSTATUS = outstatus;
+		OUTPUT_STATUS = outstatus;
 	}
 
-	public void run() throws IOException {
+	public void run() throws IOException, OptionException {
+		LogItem old_li = null;
 		for (int x = 0; x < SAMPLE.size(); x++) {
-			File OUTPUT = new File(ExtensionFileFilter.stripExtensionIgnoreGZ(SAMPLE.get(x)) + "_" + scaleType + ".png");
+			// Construct output filename
+			String NAME = ExtensionFileFilter.stripExtensionIgnoreGZ(SAMPLE.get(x)) + "_" + scaleType + ".png";
+			File OUT_FILEPATH = new File(NAME);
 			if (OUT_DIR != null) {
-				OUTPUT = new File(OUT_DIR.getCanonicalPath() + File.separator + OUTPUT.getName());
+				OUT_FILEPATH = new File(OUT_DIR.getCanonicalPath() + File.separator + NAME);
 			}
-
+			// Initialize LogItem
+			String command = TwoColorHeatMapCLI.getCLIcommand(SAMPLE.get(x), MAXCOLOR, startROW, startCOL,
+					pixelHeight, pixelWidth, scaleType, absolute, quantile, OUT_FILEPATH, transparentBackground);
+			LogItem new_li = new LogItem(command);
+			if (OUTPUT_STATUS) { firePropertyChange("log", old_li, new_li); }
 			// Execute script
 			TwoColorHeatMap script_object = new TwoColorHeatMap(SAMPLE.get(x), MAXCOLOR, startROW, startCOL,
-					pixelHeight, pixelWidth, scaleType, absolute, quantile, OUTPUT, OUTPUTSTATUS, transparentBackground);
+					pixelHeight, pixelWidth, scaleType, absolute, quantile, OUT_FILEPATH, OUTPUT_STATUS, transparentBackground);
 			script_object.run();
 			JLabel picLabel = script_object.getImg();
-
+			// Update log item
+			new_li.setStopTime(new Timestamp(new Date().getTime()));
+			new_li.setStatus(0);
+			old_li = new_li;
 			// Output image/error to GUI
-			newpane.addTab(OUTPUT.getName(), new JScrollPane(picLabel, JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED,
-					JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED));
-			firePropertyChange("heat", x, x + 1);
+			newpane.addTab(OUT_FILEPATH.getName(), new JScrollPane(picLabel, JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED, JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED));
+			// Update progress
+			firePropertyChange("progress", x, x + 1);
 		}
-		System.out.println("Program Complete");
-		System.out.println(getTimeStamp());
+		// Update log at completion
+		if (OUTPUT_STATUS) { firePropertyChange("log", old_li, null); }
 	}
-
-	private static String getTimeStamp() {
-		Date date = new Date();
-		String time = new Timestamp(date.getTime()).toString();
-		return time;
-	}
-
 }

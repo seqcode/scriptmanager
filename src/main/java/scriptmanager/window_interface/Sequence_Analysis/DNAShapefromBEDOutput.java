@@ -1,28 +1,34 @@
 package scriptmanager.window_interface.Sequence_Analysis;
 
-import htsjdk.samtools.SAMException;
-
 import java.awt.BorderLayout;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.PrintStream;
+import java.sql.Timestamp;
 import java.util.ArrayList;
+import java.util.Date;
 
 import javax.swing.JFrame;
 import javax.swing.JLayeredPane;
-import javax.swing.JOptionPane;
 import javax.swing.JScrollPane;
 import javax.swing.JTabbedPane;
 import javax.swing.JTextArea;
 import javax.swing.SpringLayout;
 
+import scriptmanager.objects.Exceptions.OptionException;
+import scriptmanager.objects.Exceptions.ScriptManagerException;
 import scriptmanager.objects.CustomOutputStream;
+import scriptmanager.objects.LogItem;
+import scriptmanager.util.ExtensionFileFilter;
+
+import scriptmanager.cli.Sequence_Analysis.DNAShapefromBEDCLI;
 import scriptmanager.scripts.Sequence_Analysis.DNAShapefromBED;
 
 /**
- * Graphical window for displaying the DNA shape scores and charts for the set
- * of input BED intervals.
+ * Output wrapper for running
+ * {@link scriptmanager.scripts.Sequence_Analysis.DNAShapefromBED} and reporting
+ * composite results
  * 
  * @author William KM Lai
  * @see scriptmanager.scripts.Sequence_Analysis.DNAShapefromBED
@@ -31,9 +37,12 @@ import scriptmanager.scripts.Sequence_Analysis.DNAShapefromBED;
 @SuppressWarnings("serial")
 public class DNAShapefromBEDOutput extends JFrame {
 	private File GENOME = null;
+	private ArrayList<File> BED = null;
 	private File OUT_DIR = null;
 	private boolean[] OUTPUT_TYPE = null;
-	private ArrayList<File> BED = null;
+	private boolean OUTPUT_COMPOSITE;
+	private short OUTPUT_MATRIX;
+	private boolean OUTPUT_GZIP;
 
 	private boolean STRAND = true;
 
@@ -49,10 +58,13 @@ public class DNAShapefromBEDOutput extends JFrame {
 	 * @param gen     the reference genome sequence in FASTA-format
 	 * @param b       the BED-formatted coordinate intervals to extract sequence from
 	 * @param out_dir the output directory to save output files to
-	 * @param type    the information on the shape types to generate
+	 * @param type    the shape types to generate
 	 * @param str     the force-strandedness to pass to the script
+	 * @param outputComposite whether to output the composite
+	 * @param outputMatrix format/whether to output matrix
+	 * @param gzOutput whether to output compressed file
 	 */
-	public DNAShapefromBEDOutput(File gen, ArrayList<File> b, File out_dir, boolean[] type, boolean str) {
+	public DNAShapefromBEDOutput(File gen, ArrayList<File> b, File out_dir, boolean[] type, boolean str, boolean outputComposite, short outputMatrix, boolean gzOutput) {
 		setTitle("DNA Shape Prediction Composite");
 		setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
 		setBounds(150, 150, 800, 600);
@@ -80,6 +92,9 @@ public class DNAShapefromBEDOutput extends JFrame {
 		OUT_DIR = out_dir;
 		OUTPUT_TYPE = type;
 		STRAND = str;
+		OUTPUT_COMPOSITE = outputComposite;
+		OUTPUT_MATRIX = outputMatrix;
+		OUTPUT_GZIP = gzOutput;
 	}
 
 	/**
@@ -87,13 +102,17 @@ public class DNAShapefromBEDOutput extends JFrame {
 	 * for each shape type under the "DNA Shape Statistics" tab and append each
 	 * chart generated under the "DNA Shape Plot" tab.
 	 * 
-	 * @throws IOException
-	 * @throws InterruptedException
+	 * @throws ScriptManagerException when ref FASTA not indexable/unexpected formats
+	 * @throws OptionException when invalid output matrix type value is set
+	 * @throws FileNotFoundException Invalid file or parameters
+	 * @throws IOException Invalid file or parameters
+	 * @throws InterruptedException Thrown when more than one script is run at the same time
 	 */
-	public void run() throws IOException, InterruptedException {
-		try {
+	public void run() throws OptionException, FileNotFoundException, IOException, InterruptedException {
+			LogItem old_li = null;
 			// Move through each BED File
 			for (int x = 0; x < BED.size(); x++) {
+				File XBED = BED.get(x);
 				// Initialize TextAreas and PrintStream wrappers
 				JTextArea STATS_MGW = null;
 				JTextArea STATS_PropT = null;
@@ -120,29 +139,23 @@ public class DNAShapefromBEDOutput extends JFrame {
 					STATS_Roll.setEditable(false);
 					PS[3] = new PrintStream(new CustomOutputStream(STATS_Roll));
 				}
-
-				// Open Output File
-				String BASENAME = BED.get(x).getName().split("\\.")[0];
-				try {
-					if (OUT_DIR != null) {
-						BASENAME = OUT_DIR.getCanonicalPath() + File.separator + BASENAME;
-					}
-				} catch (FileNotFoundException e) {
-					e.printStackTrace();
-				} catch (IOException e) {
-					e.printStackTrace();
+				// Construct output filename
+				String NAME = ExtensionFileFilter.stripExtension(XBED);
+				File OUT_BASENAME = new File(NAME);
+				if (OUT_DIR != null) {
+					OUT_BASENAME = new File(OUT_DIR.getCanonicalPath() + File.separator + NAME);
 				}
-
-				// Initialize Script Object and execute calculations
-				DNAShapefromBED script_obj = new DNAShapefromBED(GENOME, BED.get(x), BASENAME, OUTPUT_TYPE, STRAND, PS);
+				// Initialize LogItem
+				String command = DNAShapefromBEDCLI.getCLIcommand(GENOME, XBED, OUT_BASENAME, OUTPUT_TYPE, STRAND, OUTPUT_COMPOSITE, OUTPUT_MATRIX, OUTPUT_GZIP);
+				LogItem new_li = new LogItem(command);
+				firePropertyChange("log", old_li, new_li);
+				// Execute script
+				DNAShapefromBED script_obj = new DNAShapefromBED(GENOME, XBED, OUT_BASENAME, OUTPUT_TYPE, STRAND, OUTPUT_COMPOSITE, OUTPUT_MATRIX, OUTPUT_GZIP, PS);
 				script_obj.run();
-
-				// Exit if FAI failed checks
-				if (!script_obj.getFAIstatus()) {
-					JOptionPane.showMessageDialog(null, "Genome FASTA file contains invalid lines!!!\n");
-					break;
-				}
-
+				// Update log item
+				new_li.setStopTime(new Timestamp(new Date().getTime()));
+				new_li.setStatus(0);
+				old_li = new_li;
 				// Convert average and statistics to output tabs panes
 				if (OUTPUT_TYPE[0]) {
 					tabbedPane_Scatterplot.add("MGW", script_obj.getChartM());
@@ -172,14 +185,9 @@ public class DNAShapefromBEDOutput extends JFrame {
 							JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
 					tabbedPane_Statistics.add("Roll", Rollpane);
 				}
-				firePropertyChange("fa", x, x + 1);
-			}
-		} catch (IllegalArgumentException e) {
-			JOptionPane.showMessageDialog(null, e.getMessage());
-		} catch (FileNotFoundException e) {
-			JOptionPane.showMessageDialog(null, e.getMessage());
-		} catch (SAMException e) {
-			JOptionPane.showMessageDialog(null, e.getMessage());
+				// Update progress
+				firePropertyChange("progress", x, x + 1);
 		}
+		firePropertyChange("log", old_li, null);
 	}
 }

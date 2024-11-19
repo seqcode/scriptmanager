@@ -19,6 +19,7 @@ import javax.swing.JFileChooser;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JList;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JProgressBar;
 import javax.swing.JScrollPane;
@@ -27,11 +28,23 @@ import javax.swing.SpringLayout;
 import javax.swing.SwingWorker;
 import javax.swing.border.EmptyBorder;
 
+import scriptmanager.objects.ToolDescriptions;
 import scriptmanager.util.FileSelection;
 
+/**
+ * GUI for collecting inputs to be processed by
+ * {@link scriptmanager.scripts.Figure_Generation.MergeHeatMapPlot}
+ * 
+ * @author William KM Lai
+ * @see scriptmanager.scripts.Figure_Generation.MergeHeatMapPlot
+ * @see scriptmanager.window_interface.Figure_Generation.MergeHeatMapOutput
+ */
 @SuppressWarnings("serial")
 public class MergeHeatMapWindow extends JFrame implements ActionListener, PropertyChangeListener {
 	private JPanel contentPane;
+	/**
+	 * FileChooser which opens to user's directory
+	 */
 	protected JFileChooser fc = new JFileChooser(new File(System.getProperty("user.dir")));
 
 	final DefaultListModel<String> expList;
@@ -43,29 +56,44 @@ public class MergeHeatMapWindow extends JFrame implements ActionListener, Proper
 	private JButton btnGen;
 
 	private JProgressBar progressBar;
+	/**
+	 * Used to run the script efficiently
+	 */
 	public Task task;
 	private JLabel lblCurrentOutput;
 	private JLabel lblDefaultToLocal;
 	private JButton btnOutputDirectory;
 
+	/**
+	 * Organizes user inputs for calling script
+	 */
 	class Task extends SwingWorker<Void, Void> {
 		@Override
-		public Void doInBackground() throws IOException {
-			setProgress(0);
-
-			MergeHeatMapOutput heat = new MergeHeatMapOutput(pngFiles, OUT_DIR);
-
-			heat.addPropertyChangeListener("merge", new PropertyChangeListener() {
-				public void propertyChange(PropertyChangeEvent propertyChangeEvent) {
-					int temp = (Integer) propertyChangeEvent.getNewValue();
-					int percentComplete = (int) (((double) (temp) / (pngFiles.size() / 2)) * 100);
-					setProgress(percentComplete);
-				}
-			});
-
-			heat.setVisible(true);
-			heat.run();
-
+		public Void doInBackground() {
+			try {
+				setProgress(0);
+				MergeHeatMapOutput output_obj = new MergeHeatMapOutput(pngFiles, OUT_DIR);
+				output_obj.addPropertyChangeListener("progress", new PropertyChangeListener() {
+					public void propertyChange(PropertyChangeEvent propertyChangeEvent) {
+						int temp = (Integer) propertyChangeEvent.getNewValue();
+						int percentComplete = (int) (((double) (temp) / (pngFiles.size() / 2)) * 100);
+						setProgress(percentComplete);
+					}
+				});
+				output_obj.addPropertyChangeListener("log", new PropertyChangeListener() {
+					public void propertyChange(PropertyChangeEvent evt) {
+						firePropertyChange("log", evt.getOldValue(), evt.getNewValue());
+					}
+				});
+				output_obj.setVisible(true);
+				output_obj.run();
+			} catch (IOException ioe) {
+				ioe.printStackTrace();
+				JOptionPane.showMessageDialog(null, "I/O issues: " + ioe.getMessage());
+			} catch (Exception e) {
+				e.printStackTrace();
+				JOptionPane.showMessageDialog(null, ToolDescriptions.UNEXPECTED_EXCEPTION_MESSAGE + e.getMessage());
+			}
 			setProgress(100);
 			return null;
 		}
@@ -76,6 +104,9 @@ public class MergeHeatMapWindow extends JFrame implements ActionListener, Proper
 		}
 	}
 
+	/**
+	 * Creates a new MergeHeatMapWindow
+	 */
 	public MergeHeatMapWindow() {
 		setTitle("Heat Map Plot Generator");
 		setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
@@ -174,6 +205,9 @@ public class MergeHeatMapWindow extends JFrame implements ActionListener, Proper
 		btnGen.addActionListener(this);
 	}
 
+/**
+	 * Runs when a task is invoked, making window non-interactive and executing the task.
+	 */
 	@Override
 	public void actionPerformed(ActionEvent arg0) {
 		massXable(contentPane, false);
@@ -185,15 +219,22 @@ public class MergeHeatMapWindow extends JFrame implements ActionListener, Proper
 	}
 
 	/**
-	 * Invoked when task's progress property changes.
+	 * Invoked when task's progress property changes and updates the progress bar
 	 */
 	public void propertyChange(PropertyChangeEvent evt) {
 		if ("progress" == evt.getPropertyName()) {
 			int progress = (Integer) evt.getNewValue();
 			progressBar.setValue(progress);
+		} else if ("log" == evt.getPropertyName()) {
+			firePropertyChange("log", evt.getOldValue(), evt.getNewValue());
 		}
 	}
 
+	/**
+	 * Makes the content pane non-interactive If the window should be interactive data
+	 * @param con Content pane to make non-interactive
+	 * @param status If the window should be interactive
+	 */
 	public void massXable(Container con, boolean status) {
 		for (Component c : con.getComponents()) {
 			c.setEnabled(status);

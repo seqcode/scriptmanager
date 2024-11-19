@@ -14,8 +14,11 @@ import scriptmanager.util.ExtensionFileFilter;
 import scriptmanager.scripts.Peak_Analysis.FilterBEDbyProximity;
 	
 /**
-	Peak_AnalysisCLI/FilterBEDbyProximityCLI
-*/
+ * Command line interface for
+ * {@link scriptmanager.scripts.Peak_Analysis.FilterBEDbyProximity}
+ * 
+ * @author Olivia Lang
+ */
 @Command(name = "filter-bed", mixinStandardHelpOptions = true,
 	description = ToolDescriptions.filter_bed_description,
 	version = "ScriptManager "+ ToolDescriptions.VERSION,
@@ -28,10 +31,16 @@ public class FilterBEDbyProximityCLI implements Callable<Integer> {
 	private File bedFile;
 	
 	@Option(names = {"-o", "--output"}, description = "Specify basename for output files (default = <bedFilename>_<exclusionNum>bp)")
-	private String outputBasename = null;
+	private File outputBasename = null;
+	@Option(names = {"-z", "--gzip"}, description = "gzip output (default=false)")
+	private boolean gzOutput = false;
 	@Option(names = {"-e", "--exclusion"}, description = "exclusion distance in bp (default=100)")
 	private int exclusion = 100;
 	
+	/**
+	 * Runs when this subcommand is called, running script in respective script package with user defined arguments
+	 * @throws IOException Invalid file or parameters
+	 */
 	@Override
 	public Integer call() throws Exception {
 		System.err.println( ">FilterBEDbyProximityCLI.call()" );
@@ -41,14 +50,20 @@ public class FilterBEDbyProximityCLI implements Callable<Integer> {
 			System.err.println("Invalid input. Check usage using '-h' or '--help'");
 			System.exit(1);
 		}
-		
-		FilterBEDbyProximity script_obj = new FilterBEDbyProximity(bedFile, exclusion, outputBasename, null);
+
+		FilterBEDbyProximity script_obj = new FilterBEDbyProximity(bedFile, outputBasename, exclusion, null, gzOutput);
 		script_obj.run();
 		
 		System.err.println( "Filter Complete." );
 		return(0);
 	}
-	
+
+	/**
+	 * Validate the input values before executing the script.
+	 * 
+	 * @return a multi-line string describing input validation issues
+	 * @throws IOException
+	 */
 	private String validateInput() throws IOException {
 		String r = "";
 		
@@ -57,22 +72,16 @@ public class FilterBEDbyProximityCLI implements Callable<Integer> {
 			r += "(!)BED file does not exist: " + bedFile.getName() + "\n";
 			return(r);
 		}
-		//check input extensions
-		if(!"bed".equals(ExtensionFileFilter.getExtension(bedFile))){
-			r += "(!)Is this a BED file? Check extension: " + bedFile.getName() + "\n";
-		}
 		//set default output filename
-		if(outputBasename==null){
-			outputBasename = ExtensionFileFilter.stripExtension(bedFile) + "_" + Integer.toString(exclusion) + "bp";
+		if (outputBasename==null) {
+			outputBasename = new File(ExtensionFileFilter.stripExtension(bedFile) + "_" + Integer.toString(exclusion) + "bp");
 		//check output filename is valid
 		}else{
-			//no check ext
 			//check directory
-			File tmpOut = new File(outputBasename);
-			if(tmpOut.getParent()==null){
+			if (outputBasename.getParent()==null){
 	// 			System.err.println("default to current directory");
-			} else if(!new File(tmpOut.getParent()).exists()){
-				r += "(!)Check output directory exists: " + tmpOut.getParent() + "\n";
+			} else if(! new File(outputBasename.getParent()).exists()){
+				r += "(!)Check output directory exists: " + outputBasename.getParent() + "\n";
 			}
 		}
 		
@@ -82,6 +91,23 @@ public class FilterBEDbyProximityCLI implements Callable<Integer> {
 		}
 		
 		return(r);
-	
-	}	
+	}
+
+	/**
+	 * Reconstruct CLI command
+	 * 
+	 * @param input the BED file to filter using an exclusion distance
+	 * @param outputBasename the basename for output BED-formatted *-FILTER.bed and *-CLUSTER.bed files
+	 * @param exclusion the number of bp distance to filter by/size of exclusion zone
+	 * @param gzOutput   whether or not to gzip output
+	 * @return command line to execute with formatted inputs
+	 */
+	public static String getCLIcommand(File input, File output, int exclusion, boolean gzOutput) {
+		String command = "java -jar $SCRIPTMANAGER peak-analysis filter-bed";
+		command += " " + input.getAbsolutePath();
+		command += " -o " + output.getAbsolutePath();
+		command += gzOutput ? " -z " : "";
+		command += " -e " + exclusion;
+		return command;
+	}
 }

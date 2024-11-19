@@ -5,20 +5,17 @@ import htsjdk.samtools.reference.FastaSequenceIndexCreator;
 import htsjdk.samtools.reference.IndexedFastaSequenceFile;
 import scriptmanager.objects.CoordinateObjects.BEDCoord;
 
-import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.util.ArrayList;
-import java.util.zip.GZIPOutputStream;
-
 import scriptmanager.util.FASTAUtilities;
+import scriptmanager.util.GZipUtilities;
 import scriptmanager.util.BEDUtilities;
 
 /**
- * This script retrieves the genomic sequences from a BED coordinate file.
+ * Retrieve the genomic sequences from the coordinates in a BED file.
  * 
  * @author William KM Lai
  * @see scriptmanager.util.FASTAUtilities
@@ -48,7 +45,7 @@ public class FASTAExtract {
 	 *             name, false = use Genomic Coordinate)
 	 * @param ps   a PrintStream object for printing progress updates (for GUI)
 	 * @param gz   If this is true, the output file will be gzipped.
-	 * @throws IOException
+	 * @throws IOException Invalid file or parameters
 	 */
 	public FASTAExtract(File gen, File b, File out, boolean str, boolean head, PrintStream ps, boolean gz)
 			throws IOException {
@@ -70,8 +67,8 @@ public class FASTAExtract {
 	/**
 	 * Execute script to extract the genomic sequences.
 	 * 
-	 * @throws IOException
-	 * @throws InterruptedException
+	 * @throws IOException Invalid file or parameters
+	 * @throws InterruptedException Thrown when more than one script is run at the same time
 	 */
 	public void run() throws IOException, InterruptedException {
 		PS.println("STRAND:" + STRAND);
@@ -84,12 +81,7 @@ public class FASTAExtract {
 			// Initialize output writer
 			PrintStream OUT = System.out;
 			if (OUTFILE != null) {
-				if (gzOutput) {
-					OUT = new PrintStream(
-							new BufferedOutputStream(new GZIPOutputStream(new FileOutputStream(OUTFILE))));
-				} else {
-					OUT = new PrintStream(new BufferedOutputStream(new FileOutputStream(OUTFILE)));
-				}
+				OUT = GZipUtilities.makePrintStream(OUTFILE, gzOutput);
 			}
 
 			ArrayList<BEDCoord> BED_Coord = BEDUtilities.loadCoord(BED, HEADER);

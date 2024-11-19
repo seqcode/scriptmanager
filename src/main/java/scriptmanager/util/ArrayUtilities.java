@@ -15,6 +15,11 @@ import java.util.Set;
  * @see scriptmanager.scripts.Read_Analysis.AggregateData
  */
 public class ArrayUtilities {
+
+	/**
+	 * Creates a new ArrayUtilities object (unnecessary becuase this class is a collection of static methods)
+	 */
+	public ArrayUtilities(){}
 	/**
 	 * Scale every element of the input primitive array by an element-wise division
 	 * operation with the scalar input.<br>

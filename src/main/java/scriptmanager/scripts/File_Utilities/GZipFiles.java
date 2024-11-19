@@ -13,8 +13,7 @@ import java.util.zip.GZIPOutputStream;
 import scriptmanager.util.ExtensionFileFilter;
 
 /**
- * Class to contain all static "gzipping" and "ungzipping" methods with
- * customizable buffer sizes.
+ * Gzip compressing and decompressing methods with customizable buffer sizes.
  * 
  * @author Olivia Lang
  * @see scriptmanager.window_interface.File_Utilities.CompressFileWindow
@@ -28,7 +27,7 @@ public class GZipFiles {
 	 * 
 	 * @param input      file to compress
 	 * @param bufferSize number of bytes in buffer
-	 * @throws IOException
+	 * @throws IOException Invalid file or parameters
 	 */
 	public static void compressFile(File input, int bufferSize) throws IOException {
 		String path = input.getCanonicalPath()+".gz";
@@ -49,7 +48,7 @@ public class GZipFiles {
 	 * 
 	 * @param input      file to decompress
 	 * @param bufferSize number of bytes in buffer
-	 * @throws IOException when the extension does not match ".gz"
+	 * @throws IOException Invalid file or parameters when the extension does not match ".gz"
 	 */
 	public static void decompressFile(File input, int bufferSize) throws IOException {
 		if (input.getAbsoluteFile().toString().endsWith(".gz")) {

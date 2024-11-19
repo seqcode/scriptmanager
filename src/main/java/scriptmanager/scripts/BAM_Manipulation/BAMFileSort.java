@@ -9,19 +9,25 @@ import java.io.IOException;
 import java.util.ArrayList;
 
 /**
- * Picard wrapper for MergeSamFiles SortSam
+ * Picard wrapper for SortSam
  * 
  * @author Erik Pavloski
  * @see scriptmanager.window_interface.BAM_Manipulation.SortBAMWindow
  */
 public class BAMFileSort {
+
+    /**
+     * Creates a new BAMFileSort object (unnecessary because class only contains static methods) 
+     */
+    public BAMFileSort(){}
+
 	/**
 	 * The following code uses Picard's SortSam to sort a BAM file by coordinate
 	 * 
 	 * @param input the BAM file to be sorted (corresponds to INPUT)
 	 * @param output the file to write the sorted BAM to (corresponds to OUTPUT)
-	 * @throws SAMException
-	 * @throws IOException
+	 * @throws SAMException Invalid BAM file
+	 * @throws IOException Invalid file or parameters
 	 */
     public static void sort(File input, File output) throws SAMException, IOException {
         // Tells user their File is being sorted

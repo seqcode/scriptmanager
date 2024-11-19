@@ -15,12 +15,15 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import scriptmanager.objects.ToolDescriptions;
-import scriptmanager.objects.CustomExceptions.OptionException;
+import scriptmanager.objects.Exceptions.OptionException;
 import scriptmanager.util.ExtensionFileFilter;
 import scriptmanager.scripts.Figure_Generation.ThreeColorHeatMap;
 
 /**
- * Figure_GenerationCLI/ThreeColorHeatMapCLI
+ * Command line interface for
+ * {@link scriptmanager.scripts.Figure_Generation.ThreeColorHeatMap}
+ * 
+ * @author Olivia Lang
  */
 @Command(name = "three-color", mixinStandardHelpOptions = true,
 	description = ToolDescriptions.threecolorheatmap_description,
@@ -33,8 +36,7 @@ public class ThreeColorHeatMapCLI implements Callable<Integer> {
 	@Parameters(index = "0", description = "")
 	private File CDT;
 
-	@Option(names = { "-o",
-			"--output" }, description = "specify output filename, please use PNG extension\n(default=CDT filename with \"_<compression-type>.png\" appended to the name in working directory of ScriptManager")
+	@Option(names = { "-o", "--output" }, description = "specify output filename, please use PNG extension\n(default=CDT filename with \"_<compression-type>.png\" appended to the name in working directory of ScriptManager")
 	private File output = null;
 	@Option(names = { "-r", "--start-row" }, description = "")
 	private int startROW = 1;
@@ -44,8 +46,7 @@ public class ThreeColorHeatMapCLI implements Callable<Integer> {
 	private int pixelWidth = 200;
 	@Option(names = { "-y", "--height" }, description = "indicate a pixel height for the heatmap (default=600)")
 	private int pixelHeight = 600;
-	@Option(names = { "-z",
-			"--compression" }, description = "choose an image compression type: 1=Treeview, 2=Bicubic, 3=Bilinear, 4=Nearest Neighbor (default=1Treeview)")
+	@Option(names = { "-z", "--compression" }, description = "choose an image compression type: 1=Treeview, 2=Bicubic, 3=Bilinear, 4=Nearest Neighbor (default=1Treeview)")
 	private int compression = 1;
 	
 	@ArgGroup(exclusive = true, multiplicity = "0..1", heading = "%nSelect minimum value:%n\t@|fg(red) (select no more than one of these options)|@%n")
@@ -125,6 +126,10 @@ public class ThreeColorHeatMapCLI implements Callable<Integer> {
 	// 110 --> 6 (Pmax,Pmid,Amin)
 	// 111 --> 7 (Pmax,Pmid,Pmin)
 	
+	/**
+	 * Runs when this subcommand is called, running script in respective script package with user defined arguments
+	 * @throws IOException Invalid file or parameters
+	 */
 	@Override
 	public Integer call() throws Exception {
 		System.err.println(">ThreeColorHeatMapCLI.call()");
@@ -164,26 +169,12 @@ public class ThreeColorHeatMapCLI implements Callable<Integer> {
 			r += "(!)CDT file does not exist: " + CDT.getName() + "\n";
 			return (r);
 		}
-		// check input extensions
-		if (!"cdt".equals(ExtensionFileFilter.getExtension(CDT))) {
-			r += "(!)Is this a CDT file? Check extension: " + CDT.getName() + "\n";
-		}
 		// set default output filename
 		if (output == null) {
 			String NAME = ExtensionFileFilter.stripExtension(CDT);
 			output = new File(NAME + "_" + scaleType + ".png");
 			// check output filename is valid
 		} else {
-			// check ext
-			try {
-				if (!"png".equals(ExtensionFileFilter.getExtension(output))) {
-					r += "(!)Use PNG extension for output filename. Try: " + ExtensionFileFilter.stripExtension(output)
-							+ ".png\n";
-				}
-			} catch (NullPointerException e) {
-				r += "(!)Output filename must have extension: use PNG extension for output filename. Try: " + output
-						+ ".png\n";
-			}
 			// check directory
 			if (output.getParent() == null) {
 // 				System.err.println("default to current directory");
@@ -268,5 +259,83 @@ public class ThreeColorHeatMapCLI implements Callable<Integer> {
 		if (startCOL<=0) { r += "(!)Column start index must be a positive integer value! check \"-l\" flag.\"\n"; }
 
 		return (r);
+	}
+
+	/**
+	 * Reconstruct CLI command
+	 * 
+	 * @param input      the input matrix/CDT to generate a heatmap from
+	 * @param c_min      the min-value color to use
+	 * @param c_mid      the mid-value color to use
+	 * @param c_max      the max-value color to use
+	 * @param c_nan      the color to use for NaN values
+	 * @param startR     the index of the starting row
+	 * @param startC     the index of the starting column
+	 * @param pHeight    the height (in pixels) of the output image
+	 * @param pWidth     the width (in pixels) of the output image
+	 * @param scale      the image compression strategy (e.g. "treeview")
+	 * @param minPstatus the matrix value corresponding to the minimum color value
+	 *                   (absolute strategy)
+	 * @param midPstatus the matrix value corresponding to the middle color value
+	 *                   (absolute strategy)
+	 * @param maxPstatus the matrix value corresponding to the maximum color value
+	 *                   (absolute strategy)
+	 * @param min_quant  the matrix percentile value corresponding to the minimum
+	 *                   color value (quantile strategy)
+	 * @param mid_quant  the matrix percentile value corresponding to the middle
+	 *                   color value (quantile strategy)
+	 * @param max_quant  the matrix percentile value corresponding to the maximum
+	 *                   color value (quantile strategy)
+	 * @param exZ        whether or not to exclude zero values from percentile
+	 *                   calculations
+	 * @param output     the output PNG file
+	 * @return command line to execute with formatted inputs
+	 * @throws OptionException 
+	 */
+	public static String getCLIcommand(File input, Color c_min, Color c_mid, Color c_max, Color c_nan, int startR, int startC,
+			int pHeight, int pWidth, String scale, boolean minPstatus, boolean midPstatus, boolean maxPstatus,
+			double min_quant, double mid_quant, double max_quant, boolean exZ, File output) throws OptionException {
+		String command = "java -jar $SCRIPTMANAGER figure-generation three-color";
+		command += " " + input.getAbsolutePath();
+		command += " -o " + output.getAbsolutePath();
+
+		command += " --color-min " + Integer.toHexString(c_min.getRGB()).substring(2);
+		command += " --color-mid " + Integer.toHexString(c_mid.getRGB()).substring(2);
+		command += " --color-max " + Integer.toHexString(c_max.getRGB()).substring(2);
+		command += " --color-nan " + Integer.toHexString(c_nan.getRGB()).substring(2);
+
+		command += " -r " + startR;
+		command += " -l " + startC;
+		command += " -y " + pHeight;
+		command += " -x " + pWidth;
+		switch (scale) {
+			case "treeview":
+				command += " -z 1";
+				break;
+			case "bicubic":
+				command += " -z 2";
+				break;
+			case "bilinear":
+				command += " -z 3";
+				break;
+			case "neighbor":
+				command += " -z 4";
+				break;
+			default:
+				throw new OptionException("invalid compression string");
+		}
+
+		command += minPstatus ? " -pn " + min_quant : " -an " + min_quant;
+		command += midPstatus ? " -pd " + mid_quant : " -ad " + mid_quant;
+		command += maxPstatus ? " -px " + max_quant : " -ax " + max_quant;
+
+		command += c_min.getAlpha()==0 ? " --transparent-min" : "";
+		command += c_mid.getAlpha()==0 ? " --transparent-mid" : "";
+		command += c_max.getAlpha()==0 ? " --transparent-max" : "";
+		command += c_nan.getAlpha()==0 ? " --transparent-nan" : "";
+
+		command += exZ ? "--include-zeros" : "";
+
+		return (command);
 	}
 }

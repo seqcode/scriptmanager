@@ -14,11 +14,10 @@ import scriptmanager.util.ExtensionFileFilter;
 import scriptmanager.scripts.File_Utilities.ConvertChrNames;
 
 /**
- * Command line interface class for converting chromsome names of BED file by
- * calling method implemented in the scripts package.
+ * Command line interface for
+ * {@link scriptmanager.scripts.File_Utilities.ConvertChrNames}
  * 
  * @author Olivia Lang
- * @see scriptmanager.scripts.File_Utilities.ConvertChrNames
  */
 @Command(name = "convert-bed-genome", mixinStandardHelpOptions = true,
 	description = ToolDescriptions.convertBEDChrNamesDescription,
@@ -26,6 +25,11 @@ import scriptmanager.scripts.File_Utilities.ConvertChrNames;
 	exitCodeOnInvalidInput = 1,
 	exitCodeOnExecutionException = 1)
 public class ConvertBEDChrNamesCLI implements Callable<Integer> {
+
+	/**
+	 * Creates a ConvertBEDChrNamesCLI object
+	 */
+	public ConvertBEDChrNamesCLI(){}
 
 	@Parameters( index = "0", description = "the BED coordinate file to convert")
 	private File coordFile;
@@ -38,9 +42,14 @@ public class ConvertBEDChrNamesCLI implements Callable<Integer> {
 	
 	@Option(names = {"-m", "--chrmt"}, description = "converter will map \"chrM\" --> \"chrmt\" (default with no flag is \"chrmt\" --> \"chrM\")")
 	private boolean useChrmt = false;
+
 	@Option(names = {"-z", "--gzip"}, description = "gzip output (default=false)")
 	private boolean gzOutput = false;
 
+	/**
+	 * Runs when this subcommand is called, running script in respective script package with user defined arguments
+	 * @throws IOException Invalid file or parameters
+	 */
 	@Override
 	public Integer call() throws Exception {
 		System.err.println( ">ConvertBEDChrNamesCLI.call()" );
@@ -63,10 +72,10 @@ public class ConvertBEDChrNamesCLI implements Callable<Integer> {
 	}
 
 	/**
-	 * Validate the input values before executing the script.
+	 * Validate the input values before executing the script
 	 * 
 	 * @return a multi-line string describing input validation issues
-	 * @throws IOException
+	 * @throws IOException Invalid file or parameters
 	 */
 	private String validateInput() throws IOException {
 		String r = "";
@@ -78,17 +87,11 @@ public class ConvertBEDChrNamesCLI implements Callable<Integer> {
 		}
 		//set default output filename
 		if (output == null) {
-			// Set suffix format
-			String SUFFIX = toArabic ? "_toRoman.gff" : "_toArabic.gff";
-			SUFFIX += gzOutput ? ".gz" : "";
 			// Set output filepath with name and output directory
-			String OUTPUT = ExtensionFileFilter.stripExtension(coordFile);
-			// Strip second extension if input has ".gz" first extension
-			if (coordFile.getName().endsWith(".gff.gz")) {
-				OUTPUT = ExtensionFileFilter.stripExtensionPath(new File(OUTPUT)) ;
-			}
-			output = new File(OUTPUT + SUFFIX);
-		}else{
+			output = new File(ExtensionFileFilter.stripExtensionIgnoreGZ(coordFile)
+					+ (toArabic ? "_toArabic.bed" : "_toRoman.bed")
+					+ (gzOutput ? ".gz" : ""));
+		} else {
 			//check directory
 			if(output.getParent()==null){
 	// 			System.err.println("default to current directory");
@@ -98,5 +101,25 @@ public class ConvertBEDChrNamesCLI implements Callable<Integer> {
 		}
 
 		return(r);
+	}
+
+	/**
+	 * Reconstruct CLI command
+	 * 
+	 * @param RtoA whether to do a roman to arabic numeral conversion (vs arabic to roman numeral)
+	 * @param input the BED file to convert chr names of
+	 * @param output the output GFF file of converted coords
+	 * @param useChrmt whether or not to use "chrmt"
+	 * @param gzOutput gzip output
+	 * @return command line to execute with formatted inputs
+	 */
+	public static String getCLIcommand(boolean RtoA, File input, File output, boolean useChrmt, boolean gzOutput) {
+		String command = "java -jar $SCRIPTMANAGER file-utilities convert-bed-genome";
+		command += RtoA ? " --to-arabic" : "";
+		command += " -o " + output.getAbsolutePath();
+		command += useChrmt ? " --chrmt" : "";
+		command += gzOutput ? " --gzip" : "";
+		command += " " + input.getAbsolutePath();
+		return command;
 	}
 }

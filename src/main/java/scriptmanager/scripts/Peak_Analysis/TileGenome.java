@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.io.PrintStream;
 import scriptmanager.objects.CoordinateObjects.BEDCoord;
 import scriptmanager.objects.CoordinateObjects.GFFCoord;
+import scriptmanager.util.GZipUtilities;
 import scriptmanager.util.GenomeSizeReference;
 
 /**
@@ -28,37 +29,36 @@ import scriptmanager.util.GenomeSizeReference;
 	 * 
 	 * @param GENOME     the String encoding the genome build to tile (matches
 	 *                   util.GenomeSizeReference)
-	 * @param windowSize the base-pair length of the tiles
-	 * @param BEDout     coordinate file format of output where BED-format is used
-	 *                   if true and GFF-format used if false
 	 * @param OUTPUT     the file to write the coordinate tile output to (if null, a
 	 *                   default filename is determined using
 	 *                   &lt;GENOME&gt;_&lt;windowSize&gt;bp.&lt;ext&gt;)
-	 * @throws IOException
+	 * @param BEDout     coordinate file format of output where BED-format is used
+	 *                   if true and GFF-format used if false
+	 * @param windowSize the base-pair length of the tiles
+	 * @param gzOutput   whether or not to gzip output
+	 * @throws IOException Invalid file or parameters
 	 * @throws IllegalArgumentException
 	 */
-	public static void execute(String GENOME, int windowSize, boolean BEDout, File OUTPUT) throws IOException, IllegalArgumentException {
+	public static void execute(String GENOME, File OUTPUT, boolean BEDout, int windowSize, boolean gzOutput) throws IOException, IllegalArgumentException {
 		GenomeSizeReference coord = new GenomeSizeReference(GENOME);
-		String EXTENSION = ".gff";
-		if (BEDout) {
-			EXTENSION = ".bed";
-		}
+		String EXTENSION = BEDout ? ".bed" : ".gff";
 		String fileName = GENOME + "_" + windowSize + "bp" + EXTENSION;
 		PrintStream OUT = null;
 		if (OUTPUT == null) {
-			OUT = new PrintStream(new File(fileName));
+			OUT = GZipUtilities.makePrintStream(new File(fileName), gzOutput);
 		} else {
-			OUT = new PrintStream(OUTPUT);
+			OUT = GZipUtilities.makePrintStream(OUTPUT, gzOutput);
 		}
-
+		// Iterate each chromosome
 		for(int x = 0; x < coord.getChrom().size(); x++) {
 			String CHROM = coord.getChrom().get(x);
 			long SIZE = coord.getChromSize().get(x);
+			// Iterate each window
 			for(long y = 0; y < SIZE; y += windowSize) {
 				long STOP = y + windowSize;
 				//If beyond the edge of chromosome, set end to size
-				if(STOP > SIZE) { STOP = SIZE; }
-				if(BEDout) {
+				if (STOP > SIZE) { STOP = SIZE; }
+				if (BEDout) {
 		    		BEDCoord outcoord = new BEDCoord(CHROM, y, STOP, "+");
 		    		OUT.println(outcoord.toString());
 		    	} else {

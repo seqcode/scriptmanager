@@ -9,6 +9,12 @@ import java.util.Scanner;
 
 import scriptmanager.util.SimilarityMetric;
 
+/**
+ * (Dev) Deprecated tool used to create a similarity matrix and outputting it to
+ * a new file
+ * 
+ * @author William KM Lai
+ */
 public class SimilarityMatrix {
 
 	private File INPUT = null;
@@ -16,6 +22,16 @@ public class SimilarityMatrix {
 	private int METRIC = 0;
 	private boolean COLUMN = true;
 
+	/**
+	 * Creates a new instance of the SimilarityMatrix script with a given matrix
+	 * 
+	 * @param in       Input matrix as a TAB file
+	 * @param out_path Output directory
+	 * @param m        Similarity metric (0 = pearson, 1 = reflective, 2 = spearman,
+	 *                 3 = euclidean, 4 = manhattan)
+	 * @param col      Whether columns or rows should be correlated (true = columns,
+	 *                 false = rows)
+	 */
 	public SimilarityMatrix(File in, File out_path, int m, boolean col) {
 		INPUT = in;
 		OUT_PATH = out_path;
@@ -23,6 +39,10 @@ public class SimilarityMatrix {
 		COLUMN = col;
 	}
 
+	/**
+	 * Runs the similarity calculations and outputs matrix
+	 * @throws IOException Invalid file or parameters
+	 */
 	public void run() throws IOException {
 		ArrayList<double[]> DATA = new ArrayList<double[]>();
 		ArrayList<String> ID = new ArrayList<String>();
@@ -84,6 +104,11 @@ public class SimilarityMatrix {
 		}
 	}
 
+	/**
+	 * Calculates similarity matrix based on similarity metric and matrix
+	 * @param data Matrix to be used for calculations
+	 * @return The similarity matrix
+	 */
 	public double[][] calculateMatrix(ArrayList<double[]> data) {
 		SimilarityMetric corr = new SimilarityMetric();
 		if (METRIC == 0) {
@@ -109,6 +134,11 @@ public class SimilarityMatrix {
 		return matrix;
 	}
 
+	/**
+	 * Outputs errors if script fails to laod matrix
+	 * @throws FileNotFoundException Script could not find valid input file
+	 * @throws IOException Invalid file or parameters
+	 */
 	public void outputMatrixLoadFail() throws FileNotFoundException, IOException {
 		String[] name = INPUT.getName().split("\\.");
 		String NEWNAME = "";
@@ -131,6 +161,12 @@ public class SimilarityMatrix {
 		OUT.close();
 	}
 
+	/**
+	 * Outputs resulting matrix to same directory as original matrix
+	 * @param matrix Matrix to output
+	 * @param id ID's of rows and columns
+	 * @throws IOException Invalid file or parameters
+	 */
 	public void outputMatrix(double[][] matrix, ArrayList<String> id) throws IOException {
 		String[] name = INPUT.getName().split("\\.");
 		String NEWNAME = "";

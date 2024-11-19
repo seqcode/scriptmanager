@@ -1,0 +1,145 @@
+<tool id="scriptmanager_four-color" name="ScriptManager: Four Color Sequence Plot" version="0.1.0" profile="22.01" >
+    <description>Generate 4Color sequence plot given FASTA file and user-defined RGB colors.</description>
+    <macros>
+        <import>scriptmanager_macros.xml</import>
+    </macros>
+    <requirements>
+        <expand macro="requirement_openjdk" />
+    </requirements>
+
+
+    <command detect_errors="exit_code"><![CDATA[
+        #set output_dir = $output.files_path
+        java -jar $__tool_directory__/@JAR_FILENAME@ figure-generation four-color
+        -o '$output'
+        -x $pixel_width
+        -y $pixel_height
+        -c
+        #if str($a_select_color_cond.a_select_color) == "a_hex":
+            '$a_select_color_cond.a_hex'
+        #else:
+            $a_select_color_cond.color_a
+        #end if
+        #if str($t_select_color_cond.t_select_color) == "t_hex":
+            '$t_select_color_cond.t_hex'
+        #else
+            $t_select_color_cond.color_t
+        #end if
+        #if str($g_select_color_cond.g_select_color) == "g_hex":
+            $g_select_color_cond.g_hex'
+        #else
+            $g_select_color_cond.color_g
+        #end if
+        #if str($c_select_color_cond.c_select_color) == "c_hex":
+            '$c_select_color_cond.c_hex'
+        #else
+            $c_select_color_cond.color_c
+        #end if
+        #if str($n_select_color_cond.n_select_color) == "n_hex":
+            '$n_select_color_cond.n_hex'
+        #else
+            $n_select_color_cond.color_n
+        #end if
+        '$input'
+    ]]></command>
+<inputs>
+    <param name="input"  type="data" format="fasta" label="Input FASTA file" />
+
+    <param name="pixel_height" type="integer" value="1" min="1" label="Pixel height per nucleotide" />
+    <param name="pixel_width"  type="integer" value="1" min="1" label="Pixel width per nucleotide" />
+
+    <conditional name="a_select_color_cond">
+            <param name="a_select_color" type="select" label="A nucleotide: select color or specify hexadecimal color code?">
+                <option value="a_color" selected="True" >preset colors</option>
+                <option value="a_hex" >specify hexadecimal color code</option>
+            </param>
+            <when value="a_color">
+                <param name="color_a" type="select" label="Color">
+                    <expand macro="four_color_plot_selector_default_red" />
+                </param>
+            </when>
+            <when value="a_hex">
+                <param name="a_hex" type="text" value="D00000" label="Hexadecimal code" />
+            </when>
+        </conditional>
+
+        <conditional name="t_select_color_cond">
+            <param name="t_select_color" type="select" label="T nucleotide: select color or specify hexadecimal color code?">
+                <option value="t_color" selected="True" >preset colors</option>
+                <option value="t_hex" >specify hexadecimal color code</option>
+            </param>
+            <when value="t_color">
+                <param name="color_t" type="select" label="Color">
+                    <expand macro="four_color_plot_selector_default_green" />
+                </param>
+            </when>
+            <when value="t_hex">
+                <param name="t_hex" type="text" value="00D000" label="Hexadecimal code" />
+            </when>
+        </conditional>
+
+        <conditional name="g_select_color_cond">
+            <param name="g_select_color" type="select" label="G nucleotide: select color or specify hexadecimal color code?">
+                <option value="g_color" selected="True" >preset colors</option>
+                <option value="g_hex" >specify hexadecimal color code</option>
+            </param>
+            <when value="g_color">
+                <param name="color_g" type="select" label="Color">
+                    <expand macro="four_color_plot_selector_default_yellow" />
+                </param>
+            </when>
+            <when value="g_hex">
+                <param name="g_hex" type="text" value="FFB400" label="Hexadecimal code" />
+            </when>
+        </conditional>
+
+        <conditional name="c_select_color_cond">
+            <param name="c_select_color" type="select" label="C nucleotide: select color or specify hexadecimal color code?">
+                <option value="c_color" selected="True" >preset colors</option>
+                <option value="c_hex" >specify hexadecimal color code</option>
+            </param>
+            <when value="c_color">
+                <param name="color_c" type="select" label="Color">
+                    <expand macro="four_color_plot_selector_default_blue" />
+                </param>
+            </when>
+            <when value="c_hex">
+                <param name="c_hex" type="text" value="0000D0" label="Hexadecimal code" />
+            </when>
+        </conditional>
+
+        <conditional name="n_select_color_cond">
+            <param name="n_select_color" type="select" label="N nucleotide: select color or specify hexadecimal color code?">
+                <option value="n_color" selected="True" >preset colors</option>
+                <option value="n_hex" >specify hexadecimal color code</option>
+            </param>
+            <when value="n_color">
+                <param name="color_n" type="select" label="Color">
+                    <expand macro="four_color_plot_selector_default_gray" />
+                </param>
+            </when>
+            <when value="n_hex">
+                <param name="n_hex" type="text" value="808080" label="Hexadecimal code" />
+            </when>
+        </conditional>
+
+    </inputs>
+
+    <outputs>
+       <data name="output" format="png" label="${tool.name} (out file) on ${on_string}" >
+       </data>
+
+     </outputs>
+    <tests>
+        <test>
+        <param name="input" value="2.fasta" />
+        <output name="output" value="2.png" />
+        </test>
+    </tests>
+    <help>
+**What it does**
+
+Plot four-color graph based on input FASTA file.
+    </help>
+    <expand macro="citations_two" />
+</tool>

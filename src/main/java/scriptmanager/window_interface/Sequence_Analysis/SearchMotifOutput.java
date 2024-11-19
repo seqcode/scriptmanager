@@ -4,18 +4,23 @@ import java.awt.BorderLayout;
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintStream;
+import java.sql.Timestamp;
+import java.util.Date;
 
 import javax.swing.JFrame;
 import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
 
+import scriptmanager.cli.Sequence_Analysis.SearchMotifCLI;
 import scriptmanager.objects.CustomOutputStream;
+import scriptmanager.objects.LogItem;
 import scriptmanager.scripts.Sequence_Analysis.SearchMotif;
 import scriptmanager.util.ExtensionFileFilter;
 
 /**
- * Graphical window for displaying progress as genome sequences are searched for
- * a given motif.
+ * Output wrapper for running
+ * {@link scriptmanager.scripts.Sequence_Analysis.SearchMotif} and reporting
+ * progress
  * 
  * @author William KM Lai
  * @see scriptmanager.scripts.Sequence_Analysis.SearchMotif
@@ -41,7 +46,7 @@ public class SearchMotifOutput extends JFrame {
 	 * @param num
 	 * @param out_dir
 	 * @param gz If this is true, the output file will be gzipped.
-	 * @throws IOException
+	 * @throws IOException Invalid file or parameters
 	 */
 	public SearchMotifOutput(File input, String mot, int num, File out_dir, boolean gz) throws IOException {
 		setTitle("Motif Search Progress");
@@ -68,21 +73,30 @@ public class SearchMotifOutput extends JFrame {
 	 * sequence/chromosome name within the FASTA file and dispose the window after
 	 * the script finishes.
 	 * 
-	 * @throws IOException
-	 * @throws InterruptedException
+	 * @throws IOException Invalid file or parameters
+	 * @throws InterruptedException Thrown when more than one script is run at the same time
 	 */
 	public void run() throws IOException, InterruptedException {
 		PrintStream PS = new PrintStream(new CustomOutputStream(textArea));
+		// Construct output filename
 		String BASENAME = motif + "_" + Integer.toString(ALLOWED_MISMATCH) + "Mismatch_"
-				+ ExtensionFileFilter.stripExtension(INPUTFILE) + ".bed";
+				+ ExtensionFileFilter.stripExtensionIgnoreGZ(INPUTFILE) + ".bed";
+		BASENAME += gzOutput ? ".gz" : "";
 		if (OUT_DIR != null) {
 			BASENAME = OUT_DIR.getCanonicalPath() + File.separator + BASENAME;
 		}
-		BASENAME += gzOutput ? ".gz" : "";
-
+		// Initialize LogItem
+		String command = SearchMotifCLI.getCLIcommand(INPUTFILE, new File(BASENAME), motif, ALLOWED_MISMATCH, gzOutput);
+		LogItem li = new LogItem(command);
+		firePropertyChange("log", null, li);
+		// Execute script
 		SearchMotif script_obj = new SearchMotif(INPUTFILE, motif, ALLOWED_MISMATCH, new File(BASENAME), PS, gzOutput);
 		script_obj.run();
-
+		// Update log item
+		li.setStopTime(new Timestamp(new Date().getTime()));
+		li.setStatus(0);
+		firePropertyChange("log", li, null);
+		// Sleep and dispose
 		Thread.sleep(2000);
 		dispose();
 	}

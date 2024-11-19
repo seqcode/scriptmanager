@@ -17,7 +17,7 @@ import javax.imageio.ImageIO;
 
 import scriptmanager.util.GZipUtilities;
 /**
- * The script class to generate a four-color sequence plot to be saved as a PNG.
+ * Generate a four-color sequence plot to be saved as a PNG.
  * 
  * @author William KM Lai
  * @see scriptmanager.cli.Figure_Generation.FourColorSequenceCLI
@@ -32,29 +32,34 @@ public class FourColorPlot {
 	 * @param COLOR the list of colors to use for each ATCGN encoding
 	 * @param h height of each base, in pixel
 	 * @param w  width of each base, in pixel
-	 * @throws IOException
+	 * @throws IOException Invalid file or parameters
 	 */
 	public static void generatePLOT(File input, File output, ArrayList<Color> COLOR, int h, int w) throws IOException {
 		int height = h;
 		int width = w;
 
 		List<String> seq = new ArrayList<String>();
-		int maxLen = 0;
+		int maxLen = -1;
 
 		// Check if file is gzipped and instantiate appropriate BufferedReader
-		BufferedReader br;
-		if(GZipUtilities.isGZipped(input)) {
-			br = new BufferedReader(new InputStreamReader(new GZIPInputStream(new FileInputStream(input)), "UTF-8"));
-		} else {
-			br = new BufferedReader(new InputStreamReader(new FileInputStream(input), "UTF-8"));
-		}
+		BufferedReader br = GZipUtilities.makeReader(input);
 		// Initialize line variable to loop through
 		String line = br.readLine();
 		while (line != null) {
+			// Encounter seq line
 			if (!line.contains(">")) {
-				if (maxLen < line.length())
-					maxLen = line.length();
-				seq.add(line);
+				// Append sequence to the string in the last item
+				seq.set(seq.size()-1, seq.get(seq.size()-1) + line);
+			// Encounter header line
+			} else {
+				// Check length of last seq string and update maxLen if larger
+				if (seq.size() > 0) {
+					if (maxLen < seq.get(seq.size()-1).length()) {
+						maxLen = seq.get(seq.size()-1).length();
+					}
+				}
+				// Add new empty sequence string when new header encountered
+				seq.add("");
 			}
 			line = br.readLine();
 		}

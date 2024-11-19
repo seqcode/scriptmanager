@@ -18,7 +18,13 @@ import javax.swing.JPanel;
 @SuppressWarnings("serial")
 public class CompositeCartoon extends JPanel {
 
+	/**
+	 * Height of cartoon
+	 */
 	public int cartoonHeight = 800;
+	/**
+	 * If cartoon represents combined or seperate composite
+	 */
 	public int strand = PileupParameters.SEPARATE;
 	private Path2D.Double peak;
 	private Path2D.Double p_rev;
@@ -91,7 +97,7 @@ public class CompositeCartoon extends JPanel {
 	 * Set strand value as encoded by PileupParameters (SEPARATE v COMBINED).
 	 *
 	 * @param s strand value encoding
-	 * @throws IllegalArgumentException
+	 * @throws IllegalArgumentException Invalid separation value
 	 */
 	public void setStrand(int s) throws IllegalArgumentException {
 		if(s == PileupParameters.SEPARATE) {

@@ -23,6 +23,11 @@ import javax.swing.JTextArea;
 import scriptmanager.objects.GenetrackParameters;
 import scriptmanager.objects.Peak;
 
+/**
+ * (Dev) GUI for running a gene track window based on a (BAM input).
+ * 
+ * @author William KM Lai
+ */
 @SuppressWarnings("serial")
 public class GeneTrack_BAM extends JFrame {
 	private JTextArea textArea;
@@ -59,6 +64,11 @@ public class GeneTrack_BAM extends JFrame {
 	private double[] F_STD;
 	private double[] R_STD;
 	
+	/**
+	 * Creates a new instance of a GeneTrack_BAM script
+	 * @param in BAM file to run Genetrack Script on
+	 * @param PARAM Object containing user-specified parameters
+	 */
 	public GeneTrack_BAM(File in, GenetrackParameters PARAM) {
 		setTitle("BAM to Genetrack Progress");
 		setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
@@ -84,6 +94,9 @@ public class GeneTrack_BAM extends JFrame {
 		FILTER = PARAM.getFilter();
 	}
 	
+	/**
+	 * Runs the Gene Track algorithm with file and parameters passed through constructor, outputting progress to window
+	 */
 	public void run() {
 		String TIME = getTimeStamp();
 		
@@ -175,6 +188,11 @@ public class GeneTrack_BAM extends JFrame {
 		dispose();
 	}
 	
+	/**
+	 * Filters given chromosome for peaks using options from PARAM
+	 * @param chrom Chromosome to find peaks in
+	 * @param start Last position to be 
+	 */
 	public void filterbyLocalMaxima(String chrom, int start) {
 		for(int z = 0; z < F_GOCC.length; z++) {	
 			int fiveprime = z + start - UP_WIDTH;
@@ -209,6 +227,12 @@ public class GeneTrack_BAM extends JFrame {
 		}
 	}
 	
+	/**
+	 * 
+	 * @param iter
+	 * @param start
+	 * @param stop
+	 */
 	public void loadGenomeFragment(CloseableIterator<SAMRecord> iter, int start, int stop) {
 		double[] tempF = new double[F_TOCC.length];
 		double[] tempR = new double[R_TOCC.length];
@@ -315,7 +339,11 @@ public class GeneTrack_BAM extends JFrame {
 		//Sort by position
 		Collections.sort(peaks, Peak.PeakPositionComparator);
 	}
-		
+	
+	/**
+	 * Creates an 
+	 * @return
+	 */
 	private double[] gaussKernel() {
 		double[] Garray = new double[(int) (SIGMA * NUM_STD * 2) + 1];
 		for(int x = 0; x < Garray.length; x++) {

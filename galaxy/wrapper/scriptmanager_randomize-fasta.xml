@@ -1,0 +1,58 @@
+<tool id="scriptmanager_randomize-fasta" name="ScriptManager: Randomize Fasta"
+    version="0.1.0+galaxy0" python_template_version="3.5" profile="21.05">
+    <description> Randomize Fasta </description>
+    <macros>
+        <import>scriptmanager_macros.xml</import>
+    </macros>
+    <requirements>
+        <expand macro="requirement_openjdk" />
+    </requirements>
+    <command detect_errors="exit_code"><![CDATA[
+        ln -s "$input" "temp_input.fasta" &&
+
+        java -jar $__tool_directory__/@JAR_FILENAME@ sequence-analysis randomize-fasta
+        
+        #if str($output_file_name.bool) == "Yes" :
+            -o "$output_file_name.file_name"
+        #end if
+
+        #if str($random_seed.bool) == "Yes" :
+            -s "$random_seed.seed"
+        #end if
+        
+        "temp_input.fasta"
+    ]]></command>
+    <inputs>
+        <param name="input" type="data" format="fasta" label="Input composite data file"/>
+        
+        <conditional name="output_file_name">
+        <param type="boolean" name="bool" truevalue="Yes" falsevalue="No" label="Output File Name" >
+        </param>
+            <when value="Yes">
+                <param type="text" name="file_name" value="" label="File Name" />
+            </when>
+            <when value="No">
+            </when>
+        </conditional>
+        
+        <conditional name="random_seed">
+        <param type="boolean" name="bool" truevalue="Yes" falsevalue="No" label="Set a Random Seed" >
+        </param>
+            <when value="Yes">
+                <param type="integer" name="seed" value="" label="Seed Number" />
+            </when>
+            <when value="No">
+            </when>
+        </conditional>
+    </inputs>
+            
+    <outputs>
+        <data name="output" format="fasta" label="${tool.name} on ${on_string}"/>
+    </outputs>
+    <help>
+        
+    **What it does**
+    Compile data from tab-delimited file into a matrix according to user-specified
+    metric.
+    </help>
+</tool>

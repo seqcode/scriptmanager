@@ -7,18 +7,24 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.PrintStream;
+import java.sql.Timestamp;
 import java.util.ArrayList;
+import java.util.Date;
+
 
 import javax.swing.JFrame;
 import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
 
+import scriptmanager.cli.Sequence_Analysis.FASTAExtractCLI;
 import scriptmanager.objects.CustomOutputStream;
+import scriptmanager.objects.LogItem;
 import scriptmanager.scripts.Sequence_Analysis.FASTAExtract;
 
 /**
- * Graphical window for displaying progress as genomic sequence is extracted
- * from a set of coordinates.
+ * Output wrapper for running
+ * {@link scriptmanager.scripts.Sequence_Analysis.FASTAExtract} and reporting
+ * progress
  * 
  * @author William KM Lai
  * @see scriptmanager.scripts.Sequence_Analysis.FASTAExtract
@@ -71,10 +77,11 @@ public class FASTAExtractOutput extends JFrame {
 	 * sequence/chromosome name within the FASTA file and dispose the window after
 	 * the script finishes.
 	 * 
-	 * @throws IOException
-	 * @throws InterruptedException
+	 * @throws IOException Invalid file or parameters
+	 * @throws InterruptedException Thrown when more than one script is run at the same time
 	 */
 	public void run() throws IOException, InterruptedException {
+		LogItem old_li = null;
 		PrintStream PS = new PrintStream(new CustomOutputStream(textArea));
 		try {
 			for (int x = 0; x < BED.size(); x++) {
@@ -87,13 +94,21 @@ public class FASTAExtractOutput extends JFrame {
 				NAME += gzOutput ? ".gz" : "";
 				OUTFILE = new File(NAME);
 				PS.println("Proccessing File: " + BED.get(x).getName());
-
+				// Initialize LogItem
+				String command = FASTAExtractCLI.getCLIcommand(GENOME, BED.get(x), OUTFILE, STRAND, HEADER, gzOutput);
+				LogItem new_li = new LogItem(command);
+				firePropertyChange("log", old_li, new_li);
 				// Execute Script object
 				FASTAExtract script_obj = new FASTAExtract(GENOME, BED.get(x), OUTFILE, STRAND, HEADER, PS, gzOutput);
 				script_obj.run();
+				// Update log item
+				new_li.setStopTime(new Timestamp(new Date().getTime()));
+				new_li.setStatus(0);
+				old_li = new_li;
 				// Update progress
-				firePropertyChange("fa", x, x + 1);
+				firePropertyChange("progress", x, x + 1);
 			}
+			firePropertyChange("log", old_li, null);
 			PS.println("Extraction Complete");
 		} catch (IllegalArgumentException e) {
 			PS.println(e.getMessage());

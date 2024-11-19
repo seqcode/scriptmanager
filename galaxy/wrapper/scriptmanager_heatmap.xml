@@ -1,0 +1,66 @@
+<tool id="scriptmanager_heatmap" name="ScriptManager: Two-color Heatmap" version="0.1.0" profile="22.01" >
+    <description>Generate heat map using CDT/tabular files.</description>
+    <macros>
+        <import>scriptmanager_macros.xml</import>
+    </macros>
+    <requirements>
+        <expand macro="requirement_openjdk" />
+    </requirements>
+    <command detect_errors="aggressive"><![CDATA[
+        java -jar $__tool_directory__/@JAR_FILENAME@ figure-generation heatmap 'pileup_sense.cdt'
+        -o '$output'
+        #if str($figure_options.figure) == "define" :
+            -x '$figure_options.pixel_width'
+            -y '$figure_options.pixel_height'
+            -a '$figure_options.abs_threshold'
+            -p '$figure_options.percent_threshold'
+
+             #if str($color_options.color_type) == "color_select" :
+                 -c '$color_options.color_type.color_select_value'
+             #end if
+             #if str($color_options.color_type.custom_hex) == "custom_hex" :
+                 -c '$color_options.color_type.custom_hex_value'
+             #end if
+        #else:
+            -c  '0000FF'
+        #end if
+        '$input'
+        ]]>
+    </command>
+    <inputs>
+        <param name="input" type="data" format="tabular" label="Input matrix file" />
+        <param name="pixel_width"       type="integer" value="200"   label="width  of figure in pixel" />
+        <param name="pixel_height"      type="integer" value="600"   label="height of figure in pixel" />
+        <param name="abs_threshold"     type="integer" value="10"    label="use the specified value for contrast thresholding" />
+        <param name="percent_threshold" type="float"   value="0.95"  label="use the specified percenttile for contrast thresholding" />
+
+        <conditional name="color_options">
+            <param name="color_type" type="select" label="select color for heatmap">
+                <option value="color_select" selected="True">preset colors</option>
+                <option value="custom_hex" >specify hexadecimal color code</option>
+            </param>
+            <when value="color_select">
+                <param name="color_select_value" type="select" label="Color">
+                    <expand macro="color_selector_default_black" />
+                </param>
+            </when>
+            <when value="custom_hex">
+                <param name="custom_hex_value" type="text" value="000000" label="Hexadecimal code" />
+            </when>
+        </conditional>
+    </inputs>
+    <outputs>
+        <data name="output" format="png" label="${tool.name} on ${on_string}" >
+        </data>
+    </outputs>
+    <tests>
+    </tests>
+    <help>
+**What it does**
+
+Generate a heatmap from a tab-delimited matrix file.
+
+http://pughlab.mbg.cornell.edu/scriptmanager-docs/docs/Tools/figure-generation/heatmap
+    </help>
+    <expand macro="citations_pearc" />
+</tool>

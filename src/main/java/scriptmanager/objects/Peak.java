@@ -80,6 +80,10 @@ public class Peak {
 		return CHROM;
 	}
 
+	/**
+	 * Returns the BP position
+	 * @return The BP position
+	 */
 	public int getBP() {
 		return BP;
 	}
@@ -124,6 +128,10 @@ public class Peak {
 		CHROM = c;
 	}
 
+	/**
+	 * Sets the BP position
+	 * @param b The new BP position
+	 */
 	public void setBP(int b) {
 		BP = b;
 	}

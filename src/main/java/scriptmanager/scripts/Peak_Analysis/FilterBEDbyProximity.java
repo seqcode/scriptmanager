@@ -2,11 +2,8 @@ package scriptmanager.scripts.Peak_Analysis;
 
 import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.io.PrintStream;
 import java.sql.Timestamp;
 import java.util.ArrayList;
@@ -15,46 +12,80 @@ import java.util.Date;
 import java.util.List;
 
 import scriptmanager.objects.CoordinateObjects.BEDCoord;
+import scriptmanager.util.ExtensionFileFilter;
+import scriptmanager.util.GZipUtilities;
 
-public class FilterBEDbyProximity{
-	
+/**
+ * Filter coordinate peaks in a BED file by a given exclusion distance
+ * 
+ * @author Abeer Almutairy
+ * @see scriptmanager.cli.Peak_Analysis.FilterBEDbyProximityCLI
+ * @see scriptmanager.window_interface.Peak_Analysis.FilterBEDbyProximityOutput
+ * @see scriptmanager.window_interface.Peak_Analysis.FilterBEDbyProximityWindow
+ */
+public class FilterBEDbyProximity {
+
+	private File INPUT;
 	private int CUTOFF;
-	private InputStream inputStream;
-	private String INPUTNAME = null;
+	private PrintStream PS = null;
+
 	private PrintStream OUT_Filter = null;
 	private PrintStream OUT_Cluster = null;
-	private PrintStream PS = null;
-	
-	public FilterBEDbyProximity(File input, int cutoff, String outputBase, PrintStream ps) throws IOException {
+
+	/**
+	 * Initialize input arguments for running FilterBEDbyProximity
+	 * 
+	 * @param input      BED file to filter
+	 * @param outputBase basename for "-FILTER.bed" and "-CLUSTER.bed" output files
+	 * @param cutoff     exclusion distance (bp) to filter peaks by
+	 * @param ps         if non-null, progress updates will be printed to this
+	 *                   PrintStream. (i.e. GUI passes a PrintStream that wraps the
+	 *                   TextArea component of the Output window to display progress
+	 *                   updates to the user)
+	 * @param gzOutput   whether or not to gzip output
+	 * @throws IOException
+	 */
+	public FilterBEDbyProximity(File input, File outputBase, int cutoff, PrintStream ps, boolean gzOutput) throws IOException {
+		INPUT = input;
 		CUTOFF = cutoff;
 		PS = ps;
-		inputStream = new FileInputStream(input);
-		INPUTNAME = input.getName();
-		try{
-			if(outputBase == null) {
-				outputBase = INPUTNAME.substring(0, input.getName().lastIndexOf('.')) + "_" + Integer.toString(CUTOFF) + "bp";
-			}
-			OUT_Filter = new PrintStream(new File(outputBase + "-FILTER" + ".bed")); 
-			OUT_Cluster = new PrintStream(new File(outputBase + "-CLUSTER" + ".bed"));
-		}catch (FileNotFoundException e) { e.printStackTrace(); }
-	}
+
+		// Construct output name
+		if (outputBase == null) {
+			outputBase = new File(ExtensionFileFilter.stripExtensionIgnoreGZ(INPUT) + "_" + Integer.toString(CUTOFF) + "bp");
+		}
+		// Initialize output streams
+		OUT_Filter = GZipUtilities.makePrintStream(new File(outputBase.getAbsoluteFile() + "-FILTER.bed" + (gzOutput? ".gz": "")), gzOutput); 
+		OUT_Cluster = GZipUtilities.makePrintStream(new File(outputBase.getAbsoluteFile() + "-CLUSTER.bed" + (gzOutput? ".gz": "")), gzOutput);
 	
-	public void run() throws IOException, InterruptedException
-	{
-		printPS("Filtering BED file with a cutoff: " + CUTOFF + " in " + INPUTNAME);
-		printPS("Starting: " + getTimeStamp());
-		
-	    BufferedReader lines = new BufferedReader(new InputStreamReader(inputStream), 100);
-	    List<BEDCoord> bedArray = new ArrayList<BEDCoord>();
-	    List<Integer> failArray = new ArrayList<Integer>();
+	}
+
+	/**
+	 * Runs the filtering operation, outputting peaks to "-FILTER.bed" and other
+	 * reads to "-CLUSTER.bed"
+	 * 
+	 * @throws IOException          Invalid file or parameters
+	 * @throws InterruptedException Thrown when more than one script is run at the
+	 *                              same time
+	 */
+	public void run() throws FileNotFoundException, IOException, InterruptedException {
+		// Print update
+		printPS("Filtering BED file with a cutoff: " + CUTOFF + " in " + INPUT.getName());
+		printPS("Starting: " + new Timestamp(new Date().getTime()).toString());
+
+		//Check if input file is compressed and assign appropriate input stream
+		BufferedReader br = GZipUtilities.makeReader(INPUT);
+		List<BEDCoord> bedArray = new ArrayList<BEDCoord>();
+		List<Integer> failArray = new ArrayList<Integer>();
 		
 		//load bed coords into bedArray
-	    String line;
-		while((line = lines.readLine()) != null) {
+		String line;
+		while((line = br.readLine()) != null) {
 			bedArray.add(new BEDCoord(line));
 			bedArray.get(bedArray.size() - 1).calcMid();
 			failArray.add(Integer.valueOf(0));
 		}
+		br.close();
 		Collections.sort(bedArray, BEDCoord.PeakMidpointComparator);
 		Collections.sort(bedArray, BEDCoord.PeakChromComparator);
 		
@@ -111,19 +142,17 @@ public class FilterBEDbyProximity{
 				OUT_Cluster.println(bedArray.get(x).toString()); 
 			}
 		}
+		// close streams
 		OUT_Filter.close();
 		OUT_Cluster.close();
-		
-		inputStream.close();
-		printPS("Completing: " + getTimeStamp());
+		// Print update
+		printPS("Completing: " + new Timestamp(new Date().getTime()).toString());
 	}
 
-	private static String getTimeStamp() {
-		Date date= new Date();
-		String time = new Timestamp(date.getTime()).toString();
-		return time;
-	}
-	
+	/**
+	 * Print logs to both STDERR and the object's PrintStream object(PS) if non-null.
+	 * @param message
+	 */
 	private void printPS(String message){
 		if(PS!=null) PS.println(message);
 		System.err.println(message);

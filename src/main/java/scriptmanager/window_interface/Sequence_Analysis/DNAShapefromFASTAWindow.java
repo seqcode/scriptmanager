@@ -15,6 +15,8 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 
+import javax.swing.BorderFactory;
+import javax.swing.ButtonGroup;
 import javax.swing.DefaultListModel;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
@@ -26,17 +28,24 @@ import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JProgressBar;
 import javax.swing.JScrollPane;
+import javax.swing.JToggleButton;
 import javax.swing.ListSelectionModel;
 import javax.swing.SpringLayout;
 import javax.swing.SwingWorker;
 import javax.swing.border.EmptyBorder;
+import javax.swing.border.TitledBorder;
 
+import scriptmanager.objects.Exceptions.OptionException;
+import scriptmanager.objects.Exceptions.ScriptManagerException;
+import scriptmanager.objects.ToolDescriptions;
+import scriptmanager.util.ExtensionFileFilter;
 import scriptmanager.util.FileSelection;
 
+import scriptmanager.scripts.Sequence_Analysis.DNAShapefromBED;
+
 /**
- * Graphical interface window for calculating various aspects of DNA shape
- * across a set of FASTA sequences by calling the methods implemented in the
- * scripts package.
+ * GUI for collecting inputs to be processed by
+ * {@link scriptmanager.scripts.Sequence_Analysis.DNAShapefromFASTA}
  * 
  * @author William KM Lai
  * @see scriptmanager.scripts.Sequence_Analysis.DNAShapefromFASTA
@@ -45,6 +54,9 @@ import scriptmanager.util.FileSelection;
 @SuppressWarnings("serial")
 public class DNAShapefromFASTAWindow extends JFrame implements ActionListener, PropertyChangeListener {
 	private JPanel contentPane;
+	/**
+	 * FileChooser which opens to user's directory
+	 */
 	protected JFileChooser fc = new JFileChooser(new File(System.getProperty("user.dir")));
 
 	final DefaultListModel<String> expList;
@@ -52,26 +64,39 @@ public class DNAShapefromFASTAWindow extends JFrame implements ActionListener, P
 	private File OUT_DIR = null;
 
 	private JButton btnLoad;
-	private JButton btnRemoveBam;
+	private JButton btnRemoveFasta;
 	private JButton btnCalculate;
-	private JButton btnOutput;
+
 	private JLabel lblDefaultToLocal;
 	private JLabel lblCurrent;
 	private JProgressBar progressBar;
-	private JCheckBox chckbxAll;
+
+	private JToggleButton tglAll;
 	private JCheckBox chckbxMinorGrooveWidth;
 	private JCheckBox chckbxRoll;
 	private JCheckBox chckbxHelicalTwist;
 	private JCheckBox chckbxPropellerTwist;
 
+	private JToggleButton tglTab;
+	private JToggleButton tglCdt;
+
+	private JCheckBox chckbxOutputMatrixData;
+	private JCheckBox chckbxOutputCompositeData;
+	private JCheckBox chckbxOutputGzip;
+
+	private JButton btnOutputDirectory;
+
+	/**
+	 * Used to run the script efficiently
+	 */
 	public Task task;
 
 	/**
-	 * Organize user inputs for calling script.
+	 * Organizes user inputs for calling script
 	 */
 	class Task extends SwingWorker<Void, Void> {
 		@Override
-		public Void doInBackground() throws IOException {
+		public Void doInBackground() {
 			try {
 				if (FASTAFiles.size() < 1) {
 					JOptionPane.showMessageDialog(null, "No FASTA Files Loaded!!!");
@@ -86,23 +111,48 @@ public class DNAShapefromFASTAWindow extends JFrame implements ActionListener, P
 					OUTPUT_TYPE[2] = chckbxHelicalTwist.isSelected();
 					OUTPUT_TYPE[3] = chckbxRoll.isSelected();
 
-					DNAShapefromFASTAOutput signal = new DNAShapefromFASTAOutput(FASTAFiles, OUT_DIR, OUTPUT_TYPE);
-
-					signal.addPropertyChangeListener("fa", new PropertyChangeListener() {
+					short outputMatrix = 0;
+					if (chckbxOutputMatrixData.isSelected()) {
+						if (tglTab.isSelected()) {
+							outputMatrix = DNAShapefromBED.TAB;
+						} else if (tglCdt.isSelected()) {
+							outputMatrix = DNAShapefromBED.CDT;
+						}
+					}
+					// Execute script
+					DNAShapefromFASTAOutput output_obj = new DNAShapefromFASTAOutput(FASTAFiles,
+							OUT_DIR, OUTPUT_TYPE, chckbxOutputCompositeData.isSelected(), outputMatrix, chckbxOutputGzip.isSelected());
+					output_obj.addPropertyChangeListener("progress", new PropertyChangeListener() {
 						public void propertyChange(PropertyChangeEvent propertyChangeEvent) {
 							int temp = (Integer) propertyChangeEvent.getNewValue();
 							int percentComplete = (int) (((double) (temp) / FASTAFiles.size()) * 100);
 							setProgress(percentComplete);
 						}
 					});
-
-					signal.setVisible(true);
-					signal.run();
-
+					output_obj.addPropertyChangeListener("log", new PropertyChangeListener() {
+						public void propertyChange(PropertyChangeEvent evt) {
+							firePropertyChange("log", evt.getOldValue(), evt.getNewValue());
+						}
+					});
+					output_obj.setVisible(true);
+					output_obj.run();
 				}
-			} catch (InterruptedException e) {
+			} catch (ScriptManagerException sme) {
+				JOptionPane.showMessageDialog(null, sme.getMessage());
+			} catch (OptionException oe) {
+				JOptionPane.showMessageDialog(null, oe.getMessage());
+			} catch (NumberFormatException nfe) {
+				JOptionPane.showMessageDialog(null, "Invalid Input in Fields!!!");
+			} catch (InterruptedException ie) {
+				ie.printStackTrace();
+			} catch (IOException ioe) {
+				ioe.printStackTrace();
+				JOptionPane.showMessageDialog(null, "I/O issues: " + ioe.getMessage());
+			} catch (Exception e) {
 				e.printStackTrace();
+				JOptionPane.showMessageDialog(null, ToolDescriptions.UNEXPECTED_EXCEPTION_MESSAGE + e.getMessage());
 			}
+			setProgress(100);
 			return null;
 		}
 
@@ -119,7 +169,7 @@ public class DNAShapefromFASTAWindow extends JFrame implements ActionListener, P
 		setTitle("DNA Shape Predictions from FASTA");
 		setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
 
-		setBounds(125, 125, 475, 380);
+		setBounds(125, 125, 475, 500);
 		contentPane = new JPanel();
 		contentPane.setBorder(new EmptyBorder(5, 5, 5, 5));
 		setContentPane(contentPane);
@@ -142,7 +192,7 @@ public class DNAShapefromFASTAWindow extends JFrame implements ActionListener, P
 		sl_contentPane.putConstraint(SpringLayout.WEST, btnLoad, 10, SpringLayout.WEST, contentPane);
 		btnLoad.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
-				File[] newFASTAFiles = FileSelection.getFiles(fc, "fa");
+				File[] newFASTAFiles = FileSelection.getFiles(fc, "fa", true);
 				if (newFASTAFiles != null) {
 					for (int x = 0; x < newFASTAFiles.length; x++) {
 						FASTAFiles.add(newFASTAFiles[x]);
@@ -153,10 +203,10 @@ public class DNAShapefromFASTAWindow extends JFrame implements ActionListener, P
 		});
 		contentPane.add(btnLoad);
 
-		btnRemoveBam = new JButton("Remove FASTA");
-		sl_contentPane.putConstraint(SpringLayout.NORTH, btnRemoveBam, 0, SpringLayout.NORTH, btnLoad);
-		sl_contentPane.putConstraint(SpringLayout.EAST, btnRemoveBam, -10, SpringLayout.EAST, contentPane);
-		btnRemoveBam.addActionListener(new ActionListener() {
+		btnRemoveFasta = new JButton("Remove FASTA");
+		sl_contentPane.putConstraint(SpringLayout.NORTH, btnRemoveFasta, 0, SpringLayout.NORTH, btnLoad);
+		sl_contentPane.putConstraint(SpringLayout.EAST, btnRemoveFasta, -10, SpringLayout.EAST, contentPane);
+		btnRemoveFasta.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent arg0) {
 				while (listExp.getSelectedIndex() > -1) {
 					FASTAFiles.remove(listExp.getSelectedIndex());
@@ -164,10 +214,10 @@ public class DNAShapefromFASTAWindow extends JFrame implements ActionListener, P
 				}
 			}
 		});
-		contentPane.add(btnRemoveBam);
+		contentPane.add(btnRemoveFasta);
 
 		btnCalculate = new JButton("Calculate");
-		sl_contentPane.putConstraint(SpringLayout.SOUTH, scrollPane, -125, SpringLayout.NORTH, btnCalculate);
+		sl_contentPane.putConstraint(SpringLayout.SOUTH, scrollPane, -200, SpringLayout.NORTH, btnCalculate);
 		sl_contentPane.putConstraint(SpringLayout.SOUTH, btnCalculate, -5, SpringLayout.SOUTH, contentPane);
 		sl_contentPane.putConstraint(SpringLayout.WEST, btnCalculate, 165, SpringLayout.WEST, contentPane);
 		sl_contentPane.putConstraint(SpringLayout.EAST, btnCalculate, -165, SpringLayout.EAST, contentPane);
@@ -180,100 +230,211 @@ public class DNAShapefromFASTAWindow extends JFrame implements ActionListener, P
 		contentPane.add(progressBar);
 
 		btnCalculate.setActionCommand("start");
+		btnCalculate.addActionListener(this);
 
-		lblCurrent = new JLabel("Current Output:");
-		sl_contentPane.putConstraint(SpringLayout.WEST, lblCurrent, 10, SpringLayout.WEST, contentPane);
-		sl_contentPane.putConstraint(SpringLayout.SOUTH, lblCurrent, -45, SpringLayout.SOUTH, contentPane);
-		lblCurrent.setFont(new Font("Lucida Grande", Font.BOLD, 13));
-		contentPane.add(lblCurrent);
+		// Shape Parameters
+		JPanel pnlShapeOptions = new JPanel();
+		sl_contentPane.putConstraint(SpringLayout.NORTH, pnlShapeOptions, -230, SpringLayout.SOUTH, contentPane);
+		sl_contentPane.putConstraint(SpringLayout.WEST, pnlShapeOptions, 0, SpringLayout.WEST, contentPane);
+		sl_contentPane.putConstraint(SpringLayout.EAST, pnlShapeOptions, 0, SpringLayout.EAST, contentPane);
+		sl_contentPane.putConstraint(SpringLayout.SOUTH, pnlShapeOptions, -160, SpringLayout.SOUTH, contentPane);
+		contentPane.add(pnlShapeOptions);
 
-		lblDefaultToLocal = new JLabel("Default to Local Directory");
-		sl_contentPane.putConstraint(SpringLayout.NORTH, lblDefaultToLocal, 1, SpringLayout.NORTH, lblCurrent);
-		sl_contentPane.putConstraint(SpringLayout.WEST, lblDefaultToLocal, 6, SpringLayout.EAST, lblCurrent);
-		lblDefaultToLocal.setBackground(Color.WHITE);
-		contentPane.add(lblDefaultToLocal);
+		SpringLayout sl_ShapeOptions = new SpringLayout();
+		pnlShapeOptions.setLayout(sl_ShapeOptions);
+		TitledBorder ttlShapeOptions = BorderFactory.createTitledBorder("Shape Options");
+		ttlShapeOptions.setTitleFont(new Font("Lucida Grande", Font.ITALIC, 13));
+		pnlShapeOptions.setBorder(ttlShapeOptions);
 
-		btnOutput = new JButton("Output Directory");
-		sl_contentPane.putConstraint(SpringLayout.WEST, btnOutput, 150, SpringLayout.WEST, contentPane);
-		sl_contentPane.putConstraint(SpringLayout.EAST, btnOutput, -150, SpringLayout.EAST, contentPane);
-		btnOutput.addActionListener(new ActionListener() {
+		tglAll = new JToggleButton("Select All");
+		sl_ShapeOptions.putConstraint(SpringLayout.NORTH, tglAll, 0, SpringLayout.NORTH, pnlShapeOptions);
+		sl_ShapeOptions.putConstraint(SpringLayout.WEST, tglAll, 10, SpringLayout.WEST, pnlShapeOptions);
+		sl_ShapeOptions.putConstraint(SpringLayout.EAST, tglAll, 130, SpringLayout.WEST, pnlShapeOptions);
+		tglAll.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
-				OUT_DIR = FileSelection.getOutputDir(fc);
-				if (OUT_DIR != null) {
-					lblDefaultToLocal.setText(OUT_DIR.getAbsolutePath());
-				}
+				chckbxMinorGrooveWidth.setSelected(tglAll.isSelected());
+				chckbxRoll.setSelected(tglAll.isSelected());
+				chckbxHelicalTwist.setSelected(tglAll.isSelected());
+				chckbxPropellerTwist.setSelected(tglAll.isSelected());
+				tglAll.setText(tglAll.isSelected() ? "Deselect All" : "Select All");
 			}
 		});
-		contentPane.add(btnOutput);
+		pnlShapeOptions.add(tglAll);
 
 		chckbxMinorGrooveWidth = new JCheckBox("Minor Groove Width");
-		sl_contentPane.putConstraint(SpringLayout.NORTH, chckbxMinorGrooveWidth, 10, SpringLayout.SOUTH, scrollPane);
-		sl_contentPane.putConstraint(SpringLayout.WEST, chckbxMinorGrooveWidth, 10, SpringLayout.WEST, contentPane);
+		sl_ShapeOptions.putConstraint(SpringLayout.WEST, chckbxMinorGrooveWidth, 30, SpringLayout.EAST, tglAll);
 		chckbxMinorGrooveWidth.addItemListener(new ItemListener() {
 			public void itemStateChanged(ItemEvent e) {
 				if (!chckbxMinorGrooveWidth.isSelected()) {
-					chckbxAll.setSelected(false);
+					tglAll.setSelected(false);
+					tglAll.setText("Select All");
+				} else {
+					if (chckbxRoll.isSelected() && chckbxHelicalTwist.isSelected() && chckbxPropellerTwist.isSelected()) {
+						tglAll.setSelected(true);
+						tglAll.setText("Deselect All");
+					}
 				}
 			}
 		});
-		contentPane.add(chckbxMinorGrooveWidth);
+		pnlShapeOptions.add(chckbxMinorGrooveWidth);
 
 		chckbxRoll = new JCheckBox("Roll");
-		sl_contentPane.putConstraint(SpringLayout.NORTH, chckbxRoll, 0, SpringLayout.NORTH, chckbxMinorGrooveWidth);
-		sl_contentPane.putConstraint(SpringLayout.WEST, chckbxRoll, 0, SpringLayout.WEST, btnCalculate);
+		sl_ShapeOptions.putConstraint(SpringLayout.NORTH, chckbxRoll, 0, SpringLayout.SOUTH, chckbxMinorGrooveWidth);
+		sl_ShapeOptions.putConstraint(SpringLayout.WEST, chckbxRoll, 0, SpringLayout.WEST, chckbxMinorGrooveWidth);
 		chckbxRoll.addItemListener(new ItemListener() {
 			public void itemStateChanged(ItemEvent e) {
 				if (!chckbxRoll.isSelected()) {
-					chckbxAll.setSelected(false);
+					tglAll.setSelected(false);
+					tglAll.setText("Select All");
+				} else {
+					if (chckbxMinorGrooveWidth.isSelected() && chckbxHelicalTwist.isSelected() && chckbxPropellerTwist.isSelected()) {
+						tglAll.setSelected(true);
+						tglAll.setText("Deselect All");
+					}
 				}
 			}
 		});
-		contentPane.add(chckbxRoll);
+		pnlShapeOptions.add(chckbxRoll);
 
 		chckbxHelicalTwist = new JCheckBox("Helical Twist");
-		sl_contentPane.putConstraint(SpringLayout.NORTH, chckbxHelicalTwist, 0, SpringLayout.NORTH,
-				chckbxMinorGrooveWidth);
+		sl_ShapeOptions.putConstraint(SpringLayout.NORTH, chckbxHelicalTwist, 0, SpringLayout.NORTH, chckbxMinorGrooveWidth);
+		sl_ShapeOptions.putConstraint(SpringLayout.WEST, chckbxHelicalTwist, 10, SpringLayout.EAST, chckbxMinorGrooveWidth);
 		chckbxHelicalTwist.addItemListener(new ItemListener() {
 			public void itemStateChanged(ItemEvent e) {
 				if (!chckbxHelicalTwist.isSelected()) {
-					chckbxAll.setSelected(false);
+					tglAll.setSelected(false);
+					tglAll.setText("Select All");
+				} else {
+					if (chckbxMinorGrooveWidth.isSelected() && chckbxRoll.isSelected() && chckbxPropellerTwist.isSelected()) {
+						tglAll.setSelected(true);
+						tglAll.setText("Deselect All");
+					}
 				}
 			}
 		});
-		contentPane.add(chckbxHelicalTwist);
+		pnlShapeOptions.add(chckbxHelicalTwist);
 
 		chckbxPropellerTwist = new JCheckBox("Propeller Twist");
-		sl_contentPane.putConstraint(SpringLayout.NORTH, chckbxPropellerTwist, 0, SpringLayout.NORTH,
-				chckbxMinorGrooveWidth);
-		sl_contentPane.putConstraint(SpringLayout.WEST, chckbxHelicalTwist, 6, SpringLayout.EAST, chckbxPropellerTwist);
-		sl_contentPane.putConstraint(SpringLayout.WEST, chckbxPropellerTwist, 6, SpringLayout.EAST, chckbxRoll);
+		sl_ShapeOptions.putConstraint(SpringLayout.NORTH, chckbxPropellerTwist, 0, SpringLayout.NORTH, chckbxRoll);
+		sl_ShapeOptions.putConstraint(SpringLayout.WEST, chckbxPropellerTwist, 0, SpringLayout.WEST, chckbxHelicalTwist);
 		chckbxPropellerTwist.addItemListener(new ItemListener() {
 			public void itemStateChanged(ItemEvent e) {
 				if (!chckbxPropellerTwist.isSelected()) {
-					chckbxAll.setSelected(false);
+					tglAll.setSelected(false);
+					tglAll.setText("Select All");
+				} else {
+					if (chckbxMinorGrooveWidth.isSelected() && chckbxRoll.isSelected() && chckbxHelicalTwist.isSelected()) {
+						tglAll.setSelected(true);
+						tglAll.setText("Deselect All");
+					}
 				}
 			}
 		});
-		contentPane.add(chckbxPropellerTwist);
+		pnlShapeOptions.add(chckbxPropellerTwist);
 
-		chckbxAll = new JCheckBox("All");
-		sl_contentPane.putConstraint(SpringLayout.NORTH, btnOutput, 3, SpringLayout.SOUTH, chckbxAll);
-		sl_contentPane.putConstraint(SpringLayout.NORTH, chckbxAll, 5, SpringLayout.SOUTH, chckbxRoll);
-		sl_contentPane.putConstraint(SpringLayout.WEST, chckbxAll, 206, SpringLayout.WEST, contentPane);
-		chckbxAll.addItemListener(new ItemListener() {
+
+		// Output Parameters
+		JPanel pnlOutputOptions = new JPanel();
+		sl_contentPane.putConstraint(SpringLayout.NORTH, pnlOutputOptions, -155, SpringLayout.SOUTH, contentPane);
+		sl_contentPane.putConstraint(SpringLayout.WEST, pnlOutputOptions, 0, SpringLayout.WEST, contentPane);
+		sl_contentPane.putConstraint(SpringLayout.EAST, pnlOutputOptions, 0, SpringLayout.EAST, contentPane);
+		sl_contentPane.putConstraint(SpringLayout.SOUTH, pnlOutputOptions, -40, SpringLayout.SOUTH, contentPane);
+		contentPane.add(pnlOutputOptions);
+
+		SpringLayout sl_OutputOptions = new SpringLayout();
+		pnlOutputOptions.setLayout(sl_OutputOptions);
+		TitledBorder ttlOutputOptions = BorderFactory.createTitledBorder("Output Options");
+		ttlOutputOptions.setTitleFont(new Font("Lucida Grande", Font.ITALIC, 13));
+		pnlOutputOptions.setBorder(ttlOutputOptions);
+
+		chckbxOutputMatrixData = new JCheckBox("Output Heatmap Matrix");
+		sl_OutputOptions.putConstraint(SpringLayout.NORTH, chckbxOutputMatrixData, 6, SpringLayout.NORTH, pnlOutputOptions);
+		sl_OutputOptions.putConstraint(SpringLayout.WEST, chckbxOutputMatrixData, 0, SpringLayout.WEST, pnlOutputOptions);
+		pnlOutputOptions.add(chckbxOutputMatrixData);
+
+		tglCdt = new JToggleButton("CDT");
+		sl_OutputOptions.putConstraint(SpringLayout.NORTH, tglCdt, -2, SpringLayout.NORTH, chckbxOutputMatrixData);
+		sl_OutputOptions.putConstraint(SpringLayout.WEST, tglCdt, 6, SpringLayout.EAST, chckbxOutputMatrixData);
+		pnlOutputOptions.add(tglCdt);
+
+		tglTab = new JToggleButton("TAB");
+		sl_OutputOptions.putConstraint(SpringLayout.NORTH, tglTab, 0, SpringLayout.NORTH, tglCdt);
+		sl_OutputOptions.putConstraint(SpringLayout.WEST, tglTab, 0, SpringLayout.EAST, tglCdt);
+		pnlOutputOptions.add(tglTab);
+
+		ButtonGroup output = new ButtonGroup();
+		output.add(tglTab);
+		output.add(tglCdt);
+		tglCdt.setSelected(true);
+
+		chckbxOutputGzip = new JCheckBox("Output GZIP");
+		sl_OutputOptions.putConstraint(SpringLayout.NORTH, chckbxOutputGzip, 0, SpringLayout.NORTH, chckbxOutputMatrixData);
+		sl_OutputOptions.putConstraint(SpringLayout.WEST, chckbxOutputGzip, 6, SpringLayout.EAST, tglTab);
+		pnlOutputOptions.add(chckbxOutputGzip);
+
+		chckbxOutputCompositeData = new JCheckBox("Output Composite");
+		sl_OutputOptions.putConstraint(SpringLayout.NORTH, chckbxOutputCompositeData, 10, SpringLayout.SOUTH, chckbxOutputMatrixData);
+		sl_OutputOptions.putConstraint(SpringLayout.WEST, chckbxOutputCompositeData, 0, SpringLayout.WEST, chckbxOutputMatrixData);
+		pnlOutputOptions.add(chckbxOutputCompositeData);
+
+		btnOutputDirectory = new JButton("Output Directory");
+		sl_OutputOptions.putConstraint(SpringLayout.NORTH, btnOutputDirectory, 10, SpringLayout.SOUTH, chckbxOutputMatrixData);
+		sl_OutputOptions.putConstraint(SpringLayout.WEST, btnOutputDirectory, 90, SpringLayout.EAST, chckbxOutputCompositeData);
+		pnlOutputOptions.add(btnOutputDirectory);
+
+		lblCurrent = new JLabel("Current Output:");
+		sl_OutputOptions.putConstraint(SpringLayout.NORTH, lblCurrent, 10, SpringLayout.SOUTH, btnOutputDirectory);
+		sl_OutputOptions.putConstraint(SpringLayout.WEST, lblCurrent, 0, SpringLayout.WEST, pnlOutputOptions);
+		lblCurrent.setFont(new Font("Lucida Grande", Font.BOLD, 13));
+		pnlOutputOptions.add(lblCurrent);
+
+		lblDefaultToLocal = new JLabel("Default to Local Directory");
+		sl_OutputOptions.putConstraint(SpringLayout.NORTH, lblDefaultToLocal, 2, SpringLayout.NORTH, lblCurrent);
+		sl_OutputOptions.putConstraint(SpringLayout.WEST, lblDefaultToLocal, 6, SpringLayout.EAST, lblCurrent);
+		lblDefaultToLocal.setFont(new Font("Dialog", Font.PLAIN, 12));
+		lblDefaultToLocal.setBackground(Color.WHITE);
+		lblDefaultToLocal.setToolTipText("Directory path");
+		pnlOutputOptions.add(lblDefaultToLocal);
+
+		chckbxOutputMatrixData.addItemListener(new ItemListener() {
 			public void itemStateChanged(ItemEvent e) {
-				if (chckbxAll.isSelected()) {
-					chckbxMinorGrooveWidth.setSelected(true);
-					chckbxRoll.setSelected(true);
-					chckbxHelicalTwist.setSelected(true);
-					chckbxPropellerTwist.setSelected(true);
+				activateOutput();
+			}
+		});
+
+		chckbxOutputCompositeData.addItemListener(new ItemListener() {
+			public void itemStateChanged(ItemEvent e) {
+				activateOutput();
+			}
+		});
+
+		btnOutputDirectory.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				File temp = FileSelection.getOutputDir(fc);
+				if(temp != null) {
+					OUT_DIR = temp;
+					lblDefaultToLocal.setText(OUT_DIR.getAbsolutePath());
+					lblDefaultToLocal.setToolTipText(OUT_DIR.getAbsolutePath());
 				}
 			}
 		});
-		contentPane.add(chckbxAll);
-		btnCalculate.addActionListener(this);
+		activateOutput();
 	}
 
+	public void activateOutput() {
+		boolean enableMatrixOptions = chckbxOutputMatrixData.isSelected();
+		tglTab.setEnabled(enableMatrixOptions);
+		tglCdt.setEnabled(enableMatrixOptions);
+		chckbxOutputGzip.setEnabled(enableMatrixOptions);
+		boolean enableOutputOptions = chckbxOutputMatrixData.isSelected() || chckbxOutputCompositeData.isSelected();
+		btnOutputDirectory.setEnabled(enableOutputOptions);
+		lblCurrent.setEnabled(enableOutputOptions);
+		lblDefaultToLocal.setEnabled(enableOutputOptions);
+	}
+
+	/**
+	 * Runs when a task is invoked, making window non-interactive and executing the task.
+	 */
 	@Override
 	public void actionPerformed(ActionEvent arg0) {
 		massXable(contentPane, false);
@@ -287,13 +448,21 @@ public class DNAShapefromFASTAWindow extends JFrame implements ActionListener, P
 	/**
 	 * Invoked when task's progress property changes.
 	 */
+	@Override
 	public void propertyChange(PropertyChangeEvent evt) {
 		if ("progress" == evt.getPropertyName()) {
 			int progress = (Integer) evt.getNewValue();
 			progressBar.setValue(progress);
+		} else if ("log" == evt.getPropertyName()) {
+			firePropertyChange("log", evt.getOldValue(), evt.getNewValue());
 		}
 	}
 
+	/**
+	 * Makes the content pane non-interactive If the window should be interactive data
+	 * @param con Content pane to make non-interactive
+	 * @param status If the window should be interactive
+	 */
 	public void massXable(Container con, boolean status) {
 		for (Component c : con.getComponents()) {
 			c.setEnabled(status);

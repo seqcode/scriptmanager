@@ -13,8 +13,7 @@ import java.util.Map;
  * @see scriptmanager.scripts.Sequence_Analysis.DNAShapefromBED
  * @see scriptmanager.scripts.Sequence_Analysis.DNAShapefromFASTA
  */
-public class DNAShapeReference {
-	
+public final class DNAShapeReference {
 	/**
 	 * A collection of 5-mers DNA strings with a list of constants that describe
 	 * DNAshape assigned to each based on the Rohs Lab 2013 paper (<a

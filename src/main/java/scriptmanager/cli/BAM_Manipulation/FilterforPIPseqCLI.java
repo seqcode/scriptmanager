@@ -18,7 +18,10 @@ import scriptmanager.util.ExtensionFileFilter;
 import scriptmanager.scripts.BAM_Manipulation.FilterforPIPseq;
 
 /**
- * BAM_ManipulatioCLIn/FilterforPIPseqCLI
+ * Command line interface for
+ * {@link scriptmanager.scripts.BAM_Manipulation.FilterforPIPseq}
+ * 
+ * @author Olivia Lang
  */
 @Command(name = "filter-pip-seq", mixinStandardHelpOptions = true, description = ToolDescriptions.filter_pip_seq_description
 		+ "\n"
@@ -37,6 +40,10 @@ public class FilterforPIPseqCLI implements Callable<Integer> {
 			"--filter" }, description = "filter by upstream sequence, works only for single-nucleotide A,T,C, or G. (default seq ='T')")
 	private String filterString = "T";
 
+	/**
+	 * Runs when this subcommand is called, running script in respective script package with user defined arguments
+	 * @throws IOException Invalid file or parameters
+	 */
 	@Override
 	public Integer call() throws Exception {
 		System.err.println(">FilterforPIPseqCLI.call()");
@@ -55,10 +62,10 @@ public class FilterforPIPseqCLI implements Callable<Integer> {
 	}
 
 	/**
-	 * Validate the input values before executing the script.
+	 * Validate the input values before executing the script
 	 * 
 	 * @return a multi-line string describing input validation issues
-	 * @throws IOException
+	 * @throws IOException Invalid file or parameters
 	 */
 	private String validateInput() throws IOException {
 		String r = "";
@@ -72,14 +79,6 @@ public class FilterforPIPseqCLI implements Callable<Integer> {
 		}
 		if (!r.equals("")) {
 			return (r);
-		}
-		// check input extensions
-		ExtensionFileFilter faFilter = new ExtensionFileFilter("fa");
-		if (!faFilter.accept(genomeFASTA)) {
-			r += "(!)Is this a FASTA file? Check extension: " + genomeFASTA.getName() + "\n";
-		}
-		if (!"bam".equals(ExtensionFileFilter.getExtension(bamFile))) {
-			r += "(!)Is this a BAM file? Check extension: " + bamFile.getName() + "\n";
 		}
 		// check BAI exists
 		File f = new File(bamFile + ".bai");
@@ -98,16 +97,6 @@ public class FilterforPIPseqCLI implements Callable<Integer> {
 			output = new File(ExtensionFileFilter.stripExtension(bamFile) + "_PSfilter.bam");
 			// check output filename is valid
 		} else {
-			// check ext
-			try {
-				if (!"bam".equals(ExtensionFileFilter.getExtension(output))) {
-					r += "(!)Use BAM extension for output filename. Try: " + ExtensionFileFilter.stripExtension(output)
-							+ ".bam\n";
-				}
-			} catch (NullPointerException e) {
-				r += "(!)Output filename must have extension: use BAM extension for output filename. Try: "
-						+ ExtensionFileFilter.stripExtension(output) + ".bam\n";
-			}
 			// check directory
 			if (output.getParent() == null) {
 // 					System.err.println("default to current directory");
@@ -125,5 +114,23 @@ public class FilterforPIPseqCLI implements Callable<Integer> {
 		}
 
 		return (r);
+	}
+
+	/**
+	 * Reconstruct CLI command
+	 * 
+	 * @param BAM    the BAM file to filter
+	 * @param GENOME the genomic FASTA reference file (should match BAM header)
+	 * @param OUTPUT the output BAM file
+	 * @param txtSeq the IUPAC string to filter by
+	 * @return command line to execute with formatted inputs
+	 */
+	public static String getCLIcommand(File BAM, File GENOME, File OUTPUT, String txtSeq) {
+		String command = "java -jar $SCRIPTMANAGER bam-manipulation filter-pip-seq";
+		command += " " + GENOME.getAbsolutePath();
+		command += " " + BAM.getAbsolutePath();
+		command += " -o " + OUTPUT.getAbsolutePath();
+		command += " -f " + txtSeq;
+		return command;
 	}
 }

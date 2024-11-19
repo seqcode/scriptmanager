@@ -15,11 +15,10 @@ import javax.imageio.ImageIO;
 import org.jfree.graphics2d.svg.SVGGraphics2D;
 import org.jfree.graphics2d.svg.SVGUtils;
 
-import scriptmanager.objects.CustomExceptions.OptionException;
+import scriptmanager.objects.Exceptions.OptionException;
 
 /**
- * The script class to decorate an input PNG file with plot labels and save as
- * an SVG. <br>
+ * Decorate an input PNG file with plot labels and save as an SVG. <br>
  * Code sourced from <a href=
  * "https://github.com/WilliamKMLai/jHeatmapLabel">https://github.com/WilliamKMLai/jHeatmapLabel</a>
  * <br>
@@ -52,19 +51,21 @@ public class LabelHeatMap {
 	/**
 	 * Initialize labeling parameters in this constructor
 	 *
-	 * @param iNPUT the PNG input to format the labels and outline around
-	 * @param oUTPUT the filepath for the SVG-formatted labeled PNG
-	 * @param cOLOR the color of all the lines and text annotating the PNG
+	 * @param iNPUT       the PNG input to format the labels and outline around
+	 * @param oUTPUT      the filepath for the SVG-formatted labeled PNG
+	 * @param cOLOR       the color of all the lines and text annotating the PNG
 	 * @param bORDERWIDTH the thickness of the line outlining the PNG
-	 * @param xTICKHEIGHT the length (in pixels) of the tickmarks on the x-axis (no tickmarks on y-axis)
-	 * @param fONTSIZE the size of all text labels on the annotated SVG
-	 * @param xLEFTLABEL the text label for the far left tickmark on the x-axis
-	 * @param xMIDLABEL the text label for the midpoint tickmark on the x-axis
+	 * @param xTICKHEIGHT the length (in pixels) of the tickmarks on the x-axis (no
+	 *                    tickmarks on y-axis)
+	 * @param fONTSIZE    the size of all text labels on the annotated SVG
+	 * @param xLEFTLABEL  the text label for the far left tickmark on the x-axis
+	 * @param xMIDLABEL   the text label for the midpoint tickmark on the x-axis
 	 * @param xRIGHTLABEL the text label for the far right tickmark on the x-axis
-	 * @param xLABEL the text label for the x-axis
-	 * @param yLABEL the text label for the y-axis
-	 * @param out_win_ps the destination to output progress update and input information as the script executes
-	 * @throws IOException
+	 * @param xLABEL      the text label for the x-axis
+	 * @param yLABEL      the text label for the y-axis
+	 * @param out_win_ps  the destination to output progress update and input
+	 *                    information as the script executes
+	 * @throws IOException     Invalid file or parameters
 	 * @throws OptionException
 	 */
 	public LabelHeatMap(File iNPUT, File oUTPUT, Color cOLOR,
@@ -119,7 +120,7 @@ public class LabelHeatMap {
 	 * Execute building SVG labels around the input PNG.
 	 *
 	 * @return 0 upon succesful execution
-	 * @throws IOException
+	 * @throws IOException Invalid file or parameters
 	 */
 	public Integer run() throws IOException {
 		// Initialize empty SVG object

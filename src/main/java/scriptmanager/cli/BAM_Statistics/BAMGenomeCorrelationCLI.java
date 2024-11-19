@@ -8,18 +8,23 @@ import picocli.CommandLine.Parameters;
 import java.util.Scanner;
 import java.util.Vector;
 import java.util.concurrent.Callable;
-
+import java.util.stream.Collectors;
 import java.io.File;
 import java.io.IOException;
 
 import scriptmanager.charts.HeatMap;
 import scriptmanager.objects.ToolDescriptions;
+import scriptmanager.objects.ArchTEx.CorrParameter;
+import scriptmanager.objects.Exceptions.OptionException;
 import scriptmanager.util.ExtensionFileFilter;
 import scriptmanager.scripts.BAM_Statistics.BAMGenomeCorrelation;
 
 /**
-	BAM_StatisticsCLI/SEStats
-*/
+ * Command line interface for
+ * {@link scriptmanager.scripts.BAM_Statistics.BAMGenomeCorrelation}
+ * 
+ * @author Olivia Lang
+ */
 @Command(name = "bam-correlation", mixinStandardHelpOptions = true,
 	description = ToolDescriptions.bam_correlation_description,
 	version = "ScriptManager "+ ToolDescriptions.VERSION,
@@ -27,6 +32,11 @@ import scriptmanager.scripts.BAM_Statistics.BAMGenomeCorrelation;
 	exitCodeOnInvalidInput = 1,
 	exitCodeOnExecutionException = 1)
 public class BAMGenomeCorrelationCLI implements Callable<Integer> {
+
+	/**
+	 * Creates a new BAMGenomeCorrelationCLI object
+	 */
+	public BAMGenomeCorrelationCLI(){}
 	
 	@Parameters( index = "0..", description = "The BAM file whose statistics we want.")
 	private File[] inputFiles;
@@ -70,6 +80,10 @@ public class BAMGenomeCorrelationCLI implements Callable<Integer> {
 	private short colorScale = HeatMap.BLUEWHITERED;
 	private Vector<File> bamFiles = new Vector<File>();
 	
+	/**
+	 * Runs when this subcommand is called, running script in respective script package with user defined arguments
+	 * @throws IOException Invalid file or parameters
+	 */
 	@Override
 	public Integer call() throws Exception {
 		System.err.println( ">BAMGenomeCorrelationCLI.call()" );
@@ -123,9 +137,6 @@ public class BAMGenomeCorrelationCLI implements Callable<Integer> {
 			//check input exists
 			if(!BAM.exists()|| BAM.isDirectory()){
 				r += "(!)BAM[" + x + "] file does not exist: " + BAM.getName() + "\n";
-			//check input extensions
-			}else if(!"bam".equals(ExtensionFileFilter.getExtension(BAM))){
-				r += "(!)Is this a BAM file? Check extension: " + BAM.getName() + "\n";
 			//check BAI exists
 			}else if(!BAI.exists() || BAI.isDirectory()){
 				r += "(!)BAI Index File does not exist for: " + BAM.getName() + "\n";
@@ -137,7 +148,6 @@ public class BAMGenomeCorrelationCLI implements Callable<Integer> {
 			outputBasename = new File("correlation_matrix");
 		//check output filename is valid
 		}else{
-			//no check ext
 			//check directory
 			if(outputBasename.getParent()==null){
 // 				System.err.println("default to current directory");
@@ -161,5 +171,60 @@ public class BAMGenomeCorrelationCLI implements Callable<Integer> {
 		else if (colorScheme.jetlike) { colorScale = HeatMap.JETLIKE; }
 		
 		return(r);
+	}
+
+	/**
+	 * Reconstruct CLI command
+	 * 
+	 * @param input      list of BAM files to correlate
+	 * @param output     file basename to write correlation matrix values and image
+	 *                   to
+	 * @param SHIFT      read shift to apply
+	 * @param BIN        bin size
+	 * @param CPU        num threads
+	 * @param READ       read encoding to use
+	 * @param COLORSCALE color scale to use
+	 * @return command line to execute with formatted inputs
+	 * @throws OptionException
+	 */
+	public static String getCLIcommand(Vector<File> input, File output, int SHIFT, int BIN, int CPU, int READ, short COLORSCALE) throws OptionException {
+		String command = "java -jar $SCRIPTMANAGER bam-statistics bam-correlation";
+		command += " -o " + output;
+		command += " -t " + SHIFT;
+		command += " -b " + BIN;
+		command += " --cpu " + CPU;
+
+		switch (READ) {
+			case 0:
+				command += " -1";
+				break;
+			case 1:
+				command += " -2";
+				break;
+			case 2:
+				command += " -a";
+				break;
+			case 3:
+				command += " -m";
+				break;
+			default:
+				throw new OptionException("invalid strand value");
+		}
+
+		switch (COLORSCALE) {
+			case HeatMap.BLUEWHITERED:
+				command += " --classic";
+				break;
+			case HeatMap.JETLIKE:
+				command += " --jet-like";
+				break;
+			default:
+				throw new OptionException("Unexpected colorscale value");
+		}
+
+		for (int x = 0; x<input.size(); x++) {
+			command += " " + input.get(x).getAbsolutePath();
+		}
+		return command;
 	}
 }

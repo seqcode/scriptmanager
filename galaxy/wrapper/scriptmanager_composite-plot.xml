@@ -1,0 +1,87 @@
+<tool id="scriptmanager_composite-plot" name="ScriptManager: Composite Plot"
+    version="0.1.0+galaxy0" python_template_version="3.5" profile="21.05">
+    <description> Composite Plot </description>
+    <macros>
+        <import>scriptmanager_macros.xml</import>
+    </macros>
+    <requirements>
+        <expand macro="requirement_openjdk" />
+    </requirements>
+    <command detect_errors="exit_code"><![CDATA[
+        java -jar $__tool_directory__/@JAR_FILENAME@ figure-generation composite-plot
+                
+        #if str($output_file_name.bool) == "Yes" :
+            -o "$output_file_name.directory"
+        #end if
+        
+        #if str($title_name.bool) == "Yes" :
+            -t "$title_name.title"
+        #end if
+        
+        #if str($legend) == "Yes" :
+            -l
+        #end if
+        
+        -x "$pixel_width"
+        
+        -y "$pixel_height"
+        
+        "$input"
+    ]]></command>
+    <inputs>
+        <param type="data" name="input" format="tabular" label="Input composite data file"/>
+        
+        <conditional name="output_file_name">
+        <param type="boolean" name="bool" truevalue="Yes" falsevalue="No" label="Output File Name" >
+        </param>
+            <when value="Yes">
+                <param type="text" name="directory" value="" label="File Name" />
+            </when>
+            <when value="No">
+            </when>
+        </conditional>
+        
+        <conditional name="title_name">
+        <param type="boolean" name="bool" truevalue="Yes" falsevalue="No" label="Plot Title" >
+        </param>
+            <when value="Yes">
+                <param type="text" name="title" value="" label="Title" />
+            </when>
+            <when value="No">
+            </when>
+        </conditional>
+        
+        <param type="boolean" name="legend" truevalue="Yes" falsevalue="No" label="Add Legend" />
+        
+        <param type="integer" name="pixel_width" value="500" label="Pixel Width" />
+        
+        <param type="integer" name="pixel_height" value="720" label="Pixel Height" />
+        
+        <!--
+        <conditional name="colors">
+        <param type="boolean" name="bool" truevalue="Yes" falsevalue="No" label="Colors" >
+        </param>
+            <when value="Yes">
+                <param type="text" name="hex_colors" value="" label="All colors desired (in hex without the 0x start, so black and yellow colors would be 000000 FFFF00)" />
+            </when>
+            <when value="No">
+            </when>
+        </conditional>
+        -->
+    
+    </inputs>
+    <outputs>
+        <data name="output" format="png" label="${tool.name} (composite) on ${on_string}"/>
+    </outputs>
+    <help>
+    **What it does**
+    Generate a composite plot from the composite data output from running Tag Pileup.
+    </help>
+</tool>
+
+
+<!--
+#if str($colors.bool) == "Yes" :
+    -c "$colors.hex_colors"
+#end if
+-->
