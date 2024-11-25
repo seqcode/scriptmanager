@@ -1,7 +1,9 @@
 package scriptmanager.window_interface.BAM_Format_Converter;
 
 import htsjdk.samtools.SAMException;
+import scriptmanager.objects.LogItem;
 import scriptmanager.scripts.BAM_Format_Converter.SamtoFastqWrapper;
+import scriptmanager.scripts.BAM_Manipulation.ValidateSamWrapper;
 import scriptmanager.util.FileSelection;
 
 import javax.swing.*;
@@ -13,6 +15,8 @@ import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.io.File;
 import java.io.IOException;
+import java.sql.Timestamp;
+import java.util.Date;
 import java.util.Vector;
 
 public class SamtoFastqWindow extends JFrame implements ActionListener, PropertyChangeListener {
@@ -43,6 +47,7 @@ public class SamtoFastqWindow extends JFrame implements ActionListener, Property
         @Override
         public Void doInBackground() throws IOException {
             setProgress(0);
+            LogItem old_li = null;
             try {
                 for(int x = 0; x < BAMFiles.size(); x++) {
                     // Build output filepath
@@ -55,12 +60,22 @@ public class SamtoFastqWindow extends JFrame implements ActionListener, Property
                     }
                     compress = chckbxCompress.isSelected();
                     perRG = chckbxPerRG.isSelected();
+                    // Initialize log item
+                    String command = SamtoFastqWrapper.getCLIcommand(BAMFiles.get(x), OUTPUT, compress, perRG, OUT_DIR);
+                    System.err.println(command);
+                    LogItem new_li = new LogItem(command);
+                    firePropertyChange("log", old_li, new_li);
                     // Execute Picard wrapper
                     SamtoFastqWrapper.run(BAMFiles.get(x), OUTPUT, compress, perRG, OUT_DIR);
                     // Update progress
                     int percentComplete = (int)(((double)(x + 1) / BAMFiles.size()) * 100);
                     setProgress(percentComplete);
+                    // Update LogItem
+                    new_li.setStopTime(new Timestamp(new Date().getTime()));
+					new_li.setStatus(0);
+                    old_li = new_li;
                 }
+                firePropertyChange("log", old_li, null);
                 setProgress(100);
                 JOptionPane.showMessageDialog(null, "Conversion Complete");
             } catch (SAMException se) {
@@ -213,12 +228,15 @@ public class SamtoFastqWindow extends JFrame implements ActionListener, Property
     /**
      * Invoked when task's progress property changes.
      */
-    public void propertyChange(PropertyChangeEvent evt) {
-        if ("progress" == evt.getPropertyName()) {
-            int progress = (Integer) evt.getNewValue();
-            progressBar.setValue(progress);
-        }
-    }
+	@Override
+	public void propertyChange(PropertyChangeEvent evt) {
+		if ("progress" == evt.getPropertyName()) {
+			int progress = (Integer) evt.getNewValue();
+			progressBar.setValue(progress);
+		} else if ("log" == evt.getPropertyName()) {
+			firePropertyChange("log", evt.getOldValue(), evt.getNewValue());
+		}
+	}
     public void massXable(Container con, boolean status) {
         for(Component c : con.getComponents()) {
             c.setEnabled(status);

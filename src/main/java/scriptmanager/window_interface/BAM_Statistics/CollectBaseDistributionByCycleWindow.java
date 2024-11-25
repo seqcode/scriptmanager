@@ -1,6 +1,8 @@
 package scriptmanager.window_interface.BAM_Statistics;
 
 import htsjdk.samtools.SAMException;
+import scriptmanager.objects.LogItem;
+import scriptmanager.scripts.BAM_Manipulation.ValidateSamWrapper;
 import scriptmanager.scripts.BAM_Statistics.CollectBaseDistributionByCycleWrapper;
 import scriptmanager.util.FileSelection;
 import scriptmanager.window_interface.BAM_Manipulation.ValidateSamWindow;
@@ -14,6 +16,8 @@ import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.io.File;
 import java.io.IOException;
+import java.sql.Timestamp;
+import java.util.Date;
 import java.util.Vector;
 
 /**
@@ -44,6 +48,7 @@ public class CollectBaseDistributionByCycleWindow  extends JFrame implements Act
         @Override
         public Void doInBackground() throws IOException {
             setProgress(0);
+            LogItem old_li = null;
             try {
                 for(int x = 0; x < BAMFiles.size(); x++) {
                     // Build output filepath
@@ -57,13 +62,22 @@ public class CollectBaseDistributionByCycleWindow  extends JFrame implements Act
                         OUTPUT = new File(NAME[0] + "_output.txt");
                         chartOutput = new File(NAME[0] + "_collect_base_dist_by_cycle.pdf");
                     }
-
+                    // Initialize log item
+                    String command = CollectBaseDistributionByCycleWrapper.getCLIcommand(BAMFiles.get(x), OUTPUT, chartOutput);
+                    System.err.println(command);
+                    LogItem new_li = new LogItem(command);
+                    firePropertyChange("log", old_li, new_li);
                     // Execute Picard wrapper
                     CollectBaseDistributionByCycleWrapper.run(BAMFiles.get(x), OUTPUT, chartOutput);
                     // Update progress
                     int percentComplete = (int)(((double)(x + 1) / BAMFiles.size()) * 100);
                     setProgress(percentComplete);
+                    // Update LogItem
+                    new_li.setStopTime(new Timestamp(new Date().getTime()));
+					new_li.setStatus(0);
+                    old_li = new_li;
                 }
+                firePropertyChange("log", old_li, null);
                 setProgress(100);
                 JOptionPane.showMessageDialog(null, "Distribution Complete");
             } catch (SAMException se) {
@@ -186,12 +200,15 @@ public class CollectBaseDistributionByCycleWindow  extends JFrame implements Act
     /**
      * Invoked when task's progress property changes.
      */
-    public void propertyChange(PropertyChangeEvent evt) {
-        if ("progress" == evt.getPropertyName()) {
-            int progress = (Integer) evt.getNewValue();
-            progressBar.setValue(progress);
-        }
-    }
+	@Override
+	public void propertyChange(PropertyChangeEvent evt) {
+		if ("progress" == evt.getPropertyName()) {
+			int progress = (Integer) evt.getNewValue();
+			progressBar.setValue(progress);
+		} else if ("log" == evt.getPropertyName()) {
+			firePropertyChange("log", evt.getOldValue(), evt.getNewValue());
+		}
+	}
     public void massXable(Container con, boolean status) {
         for(Component c : con.getComponents()) {
             c.setEnabled(status);

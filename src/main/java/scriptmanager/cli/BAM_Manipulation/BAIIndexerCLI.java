@@ -6,14 +6,13 @@ import java.util.concurrent.Callable;
 import java.io.File;
 
 import scriptmanager.objects.ToolDescriptions;
-import scriptmanager.scripts.BAM_Manipulation.BAIIndexer;
 
 /**
  * Prints a message redirecting user to the original CLI tool (Picard
  * {@link picard.sam.BuildBamIndex})
  * 
  * @author Olivia Lang
- * @see BAIIndexer
+ * @see scriptmanager.scripts.BAM_Manipulation.BAIIndexer
  */
 @Command(name = "bam-indexer", mixinStandardHelpOptions = true,
 	description = ToolDescriptions.bam_indexer_description + "\n"+

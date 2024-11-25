@@ -33,6 +33,7 @@ public class ToolDescriptions {
 	public static final String se_stat_description = "Output BAM Header including alignment statistics and parameters given any indexed (BAI) BAM File.";
 	public static final String pe_stat_description = "Generates Insert-size Histogram statistics (GEO requirement) and outputs BAM Header including alignment statistics and parameters given a sorted and indexed (BAI) paired-end BAM File.";
 	public static final String bam_correlation_description = "Genome-Genome correlations for replicate comparisons given multiple sorted and indexed (BAI) BAM files.";
+	public static final String collect_base_distribution_by_cycle_description = "Chart the nucleotide distribution per cycle in a BAM file";
 	public static final String archtex_crosscorrelation_description = ("Calculate optimal tag shift based on ArchTEx implementation (PMID:22302569)");
 
 	// BAM Manipulation
@@ -45,6 +46,7 @@ public class ToolDescriptions {
 	public static final String validate_sam_file_description = "Validate SAM/BAM files comprehensively, ensuring adherence to the SAM format specification and detecting errors or inconsistencies in alignment data.";
 	public static final String normalize_fasta_description = "Reduce redundant sequences and normalize read coverage in a FASTA file, improving downstream analysis accuracy";
 	public static final String filter_sam_reads_description = "Filter BAM files by applying user-defined filters to include or exclude specific reads based on read lists or genomic intervals";
+	public static final String add_comments_to_bam_description = "Adds comments to the header of a BAM file.";
 	// BAM Format Converter
 	public static final String bam_to_scidx_description = "Convert BAM file to scIDX file.";
 	public static final String bam_to_gff_description = "Convert BAM file to GFF file.";
@@ -106,4 +108,6 @@ public class ToolDescriptions {
 	public static final String composite_description = "Generate a Composite Plot PNG from composite data like the output in TagPileup";
 	public static final String label_heatmap_description = "Create an SVG label for heatmap inputs";
 
+	// Whether or not to log legacy Picard commands
+	public static final boolean picard_legacy_commends = true;
 }

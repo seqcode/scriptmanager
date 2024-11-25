@@ -115,6 +115,10 @@ public class ScriptManagerGUI {
 		// CrossCorrelation
 		pnlStat.add(initializeToolPanel("Cross Correlation", ToolDescriptions.archtex_crosscorrelation_description,
 				Class.forName("scriptmanager.window_interface.BAM_Statistics.CrossCorrelationWindow")));
+		
+		// CollectBaseDistributionByCycle
+		pnlStat.add(initializeToolPanel("Collect BAM Distribution", ToolDescriptions.collect_base_distribution_by_cycle_description,
+				Class.forName("scriptmanager.window_interface.BAM_Statistics.CollectBaseDistributionByCycleWindow")));
 
 		// ======== BAM_Manipulation ========
 		JPanel pnlBamManip = new JPanel();
@@ -138,6 +142,26 @@ public class ScriptManagerGUI {
 		// FilterPIPseq
 		pnlBamManip.add(initializeToolPanel("Filter for PIP-seq", ToolDescriptions.filter_pip_seq_description,
 				Class.forName("scriptmanager.window_interface.BAM_Manipulation.FilterforPIPseqWindow")));
+		
+		// DownsampleSAM
+		pnlBamManip.add(initializeToolPanel("Downsample SAM/BAM", ToolDescriptions.downsample_sam_description,
+				Class.forName("scriptmanager.window_interface.BAM_Manipulation.DownsampleSamWindow")));
+	
+		// ValidateSAMFile
+		pnlBamManip.add(initializeToolPanel("Validate SAM/BAM", ToolDescriptions.validate_sam_file_description,
+		Class.forName("scriptmanager.window_interface.BAM_Manipulation.ValidateSamWindow")));
+		
+		// NormalizeFasta
+		pnlBamManip.add(initializeToolPanel("Normalize FASTA File", ToolDescriptions.normalize_fasta_description,
+		Class.forName("scriptmanager.window_interface.BAM_Manipulation.NormalizeFastaWindow")));
+
+		// FilterSAMReads
+		pnlBamManip.add(initializeToolPanel("Filter BAM Reads", ToolDescriptions.filter_sam_reads_description,
+		Class.forName("scriptmanager.window_interface.BAM_Manipulation.FilterSamReadsWindow")));
+
+		// FilterSAMReads
+		pnlBamManip.add(initializeToolPanel("Add Comments to BAM", ToolDescriptions.add_comments_to_bam_description,
+		Class.forName("scriptmanager.window_interface.BAM_Manipulation.AddCommentsToBamWindow")));
 
 		// ======== BAM_Format_Converter ========
 		JPanel pnlBamConvert = new JPanel();
@@ -159,6 +183,14 @@ public class ScriptManagerGUI {
 		// BAMtobedGraph
 		pnlBamConvert.add(initializeToolPanel("BAM to bedGraph", ToolDescriptions.bam_to_bedgraph_description,
 				Class.forName("scriptmanager.window_interface.BAM_Format_Converter.BAMtobedGraphWindow")));
+
+		// SAMtoFASTQ
+		pnlBamConvert.add(initializeToolPanel("BAM to FASTQ", ToolDescriptions.sam_to_fastq_description,
+		Class.forName("scriptmanager.window_interface.BAM_Format_Converter.SamtoFastqWindow")));
+
+		// SAMFormatConverter
+		pnlBamConvert.add(initializeToolPanel("SAM to BAM or BAM to SAM", ToolDescriptions.sam_to_fastq_description,
+		Class.forName("scriptmanager.window_interface.BAM_Format_Converter.SamFormatConverterWindow")));
 
 		// ======== File_Utilities ========
 		JPanel pnlFileUtility = new JPanel();

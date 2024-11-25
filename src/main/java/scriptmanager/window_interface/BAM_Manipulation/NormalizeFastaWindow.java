@@ -1,6 +1,8 @@
 package scriptmanager.window_interface.BAM_Manipulation;
 
 import htsjdk.samtools.SAMException;
+import scriptmanager.objects.LogItem;
+import scriptmanager.scripts.BAM_Manipulation.AddCommentsToBamWrapper;
 import scriptmanager.scripts.BAM_Manipulation.NormalizeFastaWrapper;
 import scriptmanager.util.FileSelection;
 
@@ -13,6 +15,8 @@ import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.io.File;
 import java.io.IOException;
+import java.sql.Timestamp;
+import java.util.Date;
 import java.util.Vector;
 
 /**
@@ -40,8 +44,8 @@ public class NormalizeFastaWindow extends JFrame implements ActionListener, Prop
     class Task extends SwingWorker<Void, Void> {
         @Override
         public Void doInBackground() throws IOException {
-
             setProgress(0);
+            LogItem old_li = null;
             try {
                 for (int x = 0; x < BAMFiles.size(); x++) {
                     // Build output filepath
@@ -52,12 +56,21 @@ public class NormalizeFastaWindow extends JFrame implements ActionListener, Prop
                     } else {
                         OUTPUT = new File(NAME[0] + "_normalized.fasta");
                     }
+                    // Initialize log item
+                    String command = NormalizeFastaWrapper.getCLIcommand(BAMFiles.get(x), OUTPUT);
+                    System.err.println(command);
+                    LogItem new_li = new LogItem(command);
                     // Run Wrapper
                     NormalizeFastaWrapper.run(BAMFiles.get(x), OUTPUT);
                     // Update progress
                     int percentComplete = (int)(((double)(x + 1) / BAMFiles.size()) * 100);
                     setProgress(percentComplete);
+                    // Update LogItem
+                    new_li.setStopTime(new Timestamp(new Date().getTime()));
+					new_li.setStatus(0);
+                    old_li = new_li;
                 }
+                firePropertyChange("log", old_li, null);
                 setProgress(100);
                 JOptionPane.showMessageDialog(null, "Validation Complete");
             } catch (SAMException se) {
@@ -181,12 +194,15 @@ public class NormalizeFastaWindow extends JFrame implements ActionListener, Prop
     /**
      * Invoked when task's progress property changes.
      */
-    public void propertyChange(PropertyChangeEvent evt) {
-        if ("progress" == evt.getPropertyName()) {
-            int progress = (Integer) evt.getNewValue();
-            progressBar.setValue(progress);
-        }
-    }
+	@Override
+	public void propertyChange(PropertyChangeEvent evt) {
+		if ("progress" == evt.getPropertyName()) {
+			int progress = (Integer) evt.getNewValue();
+			progressBar.setValue(progress);
+		} else if ("log" == evt.getPropertyName()) {
+			firePropertyChange("log", evt.getOldValue(), evt.getNewValue());
+		}
+	}
     public void massXable(Container con, boolean status) {
         for(Component c : con.getComponents()) {
             c.setEnabled(status);

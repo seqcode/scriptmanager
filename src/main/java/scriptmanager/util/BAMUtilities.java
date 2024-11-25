@@ -10,6 +10,8 @@ import java.util.List;
 import java.util.Scanner;
 
 import htsjdk.samtools.AbstractBAMFileIndex;
+import htsjdk.samtools.SAMFileHeader;
+import htsjdk.samtools.SAMProgramRecord;
 import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SAMSequenceRecord;
 import htsjdk.samtools.SamReader;
@@ -19,6 +21,7 @@ import htsjdk.samtools.util.CloseableIterator;
 
 import scriptmanager.objects.Exceptions.OptionException;
 import scriptmanager.objects.PileupParameters;
+import scriptmanager.objects.ToolDescriptions;
 import scriptmanager.objects.CoordinateObjects.BEDCoord;
 
 /**
@@ -287,4 +290,21 @@ public class BAMUtilities {
 		scan.close();
 		return BLACKLIST;
 	}
+
+	/**
+	 * Create program record with non-overlapping ID
+	 * @param header Original header
+	 * @param programName Name of the application 
+	 * @param command CLI command
+	 * @param version Version of tool/command
+	 * @return Program record with a non-overlapping ID
+	 */
+	public static SAMProgramRecord getPGRecord(final SAMFileHeader header, String programName, String command, String version) {
+        final SAMFileHeader.PgIdGenerator pgIdGenerator = new SAMFileHeader.PgIdGenerator(header);
+        final SAMProgramRecord programRecord = new SAMProgramRecord(pgIdGenerator.getNonCollidingId(programName));
+        programRecord.setProgramName(programName);
+        programRecord.setCommandLine(command);
+        programRecord.setProgramVersion(version);
+        return programRecord;
+    }
 }

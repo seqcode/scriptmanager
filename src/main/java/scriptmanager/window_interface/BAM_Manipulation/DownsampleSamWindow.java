@@ -1,6 +1,8 @@
 package scriptmanager.window_interface.BAM_Manipulation;
 
 import htsjdk.samtools.*;
+import scriptmanager.objects.LogItem;
+import scriptmanager.scripts.BAM_Manipulation.AddCommentsToBamWrapper;
 import scriptmanager.scripts.BAM_Manipulation.DownsampleSamWrapper;
 import scriptmanager.util.FileSelection;
 
@@ -13,6 +15,8 @@ import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.io.File;
 import java.io.IOException;
+import java.sql.Timestamp;
+import java.util.Date;
 import java.util.Iterator;
 import java.util.Vector;
 
@@ -65,6 +69,7 @@ public class DownsampleSamWindow extends JFrame implements ActionListener, Prope
         @Override
         public Void doInBackground() throws IOException{
             setProgress(0);
+            LogItem old_li = null;
             try {
                 for (int x = 0; x < BAMFiles.size(); x++) {
                         // Build output filepath
@@ -95,13 +100,23 @@ public class DownsampleSamWindow extends JFrame implements ActionListener, Prope
                     // Close the reader
                     reader.close();
 
-                        // Execute picard wrapper
-                        DownsampleSamWrapper.run(BAMFiles.get(x), OUTPUT, probability, seed);
-                        // Update Progress
-                        int percentComplete = (int) (((double) (x + 1) / BAMFiles.size()) * 100);
-                        setProgress(percentComplete);
+                    // Initialize log item
+                    String command = DownsampleSamWrapper.getCLIcommand(BAMFiles.get(x), OUTPUT, probability, seed);
+                    System.err.println(command);
+                    LogItem new_li = new LogItem(command);
+                    firePropertyChange("log", old_li, new_li);
 
+                    // Execute picard wrapper
+                    DownsampleSamWrapper.run(BAMFiles.get(x), OUTPUT, probability, seed);
+                    // Update Progress
+                    int percentComplete = (int) (((double) (x + 1) / BAMFiles.size()) * 100);
+                    setProgress(percentComplete);
+                    // Update LogItem
+                    new_li.setStopTime(new Timestamp(new Date().getTime()));
+					new_li.setStatus(0);
+                    old_li = new_li;
                 }
+                firePropertyChange("log", old_li, null);
                 setProgress(100);
                 JOptionPane.showMessageDialog(null, "Downsampling Complete");
                 return null;
@@ -244,9 +259,9 @@ public class DownsampleSamWindow extends JFrame implements ActionListener, Prope
         seedField.setEnabled(false);
 
         setReadCountBox = new JCheckBox("Set # of reads?");
-        sl_contentPane.putConstraint(SpringLayout.EAST, setReadCountBox, 5, SpringLayout.EAST, scrollPane);
+        setReadCountBox.setSize(new Dimension(120, setReadCountBox.getPreferredSize().height));
         sl_contentPane.putConstraint(SpringLayout.NORTH, setReadCountBox, 55,SpringLayout.SOUTH, scrollPane);
-        sl_contentPane.putConstraint(SpringLayout.EAST, setReadCountBox, 30, SpringLayout.WEST, btnOutput);
+        sl_contentPane.putConstraint(SpringLayout.WEST, setReadCountBox, 167, SpringLayout.WEST, contentPane);
         contentPane.add(setReadCountBox);
 
         setReadCountBox.addActionListener(new ActionListener() {
@@ -265,9 +280,8 @@ public class DownsampleSamWindow extends JFrame implements ActionListener, Prope
 
         readCountField = new JTextField("Enter # of Reads");
         readCountField.setPreferredSize(new Dimension(120, readCountField.getPreferredSize().height));
-        sl_contentPane.putConstraint(SpringLayout.EAST, readCountField, 5, SpringLayout.EAST, scrollPane);
         sl_contentPane.putConstraint(SpringLayout.NORTH, readCountField, 58,SpringLayout.SOUTH, scrollPane);
-        sl_contentPane.putConstraint(SpringLayout.EAST, readCountField, 160, SpringLayout.WEST, btnOutput);
+        sl_contentPane.putConstraint(SpringLayout.WEST, readCountField, 5, SpringLayout.EAST, setReadCountBox);
         contentPane.add(readCountField);
 
         readCountField.setEnabled(false);
@@ -349,12 +363,15 @@ public class DownsampleSamWindow extends JFrame implements ActionListener, Prope
     /**
      * Invoked when task's progress property changes.
      */
-    public void propertyChange(PropertyChangeEvent evt) {
-        if ("progress" == evt.getPropertyName()) {
-            int progress = (Integer) evt.getNewValue();
-            progressBar.setValue(progress);
-        }
-    }
+	@Override
+	public void propertyChange(PropertyChangeEvent evt) {
+		if ("progress" == evt.getPropertyName()) {
+			int progress = (Integer) evt.getNewValue();
+			progressBar.setValue(progress);
+		} else if ("log" == evt.getPropertyName()) {
+			firePropertyChange("log", evt.getOldValue(), evt.getNewValue());
+		}
+	}
     public void massXable(Container con, boolean status) {
         for(Component c : con.getComponents()) {
             c.setEnabled(status);
