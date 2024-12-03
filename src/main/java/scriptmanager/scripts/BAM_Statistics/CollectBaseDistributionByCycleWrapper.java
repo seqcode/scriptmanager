@@ -44,7 +44,7 @@ public class CollectBaseDistributionByCycleWrapper {
      */
     public static String getCLIcommand(File input, File output, File chartOutput) {
         String command = "java -jar $PICARD ";
-        final CommandLineParser parser = new picard.reference.NormalizeFasta().getCommandLineParser();
+        final CommandLineParser parser = new picard.analysis.CollectBaseDistributionByCycle().getCommandLineParser();
         final ArrayList<String> args = new ArrayList<>();
         args.add("INPUT=" + input.getAbsolutePath());
         args.add("OUTPUT=" + output.getAbsolutePath());

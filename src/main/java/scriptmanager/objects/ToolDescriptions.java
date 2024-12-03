@@ -47,6 +47,7 @@ public class ToolDescriptions {
 	public static final String normalize_fasta_description = "Reduce redundant sequences and normalize read coverage in a FASTA file, improving downstream analysis accuracy";
 	public static final String filter_sam_reads_description = "Filter BAM files by applying user-defined filters to include or exclude specific reads based on read lists or genomic intervals";
 	public static final String add_comments_to_bam_description = "Adds comments to the header of a BAM file.";
+
 	// BAM Format Converter
 	public static final String bam_to_scidx_description = "Convert BAM file to scIDX file.";
 	public static final String bam_to_gff_description = "Convert BAM file to GFF file.";
@@ -91,7 +92,6 @@ public class ToolDescriptions {
 	public static final String scale_matrix_description = "Apply a user-specified scaling factor to tab-delimited matrix data.";
 	public static final String aggregate_data_description = "Compile data from tab-delimited file into matrix according to user-specified metric.";
 	public static final String transpose_matrix_description = "Interchange the rows and columns of tab-delimited matrix data.";
-
 
 	// Sequence Analysis
 	public static final String fasta_extract_description = "Generate FASTA file from indexed Genome FASTA file and BED file. Script will generate FAI index if not present in Genome FASTA folder.";
