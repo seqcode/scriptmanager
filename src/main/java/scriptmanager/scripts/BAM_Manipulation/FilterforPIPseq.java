@@ -4,6 +4,7 @@ import htsjdk.samtools.AbstractBAMFileIndex;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMFileWriter;
 import htsjdk.samtools.SAMFileWriterFactory;
+import htsjdk.samtools.SAMProgramRecord;
 import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SAMSequenceRecord;
 import htsjdk.samtools.SamReader;
@@ -16,7 +17,11 @@ import htsjdk.samtools.util.IOUtil;
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintStream;
+import java.util.ArrayList;
 
+import scriptmanager.cli.BAM_Manipulation.FilterforPIPseqCLI;
+import scriptmanager.objects.ToolDescriptions;
+import scriptmanager.util.BAMUtilities;
 import scriptmanager.util.FASTAUtilities;
 
 /**
@@ -70,8 +75,11 @@ public class FilterforPIPseq {
 		IOUtil.assertFileIsWritable(output);
 		final SamReader reader = SamReaderFactory.makeDefault().open(bamFile);
 		reader.getFileHeader().setSortOrder(SAMFileHeader.SortOrder.coordinate);
-		final SAMFileWriter writer = new SAMFileWriterFactory().makeSAMOrBAMWriter(reader.getFileHeader(), false,
-				output);
+		// Append @PG annotation to header and instantiate writer
+		String command = FilterforPIPseqCLI.getCLIcommand(bamFile, genome, output, SEQ);
+		SAMProgramRecord record = BAMUtilities.getPGRecord(reader.getFileHeader(), "scriptmanager", command, ToolDescriptions.VERSION);
+		reader.getFileHeader().addProgramRecord(record);
+		final SAMFileWriter writer = new SAMFileWriterFactory().makeSAMOrBAMWriter(reader.getFileHeader(), false, output);
 
 		printBoth(bamFile.getName()); // output file name to textarea
 
